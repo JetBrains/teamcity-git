@@ -153,4 +153,22 @@ public interface Constants {
    * @since 2026.1
    */
   String SSH_FALLBACK_TO_DEFAULT_CONFIG = "teamcity.git.ssh.fallbackToDefaultConfig";
+
+  /**
+   * Timeout in milliseconds for a token to be considered as recently retrieved.
+   * @since 2026.1
+   * @see AuthSettingsImpl#isFreshToken
+   */
+  String FRESH_TOKEN_TIMEOUT_MILLIS = "teamcity.git.freshTokenTimeoutMillis";
+
+  /**
+   * Max retry attempts on a "not found" error for fresh tokens.
+   * <br>
+   * In case it is not enough to have a single retry attempt on a fresh token (with a tiny default delay),
+   * it would make sense to retry as long as the token is considered fresh by the {@link Constants#FRESH_TOKEN_TIMEOUT_MILLIS} property.
+   * However, we must have a hard limit on those attempts to ensure we're not retrying indefinitely.
+   *
+   * @since 2026.1
+   */
+  int FRESH_TOKEN_MAX_RETRY_ATTEMPTS = 3;
 }

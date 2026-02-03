@@ -2,6 +2,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.io.ZipUtil;
 import com.jcraft.jsch.JSchException;
 import java.io.File;
@@ -11,24 +12,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import jetbrains.buildServer.BaseTestCase;
-import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.TeamCityAsserts;
-import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.*;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.agent.impl.ssh.AgentSshKnownHostsManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseAuthCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleConfigException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleEntryException;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitPatchTestCase;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.TestGitRepoOperationsImpl;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
+import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
@@ -56,6 +62,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
+import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
@@ -69,6 +76,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateData.createVersionState;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.assertj.core.api.BDDAssertions.then;
 
 public class GitVcsSupportTest extends BaseGitPatchTestCase {
@@ -1137,6 +1145,125 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
                               "useAlternates", "AUTO");
   }
 
+  @TestFor(issues = "TW-98092")
+  @Test
+  public void should_retry_getCurrentState_on_repository_not_found_with_fresh_token() throws Exception {
+    setInternalProperty(Constants.FRESH_TOKEN_TIMEOUT_MILLIS, "10000");
+
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("git@github.com:org/repo")
+      .withAuthMethod(AuthenticationMethod.ACCESS_TOKEN)
+      .withTokenId("test-token-id")
+      .build();
+
+    OAuthToken freshToken = getToken();
+    MockLsRemote mockLsRemote = new MockLsRemote(Mockito.mock(GitCommandLine.class), root, freshToken);
+
+    GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(myConfigBuilder).withTransportFactory(Mockito.mock(TransportFactory.class));
+    ServerPluginConfig config = myConfigBuilder.build();
+    TestGitRepoOperationsImpl testGitRepoOperations = new TestGitRepoOperationsImpl(
+      config,
+      gitSupportBuilder.getTransportFactory(),
+      new EmptyVcsRootSshKeyManager(),
+      gitSupportBuilder.getDefaultFetchCommand(),
+      new ConstantServerSshKnownHostsManager()
+    );
+    testGitRepoOperations.withLsRemoteCommand(mockLsRemote);
+
+    GitVcsSupport git = gitSupportBuilder.withGitRepoOperations(testGitRepoOperations).build();
+    RepositoryStateData state = git.getCurrentState(root);
+
+    assertNotNull(state);
+    then(state.getBranchRevisions().get("refs/heads/master")).isEqualTo("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653");
+    then(mockLsRemote.callCount).isEqualTo(3);
+  }
+
+  @TestFor(issues = "TW-98092")
+  @Test
+  public void should_not_retry_indefinetly_on_repository_not_found_with_fresh_token() {
+    setInternalProperty(Constants.FRESH_TOKEN_TIMEOUT_MILLIS, "60000");
+
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("git@github.com:org/repo")
+      .withAuthMethod(AuthenticationMethod.ACCESS_TOKEN)
+      .withTokenId("test-token-id")
+      .build();
+
+    OAuthToken freshToken = getToken();
+    MockLsRemote mockLsRemote = new MockLsRemote(Mockito.mock(GitCommandLine.class), root, freshToken);
+    mockLsRemote.callCount = -3;
+
+    GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(myConfigBuilder).withTransportFactory(Mockito.mock(TransportFactory.class));
+    ServerPluginConfig config = myConfigBuilder.build();
+    TestGitRepoOperationsImpl testGitRepoOperations = new TestGitRepoOperationsImpl(
+      config,
+      gitSupportBuilder.getTransportFactory(),
+      new EmptyVcsRootSshKeyManager(),
+      gitSupportBuilder.getDefaultFetchCommand(),
+      new ConstantServerSshKnownHostsManager()
+    );
+    testGitRepoOperations.withLsRemoteCommand(mockLsRemote);
+
+    GitVcsSupport git = gitSupportBuilder.withGitRepoOperations(testGitRepoOperations).build();
+    try {
+      git.getCurrentState(root);
+      failBecauseExceptionWasNotThrown(VcsException.class);
+    } catch (VcsException e) {
+      then(e.getMessage()).contains("Repository not found");
+      then(mockLsRemote.callCount).isEqualTo(0);
+    }
+  }
+
+  private OAuthToken getToken() {
+    return new OAuthToken("test-token", "repo", "testuser", 3600, 0, System.currentTimeMillis());
+  }
+
+  private class MockLsRemote extends BaseAuthCommandImpl<LsRemoteCommandImpl> implements LsRemoteCommand {
+    private final AuthSettings myAuthSettings;
+    private int callCount = 0;
+
+    public MockLsRemote(@NotNull GitCommandLine cmd, @NotNull VcsRoot root, @NotNull OAuthToken token) {
+      super(cmd);
+      myAuthSettings = new AuthSettingsImpl(root.getProperties(), root, Mockito.mock(URIishHelper.class), (s) -> { return token; }, Collections.emptyList());
+      myAuthSettings.getPassword(); // retrieve token internally as we will not run the real command
+    }
+
+    @NotNull
+    @Override
+    public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull FetchSettings settings) throws VcsException {
+      setAuthSettings(myAuthSettings);
+      String[] out = runCmd(new Retry.Retryable<ExecResult>() {
+        @Override
+        public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
+          return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts, Collections.emptyList());
+        }
+
+        @Override
+        public ExecResult call() throws Exception {
+
+          int callNum = ++callCount;
+          if (callNum <= 1) {
+            throw new VcsException("remote: Repository not found");
+          }
+          if (callNum == 2) {
+            throw new VcsException("RPC failed; HTTP 404 curl 22 The requested URL returned error: 404");
+          }
+          ExecResult res = new ExecResult();
+          res.setStdout("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653 refs/heads/master");
+          return res;
+        }
+
+        @NotNull
+        @Override
+        public Logger getLogger() {
+          return Mockito.mock(Logger.class);
+        }
+      }).getStdout().split(" ");
+      return new HashMap<String, Ref>() {{
+        put(out[1], new RefImpl(out[1], out[0]));
+      }};
+    }
+  }
 
 
   private File createBranchLockFile(File repositoryDir, String branch) throws IOException {

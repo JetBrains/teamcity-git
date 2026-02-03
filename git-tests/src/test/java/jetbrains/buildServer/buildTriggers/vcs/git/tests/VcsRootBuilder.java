@@ -37,6 +37,7 @@ public class VcsRootBuilder {
   private String myTeamCitySshKey;
   private String myPassphrase;
   private String myRequestToken;
+  private String myTokenId;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -80,6 +81,9 @@ public class VcsRootBuilder {
     }
     if (myRequestToken != null) {
       result.addProperty(PluginConfigImpl.SSH_SEND_ENV_REQUEST_TOKEN, myRequestToken);
+    }
+    if (myTokenId != null) {
+      result.addProperty(Constants.TOKEN_ID, myTokenId);
     }
 
     result.addProperty(Constants.SERVER_SIDE_AUTO_CRLF, String.valueOf(myAutoCrlf));
@@ -192,6 +196,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withRequestToken(String requestToken) {
     myRequestToken = requestToken;
+    return this;
+  }
+
+  public VcsRootBuilder withTokenId(String tokenId) {
+    myTokenId = tokenId;
     return this;
   }
 }

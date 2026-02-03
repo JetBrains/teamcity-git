@@ -209,4 +209,12 @@ public class AuthSettingsImpl implements AuthSettings {
     String method = properties.get(Constants.AUTH_METHOD);
     return method == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, method);
   }
+
+  @Override
+  public boolean isFreshToken() {
+    if (!isStoredTokenAuth()) return false;
+    if (myToken == null) return false;
+
+    return System.currentTimeMillis() - myToken.getCreateTimeMs() < TeamCityProperties.getInteger(Constants.FRESH_TOKEN_TIMEOUT_MILLIS, 1000);
+  }
 }
