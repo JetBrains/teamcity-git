@@ -40,4 +40,9 @@ public interface AuthSettings {
 
   @NotNull
   GitCommandCredentials getExtraHTTPCredentials();
+
+  /**
+   * @return true if {@link AuthenticationMethod#ACCESS_TOKEN} is used and the token was obtained recently {@link Constants#FRESH_TOKEN_PERIOD}
+   */
+  boolean isFreshToken();
 }

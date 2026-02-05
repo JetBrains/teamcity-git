@@ -8,8 +8,8 @@
   It is recommended to perform garbage collection in git repositories periodically to improve performance of changes collection.
   <br/>
   Please install git client on the TeamCity server machine and specify a path to it in the <strong>teamcity.server.git.executable.path</strong>
-  <bs:helpLink file="Configuring+TeamCity+Server+Startup+Properties" anchor="TeamCityinternalproperties">internal property</bs:helpLink>
-  <bs:helpLink file="Git" anchor="Git_gc"><bs:helpIcon/></bs:helpLink>.
+  <bs:helpLink file="Configuring+TeamCity+Server+Startup+Properties#TeamCity+Internal+Properties" preservePlus="true">internal property</bs:helpLink>
+  <bs:helpLink file="Git#Git_gc"><bs:helpIcon/></bs:helpLink>.
   <br/>
   <br/>
   Error details: <c:out value="${error.message}"/>

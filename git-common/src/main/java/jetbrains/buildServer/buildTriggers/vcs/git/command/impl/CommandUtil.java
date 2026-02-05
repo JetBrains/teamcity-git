@@ -12,6 +12,7 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
@@ -195,6 +196,17 @@ public class CommandUtil {
     return isMessageContains(e, "couldn't find remote ref");
   }
 
+  /**
+   * TW-98092: some hostings may fail to update permissions of freshly issued tokens in time.
+   * If we know that the token was obtained recently, it might be worth retrying.
+   */
+  public static boolean isNotFoundWithFreshToken(@NotNull VcsException e, @NotNull AuthSettings authSettings) {
+    return authSettings.isFreshToken() && (
+      isMessageContains(e, "repository not found") ||
+      isMessageContains(e, "requested URL returned error: 404")
+    );
+  }
+
   public static boolean isNoUsername(@NotNull VcsException e) {
     return isMessageContains(e, "could not read Username");
   }
@@ -223,6 +235,9 @@ public class CommandUtil {
     if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return attemptsLeft;
     if (isCanceledError(ve)) return false;
     if (isSslError(ve)) return false;
+
+    if((attempt < Constants.FRESH_TOKEN_MAX_RETRY_ATTEMPTS) && isNotFoundWithFreshToken(ve, authSettings))
+      return true;
 
     if ((attempt == 1 || attemptsLeft) && shouldHandleRemoteRefNotFound() && isNotFoundRemoteRefError(ve))
       return true;

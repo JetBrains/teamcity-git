@@ -259,7 +259,7 @@
     </tr>
     <tr class="advancedSetting">
       <th>
-        <label for="serverSideAutoCrlf">Convert line-endings to CRLF:<bs:help file="Git" anchor="serverAutoCRLF"/></label>
+        <label for="serverSideAutoCrlf">Convert line-endings to CRLF:<bs:help file="Git#serverAutoCRLF"/></label>
       </th>
       <td>
         <props:checkboxProperty name="serverSideAutoCrlf" disabled="${readOnly}"/>

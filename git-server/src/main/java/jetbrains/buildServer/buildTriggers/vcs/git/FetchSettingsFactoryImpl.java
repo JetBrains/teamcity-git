@@ -25,7 +25,7 @@ public class FetchSettingsFactoryImpl implements FetchSettingsFactory {
                                         @NotNull Set<String> remoteRefs,
                                         boolean includeTags) throws VcsException {
     final Set<String> filteredRemoteRefs = getFilteredRemoteRefs(context, remoteRefs);
-    final boolean fetchAllRefs = shouldFetchRemoteRefs(context, revisions, filteredRemoteRefs);
+    final boolean fetchAllRefs = shouldFetchRemoteRefs(context, refsToFetch, revisions, filteredRemoteRefs);
     final Collection<RefSpec> refSpecs = getRefSpecForCurrentState(context, refsToFetch, remoteRefs);
     return getFetchSettings(context, refSpecs, fetchAllRefs, includeTags);
   }
@@ -53,8 +53,11 @@ public class FetchSettingsFactoryImpl implements FetchSettingsFactory {
   }
 
 
-  private boolean shouldFetchRemoteRefs(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Collection<String> filteredRemoteRefs) {
-    if (revisions.size() > context.getPluginConfig().fetchRemoteBranchesThreshold())
+  private boolean shouldFetchRemoteRefs(@NotNull OperationContext context,
+                                        @NotNull Collection<RefCommit> refsToFetch,
+                                        @NotNull Collection<RefCommit> revisions,
+                                        @NotNull Collection<String> filteredRemoteRefs) {
+    if (refsToFetch.size() > context.getPluginConfig().fetchRemoteBranchesThreshold())
       return true;
 
     final float factor = context.getPluginConfig().fetchRemoteBranchesFactor();
