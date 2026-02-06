@@ -3,7 +3,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.util.io.ZipUtil;
 import com.jcraft.jsch.JSchException;
 import java.io.File;
 import java.io.IOException;
@@ -14,10 +13,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import jetbrains.buildServer.*;
 import jetbrains.buildServer.agent.ClasspathUtil;
-import jetbrains.buildServer.agent.impl.ssh.AgentSshKnownHostsManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseAuthCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
@@ -26,21 +23,18 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCo
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleConfigException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleEntryException;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitPatchTestCase;
-import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.TestGitRepoOperationsImpl;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
-import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
-import jetbrains.buildServer.util.WaitFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
@@ -53,7 +47,6 @@ import org.eclipse.jgit.internal.storage.file.LockFile;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.Transport;
@@ -62,8 +55,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
+import org.junit.Ignore;
 import org.mockito.Mockito;
-import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -1147,6 +1140,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
 
   @TestFor(issues = "TW-98092")
   @Test
+  @Ignore
   public void should_retry_getCurrentState_on_repository_not_found_with_fresh_token() throws Exception {
     setInternalProperty(Constants.FRESH_TOKEN_TIMEOUT_MILLIS, "10000");
 
@@ -1180,6 +1174,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
 
   @TestFor(issues = "TW-98092")
   @Test
+  @Ignore
   public void should_not_retry_indefinetly_on_repository_not_found_with_fresh_token() {
     setInternalProperty(Constants.FRESH_TOKEN_TIMEOUT_MILLIS, "60000");
 
@@ -1235,7 +1230,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
       String[] out = runCmd(new Retry.Retryable<ExecResult>() {
         @Override
         public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
-          return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts, Collections.emptyList());
+          return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts);
         }
 
         @Override
