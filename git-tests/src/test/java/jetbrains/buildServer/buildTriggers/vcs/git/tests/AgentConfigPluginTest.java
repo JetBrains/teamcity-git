@@ -4,6 +4,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -57,7 +58,7 @@ public class AgentConfigPluginTest {
 
   public void test_default_custom_recoverable_messages() throws VcsException {
     PluginConfigImpl config = getPluginConfig();
-    assertEquals(Collections.emptyList(), config.getCustomRecoverableMessages());
+    assertEquals(Collections.emptyList(), new ArrayList<>(config.getCustomRecoverableMessages().keySet()));
   }
 
   public void test_custom_recoverable_messages() throws VcsException {
@@ -68,7 +69,7 @@ public class AgentConfigPluginTest {
     expected.add(" msg2 ");
     expected.add("    three ");
     expected.add(" msg4");
-    assertEquals(expected, config.getCustomRecoverableMessages());
+    assertEquals(expected.stream().sorted().collect(Collectors.toList()), new ArrayList<>(config.getCustomRecoverableMessages().keySet()).stream().sorted().collect(Collectors.toList()));
   }
 
   public void test_default_idle_timeout() throws VcsException {

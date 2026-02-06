@@ -78,7 +78,7 @@ public interface Context {
   int getSshConnectTimeoutSeconds();
 
   @NotNull
-  Collection<String> getCustomRecoverableMessages();
+  Map<String, Long> getCustomRecoverableMessages();
 
   /**
    * @return internal property or null if it is absent.

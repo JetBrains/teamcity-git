@@ -730,13 +730,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
     }
   }
 
+  // todo with aliases like for the agent
   @NotNull
   @Override
-  public Collection<String> getCustomRecoverableMessages() {
+  public Map<String, Long> getCustomRecoverableMessages() {
     final String property = TeamCityProperties.getProperty(CUSTOM_RECOVERABLE_MESSAGES);
-    if (StringUtil.isEmptyOrSpaces(property)) return Collections.emptyList();
+    if (StringUtil.isEmptyOrSpaces(property)) return Collections.emptyMap();
 
-    return StringUtil.split(property, true, ';');
+    return StringUtil.split(property, true, ';').stream().collect(Collectors.toMap(p -> p, p -> GitCommandRetryPolicy.INITIAL_DELAY_MS));
   }
 
   @Nullable

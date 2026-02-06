@@ -6,6 +6,7 @@ import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitCommandRetryPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.AuthCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
@@ -29,9 +30,11 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   private final List<Runnable> myPreActions = new ArrayList<Runnable>();
   private int myRetryAttempts = 1;
   private Map<String, String> myTraceEnv = Collections.emptyMap();
+  private Map<String, Long> myCustomRecoverableMessages;
 
   public BaseAuthCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
+    myCustomRecoverableMessages = cmd.getContext().getCustomRecoverableMessages();
   }
 
   @NotNull
@@ -92,7 +95,27 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
 
     @Override
     public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
-      return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts, myCmd.getContext().getCustomRecoverableMessages());
+      return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts);
+    }
+
+    @NotNull
+    @Override
+    public GitCommandRetryPolicy findRetryPolicyForException(@NotNull Exception e, int attempt, int maxAttempts) {
+      if (attempt < maxAttempts && e.getMessage() != null) {
+        for (Map.Entry<String, Long> msgDelay : myCustomRecoverableMessages.entrySet()) {
+          if (e.getMessage().contains(msgDelay.getKey())) {
+            long delayMs = msgDelay.getValue();
+            msgDelay.setValue(Retry.backOff(msgDelay.getValue()));
+            return new GitCommandRetryPolicy(delayMs);
+          }
+        }
+      }
+
+      if(requiresRetry(e, attempt, maxAttempts)) {
+        return new GitCommandRetryPolicy();
+      }
+
+      return new GitCommandRetryPolicy(GitCommandRetryPolicy.RetryMode.NOT_REQUIRED);
     }
 
     @Override

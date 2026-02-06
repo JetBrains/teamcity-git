@@ -224,7 +224,7 @@ public class CommandUtil {
     return isMessageContains(e, "Connection reset");
   }
 
-  public static boolean isRecoverable(@NotNull Exception e, @NotNull AuthSettings authSettings, int attempt, int maxAttempts, @NotNull Collection<String> customRecoverableMessages) {
+  public static boolean isRecoverable(@NotNull Exception e, @NotNull AuthSettings authSettings, int attempt, int maxAttempts) {
     boolean attemptsLeft = attempt < maxAttempts;
 
     if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return attemptsLeft;
@@ -248,10 +248,6 @@ public class CommandUtil {
 
     if ((attempt == 1 || attemptsLeft) && authSettings.doesTokenNeedRefresh())
       return true;
-
-    for (String message : customRecoverableMessages) {
-      if (isMessageContains(ve, message)) return attemptsLeft;
-    }
 
     return attemptsLeft;
   }

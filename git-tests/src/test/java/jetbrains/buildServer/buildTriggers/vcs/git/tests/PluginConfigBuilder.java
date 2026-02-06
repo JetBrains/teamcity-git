@@ -95,7 +95,7 @@ public class PluginConfigBuilder {
 
       @NotNull
       @Override
-      public Collection<String> getCustomRecoverableMessages() {
+      public Map<String, Long> getCustomRecoverableMessages() {
         return myDelegate.getCustomRecoverableMessages();
       }
 
