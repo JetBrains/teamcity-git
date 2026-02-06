@@ -14,11 +14,10 @@ import java.util.regex.Pattern;
 import jetbrains.buildServer.*;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseAuthCommandImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleConfigException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleEntryException;
@@ -1140,7 +1139,6 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
 
   @TestFor(issues = "TW-98092")
   @Test
-  @Ignore
   public void should_retry_getCurrentState_on_repository_not_found_with_fresh_token() throws Exception {
     setInternalProperty(Constants.FRESH_TOKEN_TIMEOUT_MILLIS, "10000");
 
@@ -1151,7 +1149,10 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
       .build();
 
     OAuthToken freshToken = getToken();
-    MockLsRemote mockLsRemote = new MockLsRemote(Mockito.mock(GitCommandLine.class), root, freshToken);
+
+    final StubContext context = new StubContext("git", new GitVersion(2, 50, 0));
+    final GitCommandLine cmd = new GitCommandLine(context, getFakeGen());
+    MockLsRemote mockLsRemote = new MockLsRemote(cmd, root, freshToken);
 
     GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(myConfigBuilder).withTransportFactory(Mockito.mock(TransportFactory.class));
     ServerPluginConfig config = myConfigBuilder.build();
@@ -1174,8 +1175,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
 
   @TestFor(issues = "TW-98092")
   @Test
-  @Ignore
-  public void should_not_retry_indefinetly_on_repository_not_found_with_fresh_token() {
+  public void should_not_retry_indefinetly_on_repository_not_found_with_fresh_token() throws IOException {
     setInternalProperty(Constants.FRESH_TOKEN_TIMEOUT_MILLIS, "60000");
 
     VcsRoot root = vcsRoot()
@@ -1185,7 +1185,11 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
       .build();
 
     OAuthToken freshToken = getToken();
-    MockLsRemote mockLsRemote = new MockLsRemote(Mockito.mock(GitCommandLine.class), root, freshToken);
+
+    final StubContext context = new StubContext("git", new GitVersion(2, 50, 0));
+    final GitCommandLine cmd = new GitCommandLine(context, getFakeGen());
+    MockLsRemote mockLsRemote = new MockLsRemote(cmd, root, freshToken);
+
     mockLsRemote.callCount = -3;
 
     GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(myConfigBuilder).withTransportFactory(Mockito.mock(TransportFactory.class));
@@ -1282,5 +1286,27 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
       result = e.getMessage();
     }
     return result;
+  }
+
+  @NotNull
+  private ScriptGen getFakeGen() throws IOException {
+    return new ScriptGen(createTempDir()) {
+      @NotNull
+      public File generateAskPass(@NotNull AuthSettings authSettings) throws IOException {
+        return createTempFile();
+      }
+
+      @NotNull
+      @Override
+      public File generateAskPass(@NotNull final String password) throws IOException {
+        return createTempFile();
+      }
+
+      @NotNull
+      @Override
+      public File generateCredentialHelper() throws IOException {
+        return createTempFile();
+      }
+    };
   }
 }
