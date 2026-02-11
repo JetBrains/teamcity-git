@@ -15,6 +15,7 @@ import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingE
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.*;
@@ -45,6 +46,25 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       Files.createDirectories(path);
     }
     myGitRepoOperations.initCommand().init(path.toString(), true, null);
+  }
+
+  @NotNull
+  @Override
+  public Map<String, String> getRootProperties(@NotNull CentralRepositoryConfiguration repositoryConfiguration) {
+    String repositoryUrl = repositoryConfiguration.getRepositoryUrl().replace(TC_DATA_DIR, myServerPaths.getDataDirectory().getAbsolutePath());
+    Map<String, String> props = myVcs.getDefaultVcsProperties();
+    props.put(Constants.FETCH_URL, repositoryUrl);
+    props.put(VcsUtil.VCS_NAME_PROP, Constants.VCS_NAME);
+    props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
+    if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
+      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
+      Path authKeyPath = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
+      if (!Files.exists(authKeyPath)) {
+        throw new RuntimeException("Private key for repository isn't found. Upload private key with write access to the repository");
+      }
+      props.put(Constants.PRIVATE_KEY_PATH, authKeyPath.toString());
+    }
+    return props;
   }
 
   @NotNull
