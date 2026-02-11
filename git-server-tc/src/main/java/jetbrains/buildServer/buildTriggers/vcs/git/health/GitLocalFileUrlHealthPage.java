@@ -19,6 +19,6 @@ public class GitLocalFileUrlHealthPage extends HealthStatusItemPageExtension {
 
   @Override
   public boolean isAvailable(@NotNull HttpServletRequest request) {
-    return super.isAvailable(request) && TeamCityProperties.getBoolean(Constants.WARN_FILE_URL);
+    return super.isAvailable(request) && TeamCityProperties.getBooleanOrTrue(Constants.WARN_FILE_URL);
   }
 }
