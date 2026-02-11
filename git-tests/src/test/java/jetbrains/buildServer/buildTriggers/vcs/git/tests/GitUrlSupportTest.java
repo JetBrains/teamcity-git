@@ -11,6 +11,7 @@ import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agentServer.Server;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.parameters.ParametersProvider;
 import jetbrains.buildServer.serverSide.ProjectManager;
 import jetbrains.buildServer.serverSide.SProject;
@@ -48,6 +49,8 @@ public class GitUrlSupportTest extends BaseTestCase {
   private Mock myProjectMock;
   private GitVcsSupport myGitVcsSupport;
   private Boolean myTestConnectionMocked;
+
+  private final InternalPropertiesHandler myInternalPropertiesHandler = new InternalPropertiesHandler();
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -101,6 +104,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     myTestKeys.clear();
     myTempFiles.cleanup();
     myTestConnectionMocked = null;
+    myInternalPropertiesHandler.tearDown();
     super.tearDown();
   }
 
@@ -301,7 +305,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   @TestFor(issues = "TW-95933")
   @Test
   public void shouldThrowForFileUrlIfBlocked() {
-    setInternalProperty("teamcity.git.allowFileUrl", false);
+    myInternalPropertiesHandler.setInternalProperty(Constants.ALLOW_FILE_URL, "false");
     final VcsUrl url = new VcsUrl("file:///tmp/test");
     assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, "The git fetch URL most not be a local file URL");
   }

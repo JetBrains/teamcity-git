@@ -86,7 +86,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     String fetchUrl = getFetchUrl(url);
     String lowerCaseFetchUrl = StringUtil.toLowerCase(fetchUrl);
 
-    if (!myConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(fetchUrl)) {
+    if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(fetchUrl)) {
       throw new VcsException("The git fetch URL most not be a local file URL");
     }
 

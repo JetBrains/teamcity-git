@@ -511,10 +511,6 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return parseTimeout(valueFromBuild, DEFAULT_SSH_CONNECT_TIMEOUT);
   }
 
-  @Override
-  public boolean isAllowFileUrl() {
-    return DevelopmentMode.isEnabled || TeamCityProperties.getBooleanOrTrue(Constants.ALLOW_FILE_URL);
-  }
 
   @Override
   public int getShallowCloneDepth() {

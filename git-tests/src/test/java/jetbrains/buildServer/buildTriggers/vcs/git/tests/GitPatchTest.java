@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
 import jetbrains.buildServer.ExtensionHolder;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
@@ -56,7 +57,7 @@ public class GitPatchTest extends BaseGitPatchTestCase {
     }};
     Mockery context = new Mockery();
     ServerPaths serverPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    myConfigBuilder = new PluginConfigBuilder(serverPaths);
+    myConfigBuilder = new PluginConfigBuilder(serverPaths).withFetcherProperties(Constants.ALLOW_FILE_URL, "true");
     File repoGitDir = dataFile("repo.git");
     File tmpDir = myTempFiles.createTempDir();
     myMainRepositoryDir = new File(tmpDir, "repo.git");

@@ -120,7 +120,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            CONNECTION_RETRY_INTERVAL_SECONDS,
                                                            CONNECTION_RETRY_ATTEMPTS,
                                                            JSchConfigInitializer.JSCH_CONFIG_INT_PROPERTY_PREFIX,
-                                                           SshPubkeyAcceptedAlgorithms.DOMAINS_WITH_ENFORCED_SHA_1_SIGNATURE);
+                                                           SshPubkeyAcceptedAlgorithms.DOMAINS_WITH_ENFORCED_SHA_1_SIGNATURE,
+                                                           Constants.ALLOW_FILE_URL);
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -766,10 +767,5 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public int getSshConnectTimeoutSeconds() {
     return TeamCityProperties.getInteger(SSH_CONNECT_TIMEOUT_SECONDS, DEFAULT_SSH_CONNECT_TIMEOUT);
-  }
-
-  @Override
-  public boolean isAllowFileUrl() {
-    return DevelopmentMode.isEnabled || TeamCityProperties.getBooleanOrTrue(Constants.ALLOW_FILE_URL);
   }
 }

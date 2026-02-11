@@ -222,7 +222,7 @@ public class VcsPropertiesProcessorTest extends TestCase {
     final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
 
     then(invalidProps).extracting("propertyName", "invalidReason")
-                      .containsExactly(tuple("url", "The URL most not be a local file URL"));
+                      .containsExactly(tuple("url", "The URL must not be a local file URL"));
   }
 
   @TestFor(issues = "TW-95933")
@@ -238,7 +238,7 @@ public class VcsPropertiesProcessorTest extends TestCase {
     final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
 
     then(invalidProps).extracting("propertyName", "invalidReason")
-                      .containsExactly(tuple("push_url", "The URL most not be a local file URL"));
+                      .containsExactly(tuple("push_url", "The URL must not be a local file URL"));
   }
 
 
