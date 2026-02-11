@@ -68,7 +68,7 @@ public class GitLocalFileUrlHealthReport extends HealthStatusReport {
 
   @Override
   public void report(@NotNull HealthStatusScope scope, @NotNull HealthStatusItemConsumer consumer) {
-    if (!TeamCityProperties.getBoolean(Constants.WARN_FILE_URL)) {
+    if (!TeamCityProperties.getBooleanOrTrue(Constants.WARN_FILE_URL)) {
       return;
     }
 

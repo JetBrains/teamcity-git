@@ -74,7 +74,6 @@ public class GitLocalFileUrlHealthReportTest extends BaseGitServerTestCase {
   @Test
   public void reports_for_plain_local_fetch_and_push() {
     // given
-    setInternalProperty(Constants.WARN_FILE_URL, "true");
     ProjectEx p = myProject;
     SVcsRoot root = createGitRoot(p, props(LOCAL_URL, LOCAL_URL));
 
@@ -100,7 +99,6 @@ public class GitLocalFileUrlHealthReportTest extends BaseGitServerTestCase {
   @Test
   public void does_not_care_about_references_without_build_type() {
     // given
-    setInternalProperty(Constants.WARN_FILE_URL, "true");
     ProjectEx p = createProject("proj");
     // add parameter at project level
     p.addParameter(new SimpleParameter("ref", LOCAL_URL));
@@ -123,7 +121,6 @@ public class GitLocalFileUrlHealthReportTest extends BaseGitServerTestCase {
   @Test
   public void resolves_reference_per_build_type_scope() {
     // given
-    setInternalProperty(Constants.WARN_FILE_URL, "true");
     ProjectEx p = myProject;
     BuildTypeImpl bt1 = myFixture.createBuildType(p, "bt1", "ant");
     BuildTypeImpl bt2 = myFixture.createBuildType(p, "bt2", "ant");
@@ -161,7 +158,6 @@ public class GitLocalFileUrlHealthReportTest extends BaseGitServerTestCase {
   @Test
   public void ignores_non_git_roots_and_remote_urls() {
     // given
-    setInternalProperty(Constants.WARN_FILE_URL, "true");
     ProjectEx p = myProject;
     // Non-git root
     SVcsRoot nonGit = p.createVcsRoot("svn", "svn_root", java.util.Collections.emptyMap());
@@ -181,7 +177,6 @@ public class GitLocalFileUrlHealthReportTest extends BaseGitServerTestCase {
   @Test
   public void ignores_unresolved_references() {
     // given
-    setInternalProperty(Constants.WARN_FILE_URL, "true");
     ProjectEx p = myProject;
     BuildTypeImpl bt1 = myFixture.createBuildType(p, "bt1", "ant");
 
@@ -201,7 +196,6 @@ public class GitLocalFileUrlHealthReportTest extends BaseGitServerTestCase {
   @Test
   public void resolves_reference_for_vcs_root_from_parent() {
     // given
-    setInternalProperty(Constants.WARN_FILE_URL, "true");
 
     final ProjectEx parent = createProject("parent");
 
