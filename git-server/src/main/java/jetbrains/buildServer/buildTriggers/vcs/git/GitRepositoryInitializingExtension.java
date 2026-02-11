@@ -7,7 +7,6 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
-import jetbrains.buildServer.maintenance.configs.CentralRepositoryStartupUtils;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.impl.configsRepo.CentralConfigsRepository;
 import jetbrains.buildServer.serverSide.impl.configsRepo.CentralConfigsRepositoryUtils;
@@ -16,7 +15,6 @@ import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingE
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.*;
@@ -51,25 +49,6 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
 
   @NotNull
   @Override
-  public Map<String, String> getRootProperties(@NotNull CentralRepositoryConfiguration repositoryConfiguration) {
-    String repositoryUrl = repositoryConfiguration.getRepositoryUrl().replace(TC_DATA_DIR, myServerPaths.getDataDirectory().getAbsolutePath());
-    Map<String, String> props = myVcs.getDefaultVcsProperties();
-    props.put(Constants.FETCH_URL, repositoryUrl);
-    props.put(VcsUtil.VCS_NAME_PROP, Constants.VCS_NAME);
-    props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
-    if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
-      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
-      Path authKeyPath = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
-      if (!Files.exists(authKeyPath)) {
-        throw new RuntimeException("Private key for repository isn't found. Upload private key with write access to the repository");
-      }
-      props.put(Constants.PRIVATE_KEY_PATH, authKeyPath.toString());
-    }
-    return props;
-  }
-
-  @NotNull
-  @Override
   public Map<String, String> commitAllChanges(@NotNull CentralRepositoryConfiguration repositoryConfiguration,
                                               @NotNull CommitSettings commitSettings,
                                               @NotNull List<String> ignoredPaths,
@@ -90,7 +69,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       GitVcsRoot gitRoot;
       final String initBranch = "tempInitializationBranch";
       Map<String, String> props = myVcs.getDefaultVcsProperties();
-      Path localRepo = myServerPaths.getCacheDirectory(CentralRepositoryStartupUtils.CENTRAL_CONFIGS_REPOSITORY_CACHE_DIR_NAME).toPath().resolve("localMirror");
+      Path localRepo = myServerPaths.getCacheDirectory(CentralConfigsRepositoryUtils.CENTRAL_CONFIGS_REPOSITORY_CACHE_DIR_NAME).toPath().resolve("localMirror");
       boolean shouldCreateRepo = shouldCreateRepo(localRepo, repositoryUrl);
       try {
         if (shouldCreateRepo && Files.exists(localRepo)) {
