@@ -307,7 +307,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   public void shouldThrowForFileUrlIfBlocked() {
     myInternalPropertiesHandler.setInternalProperty(Constants.ALLOW_FILE_URL, "false");
     final VcsUrl url = new VcsUrl("file:///tmp/test");
-    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, "The git fetch URL most not be a local file URL");
+    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, "The git fetch URL must not be a local file URL");
   }
 
   private void checkAuthMethod(MavenVcsUrl url, GitVcsRoot root) {
