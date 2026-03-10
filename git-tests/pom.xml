@@ -371,6 +371,7 @@
                   <suiteXmlFiles>
                     <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
                   </suiteXmlFiles>
+                  <argLine>${surefire.jvm.params}</argLine>
                   <skipTests>false</skipTests>
                 </configuration>
               </execution>
@@ -414,7 +415,7 @@
                   <suiteXmlFiles>
                     <suiteXmlFile>src/test/resources/common-git-operations.xml</suiteXmlFile>
                   </suiteXmlFiles>
-                  <argLine>-Dteamcity.git.nativeOperationsEnabled=true</argLine>
+                  <argLine>${surefire.jvm.params} -Dteamcity.git.nativeOperationsEnabled=true</argLine>
                   <skipTests>false</skipTests>
                 </configuration>
               </execution>
