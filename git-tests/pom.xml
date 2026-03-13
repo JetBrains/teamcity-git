@@ -345,6 +345,7 @@
                   <suiteXmlFiles>
                     <suiteXmlFile>src/test/resources/auth-git-tests.xml</suiteXmlFile>
                   </suiteXmlFiles>
+                  <argLine>${surefire.jvm.params} -Dteamcity.git.nativeOperationsEnabled=true</argLine>
                   <skipTests>false</skipTests>
                 </configuration>
               </execution>
