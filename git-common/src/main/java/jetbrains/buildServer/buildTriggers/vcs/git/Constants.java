@@ -171,4 +171,10 @@ public interface Constants {
    * @since 2026.1
    */
   int FRESH_TOKEN_MAX_RETRY_ATTEMPTS = 3;
+
+  /**
+   * Max length of the VCS error message (stdout or stderr). Introduced to prevent OOM on large error messages.
+   * @since 2026.1
+   */
+  String GIT_MAX_LENGTH_OF_VCS_ERROR_MESSAGE = "teamcity.git.error.message.maxLength";
 }
