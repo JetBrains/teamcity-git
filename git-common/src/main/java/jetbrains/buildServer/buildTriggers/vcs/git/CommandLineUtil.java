@@ -16,6 +16,7 @@ public final class CommandLineUtil {
 
   private CommandLineUtil() {}
 
+  public static String GIT_CLI_LONG_MESSAGES_SEPARATOR = "\n...\ncontinue> ";
 
   @Nullable
   public static VcsException getCommandLineError(@NotNull String cmdName, @NotNull ExecResult res) {
@@ -46,5 +47,16 @@ public final class CommandLineUtil {
     } else {
       return null;
     }
+  }
+
+  @NotNull
+  public static String cropOutputMessage(@NotNull String logMessage, int maxLength) {
+    if (logMessage.length() <= maxLength + GIT_CLI_LONG_MESSAGES_SEPARATOR.length() * 2) {
+      return logMessage;
+    }
+
+    return logMessage.substring(0, maxLength * 2 / 3) +
+           GIT_CLI_LONG_MESSAGES_SEPARATOR +
+           logMessage.substring(logMessage.length() - maxLength / 3 + GIT_CLI_LONG_MESSAGES_SEPARATOR.length());
   }
 }

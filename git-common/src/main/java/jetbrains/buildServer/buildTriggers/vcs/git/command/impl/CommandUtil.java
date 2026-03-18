@@ -5,7 +5,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import jetbrains.buildServer.ExecResult;
@@ -22,6 +21,8 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.CommandLineUtil.cropOutputMessage;
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_MAX_LENGTH_OF_VCS_ERROR_MESSAGE;
 import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND;
 import static jetbrains.buildServer.util.FileUtil.normalizeSeparator;
 
@@ -51,10 +52,11 @@ public class CommandUtil {
     String stderr = res.getStderr().trim();
     String stdout = res.getStdout().trim();
     int exitCode = res.getExitCode();
+    int maxVcsErrorLength = TeamCityProperties.getInteger(GIT_MAX_LENGTH_OF_VCS_ERROR_MESSAGE, 50 * 1024);
     String message = cmdName + " command failed." +
                      (exitCode != 0 ? "\nexit code: " + exitCode : "") +
-                     (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
-                     (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "");
+                     (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + cropOutputMessage(stdout, maxVcsErrorLength) : "") +
+                     (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + cropOutputMessage(stderr, maxVcsErrorLength) : "");
     if (exception != null) {
       message += "\nexception: ";
       message += exception.getClass().getName();

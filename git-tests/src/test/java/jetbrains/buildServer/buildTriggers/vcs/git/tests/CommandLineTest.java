@@ -14,8 +14,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.Ref;
@@ -308,6 +310,61 @@ public class CommandLineTest extends BaseRemoteRepositoryTest {
     assertTrue(envCreds.containsKey("https://ccccc.dddd/path/to/submodule2222222.git"));
     assertEquals("submodule_admin1", envCreds.get("https://ccccc.dddd/path/to/submodule2222222.git").get("user"));
     assertEquals("12pass345", envCreds.get("https://ccccc.dddd/path/to/submodule2222222.git").get("pwd"));
+  }
+
+  @TestFor(issues = {"TW-99549", "TW-99557"})
+  public void test_crop_too_big_output(@NotNull GitExec git) throws Throwable {
+    setInternalProperty("teamcity.git.error.message.maxLength", "100");
+    createSources(git);
+    GitCommandLine cmd = createRepositoryCmd(git);
+
+
+    cmd.addParameter("failed command " + String.join("", Collections.nCopies(100, "error1 error2 error3 error4 error5\n")));
+
+    VcsException result = null;
+    try {
+      CommandUtil.runCommand(cmd);
+      fail();
+    } catch (VcsException e) {
+      result = e;
+    }
+
+    assertNotNull(result);
+    assertTrue(result.getMessage().contains("exit code: 1"));
+
+    String error = result.getMessage().substring(result.getMessage().indexOf("stderr: ") + "stderr: ".length());
+
+    assertTrue(error.length() <= 100 && error.length() >= 98);
+
+    assertTrue(error.contains("error1 error2 error3 error4 error5"));
+    assertTrue(error.contains("continue>"));
+  }
+
+  @TestFor(issues = {"TW-99549", "TW-99557"})
+  public void test_no_crop_too_small_output(@NotNull GitExec git) throws Throwable {
+    setInternalProperty("teamcity.git.error.message.maxLength", "100");
+    createSources(git);
+    GitCommandLine cmd = createRepositoryCmd(git);
+
+
+    cmd.addParameter("fail");
+
+    VcsException result = null;
+    try {
+      CommandUtil.runCommand(cmd);
+      fail();
+    } catch (VcsException e) {
+      result = e;
+    }
+
+    assertNotNull(result);
+    assertTrue(result.getMessage().contains("exit code: 1"));
+
+    String error = result.getMessage().substring(result.getMessage().indexOf("stderr: ") + "stderr: ".length());
+
+    assertTrue(error.length() <= 100);
+
+    assertFalse(error.contains("continue>"));
   }
 
 }
