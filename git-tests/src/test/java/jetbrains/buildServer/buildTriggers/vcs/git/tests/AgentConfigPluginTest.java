@@ -61,7 +61,7 @@ public class AgentConfigPluginTest {
     assertEquals(Collections.emptyList(), new ArrayList<>(config.getCustomRecoverableMessages().keySet()));
   }
 
-  public void test_custom_recoverable_messages() throws VcsException {
+  public void test_custom_recoverable_messages_outdated() throws VcsException {
     myBuildSharedConfigParameters.put("teamcity.git.agent.recoverableMessages", "msg1; msg2 ;    three ; msg4;");
     PluginConfigImpl config = getPluginConfig();
     List<String> expected = new ArrayList<String>();
@@ -70,6 +70,63 @@ public class AgentConfigPluginTest {
     expected.add("    three ");
     expected.add(" msg4");
     assertEquals(expected.stream().sorted().collect(Collectors.toList()), new ArrayList<>(config.getCustomRecoverableMessages().keySet()).stream().sorted().collect(Collectors.toList()));
+  }
+
+  public void test_custom_recoverable_messages() throws VcsException {
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages", "msg1; msg2 ;    three ; msg4;");
+    PluginConfigImpl config = getPluginConfig();
+    assertEquals(0, config.getCustomRecoverableMessages().size());
+  }
+
+  public void test_aggregated_custom_recoverable_messages_with_outdated() throws VcsException {
+    myBuildSharedConfigParameters.put("teamcity.git.agent.recoverableMessages.aliasA.msg", "test error message 1;");
+    myBuildSharedConfigParameters.put("teamcity.git.agent.recoverableMessages.aliasA.delayMs", "30000");
+    myBuildSharedConfigParameters.put("teamcity.git.agent.recoverableMessages.aliasB.msg", "test error message 2;");
+    myBuildSharedConfigParameters.put("teamcity.git.agent.recoverableMessages.aliasB.delayMs", "40000");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasC.msg", "test error message 3;");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasC.delayMs", "50000");
+    myBuildSharedConfigParameters.put("teamcity.git.agent.recoverableMessages.aliasD.msg", "test error message 4;");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasE.msg", "test error message 5;");
+    PluginConfigImpl config = getPluginConfig();
+    Map<String, Long> expected = new HashMap<String, Long>() {{
+      put("test error message 1;", 30000L);
+      put("test error message 2;", 40000L);
+      put("test error message 3;", 50000L);
+      put("test error message 4;", 5000L);
+      put("test error message 5;", 5000L);
+    }};
+
+    assertEquals(expected, config.getCustomRecoverableMessages());
+
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasA1.msg", "test error message 1;");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasA1.delayMs", "10");
+
+    expected.put("test error message 1;", 10L);
+
+    assertEquals(expected, config.getCustomRecoverableMessages());
+  }
+
+  public void test_aggregated_custom_recoverable_messages() throws VcsException {
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasA.msg", "test error message 1;");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasA.delayMs", "30000");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasB.msg", "test error message 2;");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasB.delayMs", "40000");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasC.msg", "test error message 3;");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasC.delayMs", "50000");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasD.msg", "test error message 4;");
+    myBuildSharedConfigParameters.put("teamcity.internal.git.agent.recoverableMessages.aliasE.msg", "test error message 5;");
+    PluginConfigImpl config = getPluginConfig();
+    Map<String, Long> expected = new HashMap<String, Long>() {{
+      put("test error message 1;", 30000L);
+      put("test error message 2;", 40000L);
+      put("test error message 3;", 50000L);
+      put("test error message 4;", 5000L);
+      put("test error message 5;", 5000L);
+    }};
+
+    Map<String, Long> recoverableMessages = config.getCustomRecoverableMessages();
+
+    assertEquals(expected, recoverableMessages);
   }
 
   public void test_default_idle_timeout() throws VcsException {

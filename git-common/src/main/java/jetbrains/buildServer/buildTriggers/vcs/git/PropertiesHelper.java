@@ -12,8 +12,9 @@ public class PropertiesHelper {
    * and so on
    */
   public static Map<String, Map<String, String>> aggregatePropertiesByAlias(@NotNull Map<String, String> properties, @NotNull String prefix) {
-    if (StringUtil.isEmptyOrSpaces(prefix))
-      new HashMap<>();
+    if (StringUtil.isEmptyOrSpaces(prefix)) {
+      return new HashMap<>();
+    }
 
     Map<String, Map<String, String>> result = new HashMap<>();
     if (prefix.endsWith("."))
@@ -25,7 +26,7 @@ public class PropertiesHelper {
         if (key.equals(prefix)) {
           associatePropertyWithAlias(result, "", key, entry.getValue());
         } else {
-          String rest = key.substring(prefix.length()+1); //remoeve prefix.
+          String rest = key.substring(prefix.length()+1); //remove prefix.
           String[] aliasAndPostfix = rest.split("\\.", 2);
 
           if (aliasAndPostfix.length == 1 && !aliasAndPostfix[0].isEmpty()) {

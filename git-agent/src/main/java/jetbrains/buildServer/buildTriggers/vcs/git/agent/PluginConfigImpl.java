@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import jetbrains.buildServer.DevelopmentMode;
 import jetbrains.buildServer.agent.AgentMiscConstants;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
@@ -19,7 +18,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.PropertiesUtil;
 import jetbrains.buildServer.util.StringUtil;
@@ -70,10 +68,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.internal.git.sshDebug";
 
   /**
-   * teamcity.git.agent.recoverableMessages.<ALIAS>.msg - message
-   * teamcity.git.agent.recoverableMessages.<ALIAS>.delayMs - delay in milliseconds (optional)
+   * teamcity.internal.git.agent.recoverableMessages.<ALIAS>.msg - message
+   * teamcity.internal.git.agent.recoverableMessages.<ALIAS>.delayMs - delay in milliseconds (optional)
    */
-  private static final String CUSTOM_RECOVERABLE_MESSAGES_PREFIX = "teamcity.git.agent.recoverableMessages";
+  private static final String CUSTOM_RECOVERABLE_MESSAGES_PREFIX = "teamcity.internal.git.agent.recoverableMessages";
+  @Deprecated private static final String CUSTOM_RECOVERABLE_MESSAGES_PREFIX_NON_INTERNAL = "teamcity.git.agent.recoverableMessages";
   public static final String SHALLOW_CLONE_DEPTH = "teamcity.git.agent.shallowCloneDepth";
   public static final String SUBMODULES_SHALLOW_DEPTH = "teamcity.git.agent.submodules.shallowCloneDepth";
 
@@ -489,11 +488,24 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @NotNull
   @Override
   public Map<String, Long> getCustomRecoverableMessages() {
-    Map<String, String> buildParameters = myBuild.getSharedConfigParameters();
-    final String property = buildParameters.get(CUSTOM_RECOVERABLE_MESSAGES_PREFIX);
-    if (!StringUtil.isEmptyOrSpaces(property)) return StringUtil.split(property, true, ';').stream().collect(Collectors.toMap(msg -> msg, msg -> INITIAL_DELAY_MS));
+    Map<String, Long> customRecoverableMessages = getCustomRecoverableMessagesStoredAsNonInternalParameters();
 
-    return Retry.aggregateCustomDelayMessages(CUSTOM_RECOVERABLE_MESSAGES_PREFIX, buildParameters);
+    Map<String, String> buildParameters = myBuild.getSharedConfigParameters();
+    customRecoverableMessages.putAll(Retry.aggregateCustomDelayMessages(CUSTOM_RECOVERABLE_MESSAGES_PREFIX, buildParameters));
+    return customRecoverableMessages;
+  }
+
+  @Deprecated
+  @NotNull
+  private Map<String, Long> getCustomRecoverableMessagesStoredAsNonInternalParameters() {
+    Map<String, String> buildParameters = myBuild.getSharedConfigParameters();
+
+    final String property = buildParameters.get(CUSTOM_RECOVERABLE_MESSAGES_PREFIX_NON_INTERNAL);
+    if (!StringUtil.isEmptyOrSpaces(property)) {
+      return StringUtil.split(property, true, ';').stream().collect(Collectors.toMap(msg -> msg, msg -> INITIAL_DELAY_MS));
+    }
+
+    return Retry.aggregateCustomDelayMessages(CUSTOM_RECOVERABLE_MESSAGES_PREFIX_NON_INTERNAL, buildParameters);
   }
 
   @Override
