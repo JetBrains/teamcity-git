@@ -54,7 +54,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
-import org.junit.Ignore;
 import org.mockito.Mockito;
 import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
@@ -1211,6 +1210,85 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
       then(e.getMessage()).contains("Repository not found");
       then(mockLsRemote.callCount).isEqualTo(0);
     }
+  }
+
+  @Test
+  public void retry_failed_ls_remote_test() throws IOException {
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("git@github.com:org/repo")
+      .withAuthMethod(AuthenticationMethod.ACCESS_TOKEN)
+      .withTokenId("test-token-id")
+      .build();
+
+    OAuthToken freshToken = getToken();
+
+    final StubContext context = new StubContext("git", new GitVersion(2, 50, 0));
+    final GitCommandLine cmd = new GitCommandLine(context, getFakeGen()); // add custom recoverable messages here
+    MockLsRemote mockLsRemote = new MockLsRemote(cmd, root, freshToken);
+
+    BaseAuthCommandImpl<LsRemoteCommandImpl>.GitCommandRetryable retryable = mockLsRemote.getRetryable(cmd, new byte[0]);
+
+    mockLsRemote.setAuthSettings(mockLsRemote.myAuthSettings);
+    GitCommandRetryPolicy retryPolicy = retryable.findRetryPolicyForException(new VcsException("test exception"), 1, 3);
+    assertEquals(retryPolicy.getMode(), GitCommandRetryPolicy.RetryMode.DEFAULT);
+
+    GitCommandRetryPolicy retryPolicy2 = retryable.findRetryPolicyForException(new VcsException("test exception"), 3, 3);
+    assertEquals(retryPolicy2.getMode(), GitCommandRetryPolicy.RetryMode.NOT_REQUIRED);
+
+    GitCommandRetryPolicy retryPolicy3 = retryable.findRetryPolicyForException(new VcsException("SSL certificate problem"), 1, 3); // ssl errors are noty recoverable
+    assertEquals(retryPolicy3.getMode(), GitCommandRetryPolicy.RetryMode.NOT_REQUIRED);
+  }
+
+  @Test
+  public void retry_failed_custom_recoverable_ls_remote_test() throws IOException {
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("git@github.com:org/repo")
+      .withAuthMethod(AuthenticationMethod.ACCESS_TOKEN)
+      .withTokenId("test-token-id")
+      .build();
+
+    OAuthToken freshToken = getToken();
+
+    final StubContext context = new StubContext("git", new GitVersion(2, 50, 0));
+    context.setCustomRecoverableMessages(new HashMap<String, Long>() {{
+      put("test", 20000L);
+    }});
+
+    final GitCommandLine cmd = new GitCommandLine(context, getFakeGen()); // add custom recoverable messages here
+    MockLsRemote mockLsRemote = new MockLsRemote(cmd, root, freshToken);
+
+    BaseAuthCommandImpl<LsRemoteCommandImpl>.GitCommandRetryable retryable = mockLsRemote.getRetryable(cmd, new byte[0]);
+
+    mockLsRemote.setAuthSettings(mockLsRemote.myAuthSettings);
+    GitCommandRetryPolicy retryPolicy = retryable.findRetryPolicyForException(new VcsException("test exception"), 1, 3);
+    assertEquals(retryPolicy.getMode(), GitCommandRetryPolicy.RetryMode.CUSTOM);
+    assertEquals(retryPolicy.getDelayMs(), 20000);
+  }
+
+  @Test
+  public void retry_failed_custom_overriden_recoverable_ls_remote_test() throws IOException {
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("git@github.com:org/repo")
+      .withAuthMethod(AuthenticationMethod.ACCESS_TOKEN)
+      .withTokenId("test-token-id")
+      .build();
+
+    OAuthToken freshToken = getToken();
+
+    final StubContext context = new StubContext("git", new GitVersion(2, 50, 0));
+    context.setCustomRecoverableMessages(new HashMap<String, Long>() {{
+      put("ssl", 20000L);
+    }});
+
+    final GitCommandLine cmd = new GitCommandLine(context, getFakeGen()); // add custom recoverable messages here
+    MockLsRemote mockLsRemote = new MockLsRemote(cmd, root, freshToken);
+
+    BaseAuthCommandImpl<LsRemoteCommandImpl>.GitCommandRetryable retryable = mockLsRemote.getRetryable(cmd, new byte[0]);
+
+    mockLsRemote.setAuthSettings(mockLsRemote.myAuthSettings);
+    GitCommandRetryPolicy retryPolicy = retryable.findRetryPolicyForException(new VcsException("SSL certificate problem"), 1, 3);
+    assertEquals(retryPolicy.getMode(), GitCommandRetryPolicy.RetryMode.CUSTOM);
+    assertEquals(retryPolicy.getDelayMs(), 20000);
   }
 
   private OAuthToken getToken() {

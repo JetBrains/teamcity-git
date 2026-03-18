@@ -20,11 +20,13 @@ import jetbrains.buildServer.serverSide.TeamCityProperties;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 
 public class StubContext implements Context {
 
   private final GitExec myGitExec;
   private GitProgressLogger myLogger = GitProgressLogger.NO_OP;
+  private Map<String, Long> myCustomRecoverableMessages = Collections.emptyMap();
 
   public StubContext() {
     this("git");
@@ -36,6 +38,11 @@ public class StubContext implements Context {
 
   public StubContext(@NotNull String gitPath, @NotNull GitVersion version) {
     myGitExec = new GitExec(gitPath, version, null);
+  }
+
+  @TestOnly
+  public void setCustomRecoverableMessages(Map<String, Long> customRecoverableMessages) {
+    myCustomRecoverableMessages = customRecoverableMessages;
   }
 
   @Nullable
@@ -179,7 +186,7 @@ public class StubContext implements Context {
   @NotNull
   @Override
   public Map<String, Long> getCustomRecoverableMessages() {
-    return Collections.emptyMap();
+    return myCustomRecoverableMessages;
   }
 
   @Nullable

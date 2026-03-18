@@ -85,7 +85,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
     return runCmd(cmd, new byte[0]);
   }
 
-  class GitCommandRetryable implements Retry.Retryable<ExecResult> {
+  public class GitCommandRetryable implements Retry.Retryable<ExecResult> {
     @NotNull protected byte[] myInput;
     @NotNull final protected GitCommandLine myCmd;
     GitCommandRetryable(@NotNull GitCommandLine cmd, @NotNull byte[] input) {
@@ -103,7 +103,10 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
     public GitCommandRetryPolicy findRetryPolicyForException(@NotNull Exception e, int attempt, int maxAttempts) {
       if (attempt < maxAttempts && e.getMessage() != null) {
         for (Map.Entry<String, Long> msgDelay : myCustomRecoverableMessages.entrySet()) {
-          if (e.getMessage().contains(msgDelay.getKey())) {
+          String errorMessage = e.getMessage().toLowerCase();
+          String recoverableErrorSubstring = msgDelay.getKey().toLowerCase();
+
+          if (errorMessage.contains(recoverableErrorSubstring)) {
             long delayMs = msgDelay.getValue();
             msgDelay.setValue(Retry.backOff(msgDelay.getValue()));
             return new GitCommandRetryPolicy(delayMs);
@@ -137,6 +140,10 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   @NotNull
   protected ExecResult runCmd(@NotNull GitCommandLine cmd, @NotNull byte[] input) throws VcsException {
     return runCmd(new GitCommandRetryable(cmd, input));
+  }
+
+  public GitCommandRetryable getRetryable(@NotNull GitCommandLine cmd, @NotNull byte[] input) {
+    return new GitCommandRetryable(cmd, input);
   }
 
   @NotNull
