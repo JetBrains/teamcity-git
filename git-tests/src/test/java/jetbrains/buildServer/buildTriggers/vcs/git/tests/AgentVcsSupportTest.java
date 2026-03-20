@@ -1012,7 +1012,7 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     then(readText(packedRefs)).doesNotContain("refs/remotes/origin/anotherBrokenRef");
     then(readText(packedRefs)).doesNotContain("refs/remotes/origin/anotherBrokenRef");
 
-    final ShowRefResult showRefResult = new AgentGitFacadeImpl(getGitPath()).showRef().call();
+    final ShowRefResult showRefResult = new AgentGitFacadeImpl(getGitPath(), myCheckoutDir).showRef().call();
     then(showRefResult.getInvalidRefs()).isEmpty();
     then(showRefResult.getValidRefs()).isNotEmpty();
     then(showRefResult.isFailed()).isFalse();
