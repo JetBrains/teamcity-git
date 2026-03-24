@@ -14,8 +14,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.Ref;
@@ -25,6 +27,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.CommandLineUtil.GIT_CLI_LONG_MESSAGES_SEPARATOR;
+import static jetbrains.buildServer.buildTriggers.vcs.git.CommandLineUtil.cropOutputMessage;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -308,6 +312,96 @@ public class CommandLineTest extends BaseRemoteRepositoryTest {
     assertTrue(envCreds.containsKey("https://ccccc.dddd/path/to/submodule2222222.git"));
     assertEquals("submodule_admin1", envCreds.get("https://ccccc.dddd/path/to/submodule2222222.git").get("user"));
     assertEquals("12pass345", envCreds.get("https://ccccc.dddd/path/to/submodule2222222.git").get("pwd"));
+  }
+
+  @TestFor(issues = {"TW-99549", "TW-99557"})
+  public void test_crop_too_big_output(@NotNull GitExec git) throws Throwable {
+    setInternalProperty("teamcity.git.error.message.maxLength", "100");
+    createSources(git);
+    GitCommandLine cmd = createRepositoryCmd(git);
+
+
+    cmd.addParameter("failed command " + String.join("", Collections.nCopies(100, "error1 error2 error3 error4 error5\n")));
+
+    VcsException result = null;
+    try {
+      CommandUtil.runCommand(cmd);
+      fail();
+    } catch (VcsException e) {
+      result = e;
+    }
+
+    assertNotNull(result);
+    assertTrue(result.getMessage().contains("exit code: 1"));
+
+    String error = result.getMessage().substring(result.getMessage().indexOf("stderr: ") + "stderr: ".length());
+
+    assertTrue(error.length() <= 100 && error.length() >= 98);
+
+    assertTrue(error.contains("error1 error2 error3 error4 error5"));
+    assertTrue(error.contains("continue>"));
+  }
+
+  @TestFor(issues = {"TW-99549", "TW-99557"})
+  public void test_no_crop_too_small_output(@NotNull GitExec git) throws Throwable {
+    setInternalProperty("teamcity.git.error.message.maxLength", "100");
+    createSources(git);
+    GitCommandLine cmd = createRepositoryCmd(git);
+
+
+    cmd.addParameter("fail");
+
+    VcsException result = null;
+    try {
+      CommandUtil.runCommand(cmd);
+      fail();
+    } catch (VcsException e) {
+      result = e;
+    }
+
+    assertNotNull(result);
+    assertTrue(result.getMessage().contains("exit code: 1"));
+
+    String error = result.getMessage().substring(result.getMessage().indexOf("stderr: ") + "stderr: ".length());
+
+    assertTrue(error.length() <= 100);
+
+    assertFalse(error.contains("continue>"));
+  }
+
+  public void test_message_crop(@NotNull GitExec git) {
+    String len100 = "This string is exactly one hundred characters long (100 chars) as requested for this specific task!";
+    String cropped1 = cropOutputMessage(len100, 50);
+    assertTrue(cropped1.length() <= 50 && cropped1.length() >= 48);
+    assertTrue(cropped1.contains("This string is exactly"));
+    assertTrue(cropped1.contains("!"));
+
+    String len50 = "This string is exactly 50 characters in length!!!!";
+    String cropped2 = cropOutputMessage(len50, 39);
+    assertEquals(cropped2.substring(0, 39), cropped2);
+
+    assertEquals(len100, cropOutputMessage(len100, 150));
+
+    assertEquals(len100, cropOutputMessage(len100, -1));
+
+    assertEquals("", cropOutputMessage(len100, 0));
+
+    assertEquals("Thi", cropOutputMessage(len100, 3));
+    assertEquals("Th", cropOutputMessage(len100, 2));
+
+    int separatorLength = GIT_CLI_LONG_MESSAGES_SEPARATOR.length(); // 15
+    assertEquals("This string is ", cropOutputMessage(len100, separatorLength));
+    assertEquals("This string is", cropOutputMessage(len100, separatorLength-1));
+    assertEquals("This string i", cropOutputMessage(len100, separatorLength-2));
+    assertEquals("This string ", cropOutputMessage(len100, separatorLength-3));
+    assertEquals("This string is e", cropOutputMessage(len100, separatorLength+1));
+    assertEquals("This string is ex", cropOutputMessage(len100, separatorLength+2));
+    assertEquals("This string is exa", cropOutputMessage(len100, separatorLength+3));
+
+
+    for (int i = 0; i <= 100; i++) {
+      assertTrue(i - cropOutputMessage(len100, i).length() >= 0 && i - cropOutputMessage(len100, i).length() <= 1);
+    }
   }
 
 }
