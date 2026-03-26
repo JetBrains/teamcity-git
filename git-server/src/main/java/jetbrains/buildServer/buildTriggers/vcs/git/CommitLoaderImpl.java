@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import jetbrains.buildServer.util.ExceptionUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
@@ -233,7 +235,7 @@ public class CommitLoaderImpl implements CommitLoader {
   public void loadCommits(@NotNull OperationContext context,
                           @NotNull URIish fetchURI,
                           @NotNull Collection<RefCommit> revisions,
-                          @NotNull Set<String> remoteRefs) throws IOException, VcsException {
+                          @NotNull Supplier<Set<String>> remoteRefsSupplier) throws IOException, VcsException {
     if (revisions.isEmpty()) return;
 
     final Repository db = context.getRepository();
@@ -258,7 +260,7 @@ public class CommitLoaderImpl implements CommitLoader {
       if (refsToFetch.isEmpty()) return;
 
       final boolean includeTags = context.getGitRoot().isReportTags();
-      FetchSettings settings = myFetchSettingsFactory.getFetchSettings(context, refsToFetch, revisions, remoteRefs, includeTags);
+      FetchSettings settings = myFetchSettingsFactory.getFetchSettings(context, refsToFetch, revisions, remoteRefsSupplier.get(), includeTags);
       doFetch(db, fetchURI, settings);
 
       refsToFetch = findRefsToFetch(context, db, refsToFetch, false, false);
@@ -270,6 +272,10 @@ public class CommitLoaderImpl implements CommitLoader {
       settings = myFetchSettingsFactory.getFetchSettings(context, includeTags || !fetchAllRefsDisabled);
       doFetch(db, fetchURI, settings);
       findRefsToFetch(context, db, refsToFetch, false, true);
+    } catch (Throwable t) {
+      if (t instanceof VcsException) throw t;
+      if (t.getCause() instanceof VcsException) throw (VcsException)t.getCause();
+      ExceptionUtil.rethrowAsRuntimeException(t);
     } finally {
       lock.unlock();
     }

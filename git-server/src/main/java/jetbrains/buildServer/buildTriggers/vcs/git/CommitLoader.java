@@ -5,6 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
+import java.util.function.Supplier;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsOperationRejectedException;
 import org.eclipse.jgit.lib.ObjectId;
@@ -38,7 +39,7 @@ public interface CommitLoader {
   void loadCommits(@NotNull OperationContext context,
                    @NotNull URIish fetchURI,
                    @NotNull Collection<RefCommit> revisions,
-                   @NotNull Set<String> remoteRefs) throws IOException, VcsException;
+                   @NotNull Supplier<Set<String>> remoteRefsSupplier) throws IOException, VcsException;
 
   @NotNull
   RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException;
