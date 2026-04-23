@@ -155,7 +155,7 @@
           <bs:help urlPrefix="https://www.jetbrains.com/help/teamcity/" file="ssh-keys-management.html"/>
         </div>
         <div id="customKeyNote" class="smallNote auth customKey" style="margin: 0">
-          Custom keys work only with server-side checkout. <bs:help urlPrefix="https://www.jetbrains.com/help/teamcity/" file="ssh-keys-management.html#SSH+Key+Usage"/>
+          Custom keys work only with server-side checkout. <bs:help file="?SSH+Keys+Management#Configure+VCS+Root+Settings"/>
         </div>
       </td>
     </tr>
