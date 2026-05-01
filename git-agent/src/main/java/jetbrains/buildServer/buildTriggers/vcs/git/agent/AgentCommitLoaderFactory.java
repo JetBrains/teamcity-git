@@ -391,6 +391,11 @@ public class AgentCommitLoaderFactory {
                                               .setNoShowForcedUpdates(myPluginConfig.isNoShowForcedUpdates())
                                               .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()));
 
+
+      if(!myPluginConfig.isGitMaintenanceAutoEnabled()) {
+        result.addConfig("maintenance.auto", "false");
+      }
+
       if (silent)
         result.setQuite(true);
       else

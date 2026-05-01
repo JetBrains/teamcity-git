@@ -93,6 +93,11 @@ public class PluginConfigBuilder {
         return myDelegate.getPrefixesToCollectOnlyHeads();
       }
 
+      @Override
+      public boolean isGitMaintenanceAutoEnabled() {
+        return false;
+      }
+
       @NotNull
       @Override
       public Map<String, Long> getCustomRecoverableMessages() {
