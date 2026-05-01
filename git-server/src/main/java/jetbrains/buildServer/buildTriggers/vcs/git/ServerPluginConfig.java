@@ -191,6 +191,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   Collection<String> getPrefixesToCollectOnlyHeads();
 
+  boolean isGitMaintenanceAutoEnabled();
+
   /**
    * Decides whether access to file-based git repositories should be allowed.
    * Not allowed can mean that no new VCS roots with such URLs can be created.

@@ -61,6 +61,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isFetchTags();
 
+  boolean isGitMaintenanceAutoEnabled();
+
   boolean isCredHelperMatchesAllUrls();
 
   @NotNull
