@@ -94,6 +94,11 @@ public class PluginConfigBuilder {
         return myDelegate.getCustomRecoverableMessages();
       }
 
+      @Override
+      public boolean isGitMaintenanceAutoEnabled() {
+        return false;
+      }
+
       @NotNull
       public File getCachesDir() {
         return myDelegate.getCachesDir();

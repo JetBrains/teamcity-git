@@ -184,4 +184,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   File getSslDir();
+
+
+  boolean isGitMaintenanceAutoEnabled();
 }

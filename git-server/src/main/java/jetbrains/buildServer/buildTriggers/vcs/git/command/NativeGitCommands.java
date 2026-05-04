@@ -221,6 +221,10 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     else
       fetch.setShowProgress(true);
 
+    if(!myConfig.isGitMaintenanceAutoEnabled()) {
+      fetch.addConfig("maintenance.auto", "false");
+    }
+
     return fetch;
   }
 
@@ -354,11 +358,16 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(repositoryPath), ctx);
 
     executeCommand(ctx, "commit", "commit files in repository: " + repositoryPath, () -> {
-      final CommitCommand addCommand =
+      final CommitCommand commitCommand =
         gitFacade.commit()
                  .setComment(commitSettings.getDescription())
                  .setAuthor(commitSettings.getUserName());
-      addCommand.call();
+
+      if(!myConfig.isGitMaintenanceAutoEnabled()) {
+        commitCommand.addConfig("maintenance.auto", "false");
+      }
+
+      commitCommand.call();
       return null;
     }, gitFacade);
   }

@@ -72,6 +72,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   private static final String CUSTOM_RECOVERABLE_MESSAGES = "teamcity.git.agent.recoverableMessages";
 
   public static final String IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER = "teamcity.internal.git.agent.ignoreCheckoutRulesPostfixCheck";
+
+  public static final String GIT_AUTO_MAINTENANCE_ENABLE = "teamcity.internal.git.maintenance.auto.enable";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class);
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
@@ -322,6 +324,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
     String value = myBuild.getSharedConfigParameters().get(FETCH_TAGS);
     //by default tags are fetched
     return !"false".equals(value);
+  }
+
+  @Override
+  public boolean isGitMaintenanceAutoEnabled() {
+    return myBuild.getSharedConfigParameters().getOrDefault(GIT_AUTO_MAINTENANCE_ENABLE, "false").equals("true");
   }
 
   public boolean isCredHelperMatchesAllUrls() {

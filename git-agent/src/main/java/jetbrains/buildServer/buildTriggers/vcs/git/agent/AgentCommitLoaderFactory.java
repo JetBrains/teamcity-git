@@ -390,6 +390,11 @@ public class AgentCommitLoaderFactory {
                                               .trace(myPluginConfig.getGitTraceEnv())
                                               .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()));
 
+
+      if(!myPluginConfig.isGitMaintenanceAutoEnabled()) {
+        result.addConfig("maintenance.auto", "false");
+      }
+
       if (silent)
         result.setQuite(true);
       else

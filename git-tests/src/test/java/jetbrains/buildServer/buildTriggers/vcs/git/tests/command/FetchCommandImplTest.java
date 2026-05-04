@@ -188,7 +188,14 @@ public class FetchCommandImplTest extends BaseTestCase {
     }
 
     fetch.call();
-    assertEquals(6000, FileUtil.listFiles(new File(work, ".git/refs/remotes/origin"), (d, n) -> true).length);
+    File branchObjects = new File(work, ".git/refs/remotes/origin");
+    if (branchObjects.exists()) {
+      assertEquals(6000, FileUtil.listFiles(branchObjects, (d, n) -> true).length);
+    } else {
+      File packedRefs = new File(work, ".git/packed-refs");
+      assertTrue(packedRefs.exists());
+      assertEquals(6000, FileUtil.readFile(packedRefs).stream().filter(s -> s.contains("refs/remotes/origin/")).count());
+    }
   }
 
   @Test
@@ -226,7 +233,15 @@ public class FetchCommandImplTest extends BaseTestCase {
     }
 
     fetch.call();
-    assertEquals(6000, FileUtil.listFiles(new File(work, ".git/refs/heads"), (d, n) -> true).length);
+
+    File heads = new File(work, ".git/refs/heads");
+    if (heads.exists() && !FileUtil.isEmptyDir(heads)) {
+      assertEquals(6000, FileUtil.listFiles(heads, (d, n) -> true).length);
+    } else {
+      File packedRefs = new File(work, ".git/packed-refs");
+      assertTrue(packedRefs.exists());
+      assertEquals(6000, FileUtil.readFile(packedRefs).stream().filter(s -> s.contains("refs/heads")).count());
+    }
   }
 
   @Test
@@ -297,8 +312,22 @@ public class FetchCommandImplTest extends BaseTestCase {
     fetch.call();
 
     // master + 6000 branches
-    assertEquals(6001, FileUtil.listFiles(new File(work, "refs/heads"), (d, n) -> true).length);
+    File headsRefsDir = new File(work, "refs/heads");
+    File packedRefs = new File(work, "packed-refs");
+    List<String> packedRefsLines = packedRefs.exists() ? FileUtil.readFile(packedRefs) : Arrays.asList();
+
+    if (FileUtil.isEmptyDir(headsRefsDir)) {
+      assertTrue(packedRefs.exists());
+      assertEquals(6001, packedRefsLines.stream().filter(s -> s.contains("refs/heads/")).count());
+      assertFalse(packedRefsLines.contains("refs/tags/my_tag"));
+    } else {
+      assertEquals(6001, FileUtil.listFiles(new File(work, "refs/heads"), (d, n) -> true).length);
+    }
     assertFalse(new File(work, "refs/tags/my_tag").exists());
+    if(packedRefs.exists()) {
+      assertFalse(packedRefsLines.stream().anyMatch(r-> r.contains("refs/tags/my_tag")));
+    }
+
     final String logStr = log.toString();
     assertFalse(logStr.contains("my_tag"));
   }
