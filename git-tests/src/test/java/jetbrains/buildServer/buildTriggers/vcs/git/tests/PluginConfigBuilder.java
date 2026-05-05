@@ -95,7 +95,7 @@ public class PluginConfigBuilder {
 
       @Override
       public boolean isGitMaintenanceAutoEnabled() {
-        return false;
+        return true;
       }
 
       @NotNull
