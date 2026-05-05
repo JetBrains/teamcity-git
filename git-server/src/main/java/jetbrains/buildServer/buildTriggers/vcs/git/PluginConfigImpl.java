@@ -214,7 +214,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Override
   public boolean isGitMaintenanceAutoEnabled() {
-    return TeamCityProperties.getBoolean("teamcity.server.git.maintenance.auto.enable");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.server.git.maintenance.auto.enable");
   }
 
   public boolean isSeparateProcessForPatch() {

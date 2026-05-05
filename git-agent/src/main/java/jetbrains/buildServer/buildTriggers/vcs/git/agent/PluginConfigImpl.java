@@ -328,7 +328,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @Override
   public boolean isGitMaintenanceAutoEnabled() {
-    return myBuild.getSharedConfigParameters().getOrDefault(GIT_AUTO_MAINTENANCE_ENABLE, "false").equals("true");
+    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().getOrDefault(GIT_AUTO_MAINTENANCE_ENABLE, "true"));
   }
 
   public boolean isCredHelperMatchesAllUrls() {
