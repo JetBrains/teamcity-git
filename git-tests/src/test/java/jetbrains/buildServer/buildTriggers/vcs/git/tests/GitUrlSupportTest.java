@@ -197,6 +197,15 @@ public class GitUrlSupportTest extends BaseTestCase {
   }
 
   @Test
+  @TestFor(issues = "TW-100473")
+  public void should_set_complete_branch_spec_for_new_roots() throws Exception {
+    VcsUrl url = new VcsUrl("https://github.com/JetBrains/kotlin.git");
+    myTestConnectionMocked = true;
+    GitVcsRoot root = toGitRoot(url);
+    assertEquals(Constants.COMPLETE_BRANCH_SPEC, root.getProperty(Constants.BRANCH_SPEC));
+  }
+
+  @Test
   public void ssh_protocol() throws Exception {
     VcsUrl url = new VcsUrl("ssh://git@github.com/JetBrains/kotlin.git");
     myTestConnectionMocked = true;

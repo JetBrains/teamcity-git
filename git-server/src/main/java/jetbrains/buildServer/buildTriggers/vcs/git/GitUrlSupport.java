@@ -106,6 +106,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     final SProject curProject = myProjectManager == null ? null : myProjectManager.findProjectById(operationContext.getCurrentProjectId());
 
     Map<String, String> props = new HashMap<>(myGitSupport.getDefaultVcsProperties());
+    props.put(Constants.BRANCH_SPEC, Constants.COMPLETE_BRANCH_SPEC);  // TW-100473 -- setup complete branch spec for auto-detected Git roots
     props.put(Constants.FETCH_URL, fetchUrl);
     props.putAll(getAuthSettings(url, uri));
 

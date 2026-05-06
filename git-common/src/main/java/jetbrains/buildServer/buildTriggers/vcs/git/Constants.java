@@ -27,6 +27,8 @@ public interface Constants {
 
   public static final String BRANCH_SPEC = "teamcity:branchSpec";
 
+  public static final String COMPLETE_BRANCH_SPEC = "+:refs/heads/*";
+
   /**
    * The branch name property
    */
