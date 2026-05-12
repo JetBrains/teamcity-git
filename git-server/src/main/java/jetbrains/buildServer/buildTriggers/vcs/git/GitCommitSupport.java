@@ -28,6 +28,7 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.io.AutoLFInputStream;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static java.util.Arrays.asList;
 
@@ -53,11 +54,32 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
 
   @NotNull
   public CommitPatchBuilder getCommitPatchBuilder(@NotNull VcsRoot root) throws VcsException {
+    return getCommitPatchBuilderInternal(root, null, null);
+  }
+
+  @NotNull
+  @Override
+  public CommitPatchBuilder getCommitPatchBuilder(@NotNull VcsRoot root, @NotNull String targetBranch) throws VcsException {
+    return getCommitPatchBuilderInternal(root, targetBranch, null);
+  }
+
+  @NotNull
+  @Override
+  public CommitPatchBuilder getCommitPatchBuilder(@NotNull VcsRoot root,
+                                                  @NotNull String targetBranch,
+                                                  @NotNull String baseRevision) throws VcsException {
+    return getCommitPatchBuilderInternal(root, targetBranch, baseRevision);
+  }
+
+  @NotNull
+  private CommitPatchBuilder getCommitPatchBuilderInternal(@NotNull VcsRoot root,
+                                                           @Nullable String targetBranch,
+                                                           @Nullable String baseRevision) throws VcsException {
     OperationContext context = myVcs.createContext(root, "commit");
     Lock rmLock = myRepositoryManager.getRmLock(context.getGitRoot().getRepositoryDir()).readLock();
     rmLock.lock();
     Repository db = context.getRepository();
-    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myRepoOperations, rmLock);
+    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myRepoOperations, rmLock, targetBranch, baseRevision);
   }
 
 
@@ -72,6 +94,12 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     private final RepositoryManager myRepositoryManager;
     private final GitRepoOperations myRepoOperations;
     private final Lock myRmLock;
+    @Nullable private final String myTargetRef;
+    @Nullable private final String myBaseRevision;
+    // Set in getLastCommit when we discover the target ref is absent on the remote and we are
+    // creating it from myBaseRevision. The push then uses zero-id as the expected old tip
+    // (RemoteRefUpdate / git update-ref semantics for "ref must not exist").
+    private boolean myCreatingNewBranch;
 
     private GitCommitPatchBuilder(@NotNull GitVcsSupport vcs,
                                   @NotNull OperationContext context,
@@ -79,7 +107,9 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
                                   @NotNull Repository db,
                                   @NotNull RepositoryManager repositoryManager,
                                   @NotNull GitRepoOperations repoOperations,
-                                  @NotNull Lock rmLock) {
+                                  @NotNull Lock rmLock,
+                                  @Nullable String targetRef,
+                                  @Nullable String baseRevision) {
       myVcs = vcs;
       myContext = context;
       myCommitLoader = commitLoader;
@@ -88,6 +118,13 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myRepositoryManager = repositoryManager;
       myRepoOperations = repoOperations;
       myRmLock = rmLock;
+      myTargetRef = targetRef;
+      myBaseRevision = baseRevision;
+    }
+
+    @NotNull
+    private String effectiveRef(@NotNull GitVcsRoot gitRoot) {
+      return myTargetRef != null ? myTargetRef : gitRoot.getRef();
     }
 
     public void createFile(@NotNull String path, @NotNull InputStream content) throws VcsException {
@@ -148,8 +185,11 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
         lock.lock();
         try {
+          // For brand-new branch creation, the push must assert "ref does not exist" via zero-id;
+          // otherwise we send the current tip's id so the push is a fast-forward.
+          String expectedOldTip = myCreatingNewBranch ? ObjectId.zeroId().name() : lastCommit.name();
           final CommitResult result =
-            myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString()).push(myDb, gitRoot, gitRoot.getRef(), commitId.name(), lastCommit.name());
+            myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString()).push(myDb, gitRoot, effectiveRef(gitRoot), commitId.name(), expectedOldTip);
           Loggers.VCS.info("Change '" + commitSettings.getDescription() + "' was successfully committed");
           return result;
         } finally {
@@ -248,10 +288,19 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
 
     @NotNull
     private RevCommit getLastCommit(@NotNull GitVcsRoot gitRoot) throws VcsException, IOException {
+      String targetRef = effectiveRef(gitRoot);
       Map<String, Ref> refs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
-      Ref ref = refs.get(GitUtils.expandRef(gitRoot.getRef()));
-      if (!refs.isEmpty() && ref == null)
-        throw new VcsException("The '" + gitRoot.getRef() + "' destination branch doesn't exist");
+      Ref ref = refs.get(GitUtils.expandRef(targetRef));
+      if (!refs.isEmpty() && ref == null) {
+        if (myBaseRevision != null) {
+          // Branch missing on a populated remote: create it from myBaseRevision.
+          // We parent the new commit on baseRevision and tell push() (via myCreatingNewBranch)
+          // to use zero-id as the expected previous tip.
+          myCreatingNewBranch = true;
+          return loadCommitFromBaseRevision(gitRoot);
+        }
+        throw new VcsException("The '" + targetRef + "' destination branch doesn't exist");
+      }
       RevWalk revWalk = new RevWalk(myDb);
       try {
         if (ref == null)
@@ -262,12 +311,29 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       } finally {
         revWalk.close();
       }
-      RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(gitRoot.getRef()))
-        .setDestination(GitUtils.expandRef(gitRoot.getRef()))
+      RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(targetRef))
+        .setDestination(GitUtils.expandRef(targetRef))
         .setForceUpdate(true);
       myCommitLoader.fetch(myDb, gitRoot.getRepositoryFetchURL().get(), new FetchSettings(gitRoot.getAuthSettings(), asList(spec)));
-      Ref defaultBranch = myDb.exactRef(GitUtils.expandRef(gitRoot.getRef()));
+      Ref defaultBranch = myDb.exactRef(GitUtils.expandRef(targetRef));
       return myCommitLoader.loadCommit(myContext, gitRoot, defaultBranch.getObjectId().name());
+    }
+
+    @NotNull
+    private RevCommit loadCommitFromBaseRevision(@NotNull GitVcsRoot gitRoot) throws VcsException, IOException {
+      assert myBaseRevision != null;
+      ObjectId localId = myDb.resolve(myBaseRevision);
+      if (localId == null) {
+        // Base revision not in the local mirror yet — fetch from the remote.
+        RefSpec spec = new RefSpec().setSource(myBaseRevision).setForceUpdate(true);
+        myCommitLoader.fetch(myDb, gitRoot.getRepositoryFetchURL().get(),
+                             new FetchSettings(gitRoot.getAuthSettings(), asList(spec)));
+        localId = myDb.resolve(myBaseRevision);
+        if (localId == null) {
+          throw new VcsException("Base revision " + myBaseRevision + " not found in remote " + gitRoot.getRepositoryFetchURL());
+        }
+      }
+      return myCommitLoader.loadCommit(myContext, gitRoot, localId.name());
     }
 
     public void deleteDirectory(@NotNull final String path) {
