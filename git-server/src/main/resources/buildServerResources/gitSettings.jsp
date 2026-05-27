@@ -69,6 +69,16 @@
       </td>
     </tr>
     <bs:branchSpecTableRow advancedSetting="${false}"/>
+    <c:if test="${vcsPropertiesBean.newRoot}">
+      <script type="text/javascript">
+        $j(function() {
+          var specTextarea = document.getElementById('teamcity:branchSpec');
+          if (specTextarea && specTextarea.value.trim() === '') {
+            specTextarea.value = '+:refs/heads/*';
+          }
+        });
+      </script>
+    </c:if>
     <tr class="advancedSetting">
       <th><label for="reportTagRevisions">Use tags as branches:</label></th>
       <td>
