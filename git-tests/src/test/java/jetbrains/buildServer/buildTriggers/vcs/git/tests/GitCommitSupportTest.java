@@ -5,6 +5,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,9 +24,14 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
 import org.assertj.core.groups.Tuple;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -276,6 +283,215 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     then(changes.size() == 2 || (error1.get() != null || error2.get() != null)) //either both commits succeeds, or one finishes with an error
       .overridingErrorMessage("Non-fast-forward push succeeds")
       .isTrue();
+  }
+
+  // --- Tests for the (VcsRoot, targetBranch) overload introduced by TW-100328 ---
+
+  @TestFor(issues = "TW-100328")
+  public void commit_to_existing_target_branch_lands_on_that_branch() throws Exception {
+    final File remote = getRemoteRepositoryDir("merge");
+    final String topicBefore = resolveRef(remote, "refs/heads/topic");
+    final String masterBefore = resolveRef(remote, "refs/heads/master");
+    assertNotNull(topicBefore);
+    assertNotNull(masterBefore);
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot, "refs/heads/topic");
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("test-content".getBytes()));
+    String created = patchBuilder.commit(new CommitSettingsImpl("user", "Commit to topic")).getCreatedRevision();
+    patchBuilder.dispose();
+
+    assertEquals(created, resolveRef(remote, "refs/heads/topic"));
+    assertEquals("master must not have been touched", masterBefore, resolveRef(remote, "refs/heads/master"));
+    assertEquals("new commit must be parented on the previous topic tip",
+                 Collections.singletonList(topicBefore), parentRevisions(remote, created));
+  }
+
+  @TestFor(issues = "TW-100328")
+  public void commit_to_existing_target_branch_accepts_short_name() throws Exception {
+    final File remote = getRemoteRepositoryDir("merge");
+    final String topicBefore = resolveRef(remote, "refs/heads/topic");
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot, "topic");
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("test-content".getBytes()));
+    String created = patchBuilder.commit(new CommitSettingsImpl("user", "Commit via short name")).getCreatedRevision();
+    patchBuilder.dispose();
+
+    assertEquals(created, resolveRef(remote, "refs/heads/topic"));
+    assertEquals(Collections.singletonList(topicBefore), parentRevisions(remote, created));
+  }
+
+  @TestFor(issues = "TW-100328")
+  public void creates_target_branch_on_demand_parented_on_root_ref() throws Exception {
+    final File remote = getRemoteRepositoryDir("merge");
+    final String newBranch = "refs/heads/feature/new-one";
+    final String masterBefore = resolveRef(remote, "refs/heads/master");
+    assertNotNull(masterBefore);
+    assertNull("precondition: target branch must not exist on remote", resolveRef(remote, newBranch));
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot, newBranch);
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("test-content".getBytes()));
+    String created = patchBuilder.commit(new CommitSettingsImpl("user", "Create new branch")).getCreatedRevision();
+    patchBuilder.dispose();
+
+    assertEquals(created, resolveRef(remote, newBranch));
+    assertEquals("master tip must not move when auto-creating a branch from it",
+                 masterBefore, resolveRef(remote, "refs/heads/master"));
+    assertEquals("new branch's first commit must be parented on master's live tip",
+                 Collections.singletonList(masterBefore), parentRevisions(remote, created));
+  }
+
+  @TestFor(issues = "TW-100328")
+  public void target_branch_auto_create_disabled_throws_legacy_error() throws Exception {
+    setInternalProperty("teamcity.git.commit.createTargetBranchOnDemand", "false");
+    final File remote = getRemoteRepositoryDir("merge");
+    final String newBranch = "refs/heads/nonExisting";
+    assertNull(resolveRef(remote, newBranch));
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot, newBranch);
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("test-content".getBytes()));
+    try {
+      patchBuilder.commit(new CommitSettingsImpl("user", "Should fail"));
+      fail("Expected VcsException when target branch is missing and auto-create is disabled");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("The '" + newBranch + "' destination branch doesn't exist"));
+    } finally {
+      patchBuilder.dispose();
+    }
+    assertNull("no ref must have been created when the commit was rejected", resolveRef(remote, newBranch));
+  }
+
+  @TestFor(issues = "TW-100328")
+  public void target_branch_missing_with_root_ref_also_missing_throws() throws Exception {
+    final File remote = getRemoteRepositoryDir("merge");
+    VcsRoot rootOnMissing = vcsRoot().withFetchUrl(remote).withBranch("refs/heads/doesNotExist").build();
+    final String newBranch = "refs/heads/alsoMissing";
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(rootOnMissing, newBranch);
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("test-content".getBytes()));
+    try {
+      patchBuilder.commit(new CommitSettingsImpl("user", "Should fail"));
+      fail("Expected VcsException when both target and root's configured ref are missing");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("The '" + newBranch + "' destination branch doesn't exist"));
+    } finally {
+      patchBuilder.dispose();
+    }
+    assertNull(resolveRef(remote, newBranch));
+  }
+
+  @TestFor(issues = "TW-100328")
+  public void target_branch_override_on_empty_remote_creates_branch() throws Exception {
+    File emptyRemote = myTempFiles.createTempDir();
+    Repository r = new RepositoryBuilder().setBare().setGitDir(emptyRemote).build();
+    r.create(true);
+    r.close();
+    VcsRoot root = vcsRoot().withFetchUrl(emptyRemote).withBranch("refs/heads/master").build();
+    String target = "refs/heads/anyBranch";
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(root, target);
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("test-content".getBytes()));
+    String created = patchBuilder.commit(new CommitSettingsImpl("user", "initial")).getCreatedRevision();
+    patchBuilder.dispose();
+
+    assertEquals(created, resolveRef(emptyRemote, target));
+    assertEquals("initial commit on a fresh ref must have no parents",
+                 Collections.emptyList(), parentRevisions(emptyRemote, created));
+  }
+
+  @TestFor(issues = "TW-100328")
+  public void target_branch_equal_to_root_ref_acts_like_single_arg_api() throws Exception {
+    final File remote = getRemoteRepositoryDir("merge");
+    final String masterBefore = resolveRef(remote, "refs/heads/master");
+    assertNotNull(masterBefore);
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot, "refs/heads/master");
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("test-content".getBytes()));
+    String created = patchBuilder.commit(new CommitSettingsImpl("user", "Commit description")).getCreatedRevision();
+    patchBuilder.dispose();
+
+    assertEquals("master tip must advance to the new commit", created, resolveRef(remote, "refs/heads/master"));
+    assertEquals("new commit must be a fast-forward of master's previous tip",
+                 Collections.singletonList(masterBefore), parentRevisions(remote, created));
+  }
+
+  @TestFor(issues = "TW-100328")
+  public void concurrent_commits_to_different_target_branches_succeed() throws Exception {
+    final File remote = getRemoteRepositoryDir("merge");
+    // ensure the server-side clone exists upfront so neither thread races on the initial clone
+    myGit.getCurrentState(myRoot);
+    final String masterBefore = resolveRef(remote, "refs/heads/master");
+
+    CountDownLatch latch = new CountDownLatch(1);
+    CountDownLatch t1Ready = new CountDownLatch(1);
+    CountDownLatch t2Ready = new CountDownLatch(1);
+    AtomicReference<Exception> error1 = new AtomicReference<>();
+    AtomicReference<Exception> error2 = new AtomicReference<>();
+    AtomicReference<String> rev1 = new AtomicReference<>();
+    AtomicReference<String> rev2 = new AtomicReference<>();
+
+    Thread t1 = new Thread(() -> {
+      CommitPatchBuilder b = null;
+      try {
+        b = myCommitSupport.getCommitPatchBuilder(myRoot, "refs/heads/branch-A");
+        b.createFile("file-A", new ByteArrayInputStream("a".getBytes()));
+        t1Ready.countDown();
+        latch.await();
+        rev1.set(b.commit(new CommitSettingsImpl("user", "A")).getCreatedRevision());
+      } catch (Exception e) {
+        error1.set(e);
+      } finally {
+        if (b != null) b.dispose();
+      }
+    });
+    Thread t2 = new Thread(() -> {
+      CommitPatchBuilder b = null;
+      try {
+        b = myCommitSupport.getCommitPatchBuilder(myRoot, "refs/heads/branch-B");
+        b.createFile("file-B", new ByteArrayInputStream("b".getBytes()));
+        t2Ready.countDown();
+        latch.await();
+        rev2.set(b.commit(new CommitSettingsImpl("user", "B")).getCreatedRevision());
+      } catch (Exception e) {
+        error2.set(e);
+      } finally {
+        if (b != null) b.dispose();
+      }
+    });
+    t1.start();
+    t2.start();
+    t1Ready.await();
+    t2Ready.await();
+    latch.countDown();
+    t1.join();
+    t2.join();
+
+    assertNull("thread A must succeed: " + error1.get(), error1.get());
+    assertNull("thread B must succeed: " + error2.get(), error2.get());
+    assertEquals(rev1.get(), resolveRef(remote, "refs/heads/branch-A"));
+    assertEquals(rev2.get(), resolveRef(remote, "refs/heads/branch-B"));
+    assertEquals("master must not be touched by either branch creation",
+                 masterBefore, resolveRef(remote, "refs/heads/master"));
+  }
+
+  @Nullable
+  private static String resolveRef(@NotNull File bareRepo, @NotNull String ref) throws Exception {
+    try (Repository r = new RepositoryBuilder().setBare().setGitDir(bareRepo).build()) {
+      Ref reference = r.exactRef(GitUtils.expandRef(ref));
+      return reference == null ? null : reference.getObjectId().name();
+    }
+  }
+
+  @NotNull
+  private static List<String> parentRevisions(@NotNull File bareRepo, @NotNull String revision) throws Exception {
+    try (Repository r = new RepositoryBuilder().setBare().setGitDir(bareRepo).build();
+         RevWalk rw = new RevWalk(r)) {
+      RevCommit commit = rw.parseCommit(ObjectId.fromString(revision));
+      List<String> parents = new ArrayList<>(commit.getParentCount());
+      for (RevCommit p : commit.getParents()) {
+        parents.add(p.getId().name());
+      }
+      return parents;
+    }
   }
 
   @NotNull
