@@ -33,7 +33,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
-import org.jmock.lib.legacy.ClassImposteriser;
 
 public class GitSupportBuilder {
 
@@ -194,11 +193,15 @@ public class GitSupportBuilder {
     myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, mirrorManager);
     final ResetCacheRegister resetCacheManager;
     if (myResetCacheManager == null) {
-      context.setImposteriser(ClassImposteriser.INSTANCE);
-      resetCacheManager = context.mock(ResetCacheRegister.class);
-      context.checking(new Expectations() {{
-        allowing(resetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
-      }});
+      resetCacheManager = new ResetCacheRegister() {
+        @Override
+        public void registerHandler(@NotNull ResetCacheHandler handler) {
+        }
+
+        @Override
+        public void unregisterHandler(@NotNull ResetCacheHandler handler) {
+        }
+      };
     } else {
       resetCacheManager = myResetCacheManager;
     }

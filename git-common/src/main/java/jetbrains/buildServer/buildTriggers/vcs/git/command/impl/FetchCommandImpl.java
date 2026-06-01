@@ -155,8 +155,9 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       }
 
       try {
+
         refreshInput(); // todo rename because its not only refreshinf
-        if (myInput.length > 0 && myRefSpecs.isEmpty())
+        if (myRefSpecs.isEmpty())
           return false;
       } catch (VcsException ve) {
         return false;
@@ -171,6 +172,10 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
         remoteRefs = myListBranchesRefresher.call();
       } catch (Exception e) {
         throw new VcsException("Failed to refresh remote branches", e);
+      }
+
+      if (myRefSpecs.stream().anyMatch(ref -> ref.contains("*") || ref.contains("^"))) { // todo check just remote refs is empty ????
+        return;
       }
 
       myRefSpecs.retainAll(remoteRefs.stream()

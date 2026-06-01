@@ -50,7 +50,7 @@ import static junit.framework.Assert.*;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.fail;
-
+// todo native git
 @SuppressWarnings({"ResultOfMethodCallIgnored", "ArraysAsListWithZeroOrOneArgument"})
 @Test
 public class CollectChangesTest extends BaseRemoteRepositoryTest {
@@ -60,7 +60,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   private TestLogger myLogger;
 
   public CollectChangesTest() {
-    super("repo.git", "TW-43643-1", "TW-43643-2", "repo_with_tags", "TW-64455-no_second_fetch_if_from_revision_missing_1", "TW-64455-no_second_fetch_if_from_revision_missing_2");
+    super("repo.git", "TW-43643-1", "TW-43643-2", "TW-43643-3-rename", "repo_with_tags", "TW-64455-no_second_fetch_if_from_revision_missing_1", "TW-64455-no_second_fetch_if_from_revision_missing_2");
   }
 
 
@@ -628,6 +628,56 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     RepositoryStateData s5 = RepositoryStateData.createVersionState("refs/heads/branch2", "bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
     List<ModificationData> changes = gitSupport().withPluginConfig(myConfig.setFetchAllRefsEnabled(true)).build().getCollectChangesPolicy().collectChanges(rootBranch1, s2, rootBranch2, s5, CheckoutRules.DEFAULT);
     then(changes).extracting("version").containsExactly("bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
+  }
+
+  @Test
+  public void branch_namespace_conflict_test() throws Exception {
+    setInternalProperty("teamcity.git.nativeOperationsEnabled", "true");
+    myConfig.setSeparateProcessForFetch(true);
+    File repo = copyRepository(myTempFiles, dataFile("repo_for_fetch.2.personal"), "repo.git");
+
+    AtomicBoolean updateRepo = new AtomicBoolean(false);
+    //this hook will remove ref in remote repository just before fetch
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withBeforeFetchHook(() -> {
+      if (updateRepo.get()) {
+        FileUtil.delete(repo);
+        try {
+          copyRepository(dataFile("repo_for_fetch.2.namespace"), repo);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }).build();
+
+    VcsRoot root = vcsRoot().withFetchUrl(repo).build();
+    RepositoryStateData s0 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "add81050184d3c818560bdd8839f50024c188586",
+                                                    "refs/heads/personal", "add81050184d3c818560bdd8839f50024c188586"));
+    RepositoryStateData s1 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "add81050184d3c818560bdd8839f50024c188586",
+                                                    "refs/heads/personal", "d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    //init repo on server:
+    git.getCollectChangesPolicy().collectChanges(root, s0, s1, CheckoutRules.DEFAULT);
+
+    RepositoryStateData s2 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "bba7fbcc200b4968e6abd2f7d475dc15306cafc6",
+                                                    "refs/heads/personal", "d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    //refs/heads/personal ref disappears from remote repo:
+    updateRepo.set(true);
+
+    //changes collecting doesn't fail
+    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+
+    RepositoryStateData state = git.getCurrentState(root);
+    Map<String, String> resultRevisions = state.getBranchRevisions();
+    MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
+    File cloneOnServer = mirrors.getMirrorDir(repo.getCanonicalPath());
+
+    System.out.println(cloneOnServer);
+    assertEquals(new HashMap<String, String>() {{
+      put("refs/heads/master", "add81050184d3c818560bdd8839f50024c188586");
+      put("refs/heads/personal/namespace", "bba7fbcc200b4968e6abd2f7d475dc15306cafc6");
+    }}, resultRevisions);
   }
 
 

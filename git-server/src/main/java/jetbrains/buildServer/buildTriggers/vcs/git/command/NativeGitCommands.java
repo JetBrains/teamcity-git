@@ -14,6 +14,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.RepackCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -263,7 +264,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     gitFacade.setSshKeyManager(mySshKeyManager);
     Collection<String> resultRefSpecs = defineRefSpecsForFetch(settings);
 
-    if(myConfig.shouldExecutePruneBeforeEveryFetch() || (settings.getFetchMode() == FetchSettings.FetchMode.FETCH_ALL_REFS || settings.getFetchMode() == FetchSettings.FetchMode.FETCH_ALL_REFS_EXCEPT_TAGS)) {
+    if(myConfig.shouldExecutePruneBeforeEveryFetch()) {// || (settings.getFetchMode() == FetchSettings.FetchMode.FETCH_ALL_REFS || settings.getFetchMode() == FetchSettings.FetchMode.FETCH_ALL_REFS_EXCEPT_TAGS)) {
       // Before running fetch we might to prune branches which no longer exist in the remote.
       prune(db, fetchURI, settings);
     }

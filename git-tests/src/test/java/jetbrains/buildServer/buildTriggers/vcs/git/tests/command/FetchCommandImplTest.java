@@ -40,6 +40,8 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.testng.SkipException;
@@ -331,6 +333,8 @@ public class FetchCommandImplTest extends BaseTestCase {
     }
   }
 */
+
+  // here
   @Test
   public void do_fetch_test() throws Exception {
     // init and clone repo
@@ -344,15 +348,19 @@ public class FetchCommandImplTest extends BaseTestCase {
     FetchSettingsFactoryImpl myFactory = new FetchSettingsFactoryImpl();
     PluginConfigBuilder myPluginConfigBuilder = new PluginConfigBuilder(new ServerPaths(myTemp.createTempDir().getAbsolutePath()));
     GitVcsSupport git = gitSupport().withPluginConfig(myPluginConfigBuilder).build();
-    OperationContext myContext = git.createContext(VcsRootBuilder.vcsRoot().withFetchUrl("https://mygit.com/owner/repo").build(), "fetch");
+    OperationContext myContext = git.createContext(VcsRootBuilder.vcsRoot().withFetchUrl("https://github.com/manturovDan/fetch_sandbox").build(), "fetch");
 
-    FetchSettings mySettings = myFactory.getFetchSettings(myContext,
+    FetchSettings settings = myFactory.getFetchSettings(myContext,
                                                           Arrays.asList(commit("refs/heads/main", "a"), commit("branch1", "b"), commit("branch2", "c"), commit("branch3", "c")),
                                                           Arrays.asList(commit("refs/heads/main", "a"), commit("branch1", "b"), commit("branch2", "c"), commit("branch3", "c")),
                                                           new HashSet<String>(Arrays.asList("refs/heads/main", "refs/heads/branch1", "refs/heads/branch2", "refs/heads/branch3")),
                                                           true);
 
+    Repository db = myContext.getRepository();
 
+    gitSupport().getGitRepoOperations().fetchCommand("https://github.com/manturovDan/fetch_sandbox").fetch(db, new URIish("https://github.com/manturovDan/fetch_sandbox"), settings);
+
+    System.out.println("fetched");
   }
 
 
