@@ -108,6 +108,7 @@ public class CommitLoaderImpl implements CommitLoader {
     }
   }
 
+  // todo try to write test on this
   private void doFetch(@NotNull final Repository db,
                        @NotNull final URIish fetchURI,
                        @NotNull final FetchSettings settings) throws IOException, VcsException {
@@ -265,6 +266,8 @@ public class CommitLoaderImpl implements CommitLoader {
 
       refsToFetch = findRefsToFetch(context, db, refsToFetch, false, false);
       if (refsToFetch.isEmpty()) return;
+
+      // todo do prune and findRefsToFetch again here ???
 
       final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
       if (fetchAllRefsDisabled && refsToFetch.stream().noneMatch(RefCommit::isRefTip)) return;

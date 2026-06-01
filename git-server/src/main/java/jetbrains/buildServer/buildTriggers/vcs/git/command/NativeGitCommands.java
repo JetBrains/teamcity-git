@@ -160,7 +160,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       }), gitFacade);
   }
 
-  private void prune(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws VcsException {
+  public void prune(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws VcsException {
     final GitExec gitExec = myGitDetector.detectGit();
     final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
@@ -196,21 +196,26 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .setNoShowForcedUpdates(myConfig.isNoShowForcedUpdates())
                .trace(myConfig.getGitTraceEnv())
                .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()))
-               .setRefSpecsRefresher(
-                 gitFacade.lsRemote()
-                          .peelRefs()
-                          .setAuthSettings(settings.getAuthSettings())
-                          .setUseNativeSsh(true)
-                          .setTimeout(myConfig.getRepositoryStateTimeoutSeconds())
-                          .setRetryAttempts(myConfig.getConnectionRetryAttempts())
-                          .setRepoUrl(fetchURI)
-                          .trace(myConfig.getGitTraceEnv())
-                          .setBranches(settings.getRefSpecs()
-                                               .stream()
-                                               .map(r -> r.toString())
-                                               .map(s -> s.substring(s.lastIndexOf(":")+1))
-                                               .filter(s -> !s.contains("*"))
-                                               .toArray(String[]::new))
+               .setRefSpecsRefresher(() -> {
+                                        prune(db, fetchURI, settings);
+                                        if (settings.getFetchMode() == FetchSettings.FetchMode.FETCH_REF_SPECS) {
+                                          return gitFacade.lsRemote()
+                                                          .peelRefs()
+                                                          .setAuthSettings(settings.getAuthSettings())
+                                                          .setUseNativeSsh(true)
+                                                          .setTimeout(myConfig.getRepositoryStateTimeoutSeconds())
+                                                          .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+                                                          .setRepoUrl(fetchURI)
+                                                          .trace(myConfig.getGitTraceEnv())
+                                                          .setBranches(settings.getRefSpecs()
+                                                                               .stream()
+                                                                               .map(r -> r.toString())
+                                                                               .map(s -> s.substring(s.lastIndexOf(":") + 1))
+                                                                               .filter(s -> !s.contains("*"))
+                                                                               .toArray(String[]::new)).call();
+                                        }
+                                        return Collections.emptyList();
+                                     }
                );
 
     for (String spec : refSpecs) {
@@ -258,9 +263,10 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     gitFacade.setSshKeyManager(mySshKeyManager);
     Collection<String> resultRefSpecs = defineRefSpecsForFetch(settings);
 
-    // Before running fetch we need to prune branches which no longer exist in the remote,
-    // otherwise git fails to update local branches which were e.g. renamed.
-    prune(db, fetchURI, settings);
+    if(myConfig.shouldExecutePruneBeforeEveryFetch() || (settings.getFetchMode() == FetchSettings.FetchMode.FETCH_ALL_REFS || settings.getFetchMode() == FetchSettings.FetchMode.FETCH_ALL_REFS_EXCEPT_TAGS)) {
+      // Before running fetch we might to prune branches which no longer exist in the remote.
+      prune(db, fetchURI, settings);
+    }
 
     executeCommand(ctx, "fetch", getDebugInfo(db, fetchURI, resultRefSpecs), () -> {
       jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand fetch = createFetchCommand(db, fetchURI, settings, gitFacade, ctx, resultRefSpecs);

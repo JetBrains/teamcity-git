@@ -234,6 +234,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getBooleanOrTrue("teamcity.server.git.maintenance.auto.enable");
   }
 
+  @Override
+  public boolean shouldExecutePruneBeforeEveryFetch() {
+    return TeamCityProperties.getBoolean(Constants.GIT_EXECUTE_PRUNE_BEFORE_FETCH);
+  }
+
   public boolean isSeparateProcessForPatch() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.buildPatchInSeparateProcess");
   }

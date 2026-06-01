@@ -126,13 +126,13 @@ public class FetchSettingsFactoryImplTest extends BaseTestCase {
     return new MockRefCommit(ref, commit, tip);
   }
 
-  private class MockRefCommit implements RefCommit {
+  public static class MockRefCommit implements RefCommit {
 
     private final String myRef;
     private final String myCommit;
     private final boolean myTip;
 
-    MockRefCommit(@NotNull String ref, @NotNull String commit, boolean tip) {
+    public MockRefCommit(@NotNull String ref, @NotNull String commit, boolean tip) {
       myRef = ref;
       myCommit = commit;
       myTip = tip;

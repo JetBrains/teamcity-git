@@ -179,4 +179,7 @@ public interface Constants {
    * @since 2026.1
    */
   String GIT_MAX_LENGTH_OF_VCS_ERROR_MESSAGE = "teamcity.git.error.message.maxLength";
+
+  // todo add comment
+  String GIT_EXECUTE_PRUNE_BEFORE_FETCH = "teamcity.git.fetch.prune.enabled";
 }

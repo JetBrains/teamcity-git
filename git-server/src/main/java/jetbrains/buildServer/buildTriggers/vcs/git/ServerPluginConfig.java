@@ -206,4 +206,6 @@ public interface ServerPluginConfig extends PluginConfig {
   static boolean isAllowFileUrl() {
     return DevelopmentMode.isEnabled || TeamCityProperties.getBoolean(Constants.ALLOW_FILE_URL);
   }
+
+  default boolean shouldExecutePruneBeforeEveryFetch() { return false; }
 }
