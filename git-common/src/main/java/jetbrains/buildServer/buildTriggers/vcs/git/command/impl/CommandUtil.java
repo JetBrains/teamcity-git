@@ -5,7 +5,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import jetbrains.buildServer.ExecResult;
@@ -242,7 +241,7 @@ public class CommandUtil {
     if((attempt < Constants.FRESH_TOKEN_MAX_RETRY_ATTEMPTS) && isNotFoundWithFreshToken(ve, authSettings))
       return true;
 
-    if ((attempt == 1 || attemptsLeft) && shouldHandleRemoteRefNotFound() && isNotFoundRemoteRefError(ve))
+    if ((attempt == 1 || attemptsLeft) && shouldHandleIfRefError() && isRefsError(ve))
       return true;
 
     if (isRemoteAccessError(ve)) return false;
@@ -267,6 +266,13 @@ public class CommandUtil {
            msg.contains("cannot find commit");
   }
 
+  public static boolean isRefsError(@NotNull VcsException e) {
+    final String msg = e.getMessage().toLowerCase();
+    return isNotFoundRemoteRefError(e) ||
+           msg.contains("some local refs could not be updated") || // git: fetch.c method: ref_transaction_rejection_handler. When branch was renamed
+           msg.contains("cannot lock ref");
+  }
+
   @NotNull
   public static List<String> splitByLines(@NotNull String str) {
     final int len = str.length();
@@ -288,7 +294,7 @@ public class CommandUtil {
     return res;
   }
 
-  public static boolean shouldHandleRemoteRefNotFound() {
+  public static boolean shouldHandleIfRefError() {
     return TeamCityProperties.getBooleanOrTrue(NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND);
   }
 }

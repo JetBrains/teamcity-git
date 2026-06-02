@@ -2,7 +2,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
+import java.util.List;
+import java.util.concurrent.Callable;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
 public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
@@ -26,7 +29,7 @@ public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
   FetchCommand setRemote(@NotNull String remoteUrl);
 
   @NotNull
-  FetchCommand setRefSpecsRefresher(jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand lsRemote);
+  FetchCommand setRefSpecsRefresher(Callable<List<Ref>> lsBranchRefresher);
 
   @NotNull
   FetchCommand setNoShowForcedUpdates(boolean noShowForcedUpdates);

@@ -3,11 +3,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -22,7 +22,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   private String myRemoteUrl;
   private boolean myNoShowForcedUpdates = false;
 
-  private jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand myLsRemote;
+  private Callable<List<Ref>> myListBranchesRefresher;
 
   public FetchCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -67,8 +67,8 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
   @NotNull
   @Override
-  public FetchCommand setRefSpecsRefresher(LsRemoteCommand lsRemote) {
-    myLsRemote = lsRemote;
+  public FetchCommand setRefSpecsRefresher(Callable<List<Ref>> lsBranchRefresher) {
+    myListBranchesRefresher = lsBranchRefresher;
     return this;
   }
 
@@ -101,18 +101,20 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
     cmd.setHasProgress(true);
 
+    byte[] refSpecsBytes = new byte[0];
     if (myRefSpecs.size() > 1 && GitVersion.fetchSupportsStdin(gitVersion)) {
       cmd.addParameter("--stdin");
       cmd.addParameter(getRemote());
-      if (CommandUtil.shouldHandleRemoteRefNotFound()) {
-        runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
-      } else {
-        runCmd(cmd.stdErrLogLevel("debug"), refSpecsToBytes(cmd));
-      }
+      refSpecsBytes = refSpecsToBytes(cmd);
     } else {
       cmd.addParameter(getRemote());
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
-      runCmd(cmd.stdErrLogLevel("debug"));
+    }
+
+    if (CommandUtil.shouldHandleIfRefError()) {
+      runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
+    } else {
+      runCmd(cmd.stdErrLogLevel("debug"), refSpecsBytes);
     }
   }
 
@@ -145,12 +147,12 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
         return false;
       }
 
-      if (!(e instanceof VcsException) || !(CommandUtil.isNotFoundRemoteRefError((VcsException)e))) {
+      if (!(e instanceof VcsException) || !(CommandUtil.isRefsError((VcsException)e))) {
         return true;
       }
 
       try {
-        refreshInput();
+        refreshRefs();
         if (myRefSpecs.isEmpty())
           return false;
       } catch (VcsException ve) {
@@ -160,8 +162,18 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       return true;
     }
 
-    void refreshInput() throws VcsException {
-      List<Ref> remoteRefs = myLsRemote.call();
+    void refreshRefs() throws VcsException {
+      List<Ref> remoteRefs;
+      try {
+        remoteRefs = myListBranchesRefresher.call();
+      } catch (Exception e) {
+        throw new VcsException("Failed to refresh remote branches", e);
+      }
+
+      if (myRefSpecs.stream().anyMatch(ref -> ref.contains("*"))) {
+        return;
+      }
+
       myRefSpecs.retainAll(remoteRefs.stream()
                                      .filter(ref -> ref.getName().startsWith("ref"))
                                      .map(ref -> "+" + ref.getName() + ":" + ref.getName())

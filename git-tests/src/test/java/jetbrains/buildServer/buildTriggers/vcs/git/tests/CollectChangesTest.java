@@ -630,6 +630,56 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     then(changes).extracting("version").containsExactly("bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
   }
 
+  @Test
+  public void branch_namespace_conflict_prune_test() throws Exception {
+    setInternalProperty("teamcity.git.nativeOperationsEnabled", "true");
+    myConfig.setSeparateProcessForFetch(true);
+    File repo = copyRepository(myTempFiles, dataFile("repo_for_fetch.2.personal"), "repo.git");
+
+    AtomicBoolean updateRepo = new AtomicBoolean(false);
+    //this hook will remove ref in remote repository just before fetch
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withBeforeFetchHook(() -> {
+      if (updateRepo.get()) {
+        FileUtil.delete(repo);
+        try {
+          copyRepository(dataFile("repo_for_fetch.2.namespace"), repo);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }).build();
+
+    VcsRoot root = vcsRoot().withFetchUrl(repo).build();
+    RepositoryStateData s0 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "add81050184d3c818560bdd8839f50024c188586",
+                                                    "refs/heads/personal", "add81050184d3c818560bdd8839f50024c188586"));
+    RepositoryStateData s1 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "add81050184d3c818560bdd8839f50024c188586",
+                                                    "refs/heads/personal", "d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    //init repo on server:
+    git.getCollectChangesPolicy().collectChanges(root, s0, s1, CheckoutRules.DEFAULT);
+
+    RepositoryStateData s2 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "bba7fbcc200b4968e6abd2f7d475dc15306cafc6",
+                                                    "refs/heads/personal", "d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    //refs/heads/personal ref disappears from remote repo:
+    updateRepo.set(true);
+
+    //changes collecting doesn't fail
+    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+
+    RepositoryStateData state = git.getCurrentState(root);
+    Map<String, String> resultRevisions = state.getBranchRevisions();
+    MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
+    File cloneOnServer = mirrors.getMirrorDir(repo.getCanonicalPath());
+
+    System.out.println(cloneOnServer);
+    assertEquals(new HashMap<String, String>() {{
+      put("refs/heads/master", "103f747f6f4e4e29e131a0782c7beb4b84d4cd35");
+      put("refs/heads/personal/namespace", "bba7fbcc200b4968e6abd2f7d475dc15306cafc6");
+    }}, resultRevisions);
+  }
+
 
   @DataProvider
   private Object[][] ref_error() {
