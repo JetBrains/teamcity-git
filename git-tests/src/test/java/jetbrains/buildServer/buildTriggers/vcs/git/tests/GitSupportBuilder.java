@@ -194,15 +194,11 @@ public class GitSupportBuilder {
     myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, mirrorManager);
     final ResetCacheRegister resetCacheManager;
     if (myResetCacheManager == null) {
-      resetCacheManager = new ResetCacheRegister() {
-        @Override
-        public void registerHandler(@NotNull ResetCacheHandler handler) {
-        }
-
-        @Override
-        public void unregisterHandler(@NotNull ResetCacheHandler handler) {
-        }
-      };
+      context.setImposteriser(ClassImposteriser.INSTANCE);
+      resetCacheManager = context.mock(ResetCacheRegister.class);
+      context.checking(new Expectations() {{
+        allowing(resetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
+      }});
     } else {
       resetCacheManager = myResetCacheManager;
     }
