@@ -1,6 +1,5 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.command.FsckCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitNativeOperationsStatus;
 import jetbrains.buildServer.vcs.VcsException;

@@ -19,6 +19,7 @@ public class FetchSettings {
   private final GitProgress myProgress;
   private final Collection<RefSpec> myRefSpecs;
   private FetchMode myFetchMode;
+  private boolean myDoRemotePrune = false;
 
   public FetchSettings(@NotNull AuthSettings authSettings) {
     this(authSettings, Collections.emptyList());
@@ -96,6 +97,14 @@ public class FetchSettings {
 
   public void setFetchMode(@NotNull FetchMode fetchMode) {
     myFetchMode = fetchMode;
+  }
+
+  public void setDoRemotePrune(boolean doRemotePrune) {
+    myDoRemotePrune = doRemotePrune;
+  }
+
+  public boolean shouldDoRemotePrune() {
+    return myDoRemotePrune;
   }
 
   public static enum FetchMode {
