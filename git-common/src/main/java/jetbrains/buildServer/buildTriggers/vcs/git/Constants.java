@@ -182,11 +182,11 @@ public interface Constants {
 
 
   /**
-   * `git remote prune` clears local refs that are not existing anymore on the remote (branch was deleted or renamed).
+   * `git remote prune` clears local refs that no longer exist on the remote (branch was deleted or renamed).
    * This command executes ls-remote under the hood because it needs to receive the list of remote refs,
-   * so excution before every fetch is resource-consuming (legacy behavior). This feature toggle enables this behavior.
-   * It makes sense to execute it before garbage collection, and when the fetch command is failed with "some local refs could not be updated".
-   * This error is raised if the namespace conflict occurred: e.g. there was `branch` locally and remotely, then it was deleted remotely and remote
+   * so execution before every fetch is resource-consuming (legacy behavior). This feature toggle re-enables that legacy behavior.
+   * Otherwise, prune makes sense before garbage collection, and when the fetch command fails with "some local refs could not be updated".
+   * This error is raised if a namespace conflict occurs: e.g. there was `branch` locally and remotely, then it was deleted remotely and remote
    * `branch/X` was created. So, the local `branch` should be deleted.
    * @since 2026.2
    */

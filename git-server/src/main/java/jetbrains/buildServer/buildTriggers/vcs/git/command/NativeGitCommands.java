@@ -265,7 +265,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     Collection<String> resultRefSpecs = defineRefSpecsForFetch(settings);
 
     if(myConfig.shouldExecutePruneBeforeEveryFetch()) {
-      // Before running fetch we might to prune branches which no longer exist in the remote.
+      // Before running fetch we might prune branches which no longer exist in the remote.
       prune(db, fetchURI, settings);
     }
 

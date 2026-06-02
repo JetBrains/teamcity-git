@@ -673,7 +673,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     File cloneOnServer = mirrors.getMirrorDir(repo.getCanonicalPath());
 
-    System.out.println(cloneOnServer);
     assertEquals(new HashMap<String, String>() {{
       put("refs/heads/master", "103f747f6f4e4e29e131a0782c7beb4b84d4cd35");
       put("refs/heads/personal/namespace", "bba7fbcc200b4968e6abd2f7d475dc15306cafc6");

@@ -152,7 +152,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       }
 
       try {
-        refreshRefs();
+        refreshRefsAndStdin();
         if (myRefSpecs.isEmpty())
           return false;
       } catch (VcsException ve) {
@@ -162,7 +162,11 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       return true;
     }
 
-    void refreshRefs() throws VcsException {
+    void refreshRefsAndStdin() throws VcsException {
+      if (myListBranchesRefresher == null) {
+        return;
+      }
+
       List<Ref> remoteRefs;
       try {
         remoteRefs = myListBranchesRefresher.call();
