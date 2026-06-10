@@ -148,7 +148,8 @@
           <artifactId>teamcity-sdk-maven-plugin</artifactId>
           <version>RELEASE</version>
           <configuration>
-            <teamcityDir>${TeamCityDist}</teamcityDir>
+            <teamcityVersion>${teamcity.version}</teamcityVersion>
+            <teamcityDir>servers/${teamcity.version}</teamcityDir>
           </configuration>
         </plugin>
       </plugins>
