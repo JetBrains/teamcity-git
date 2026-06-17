@@ -156,13 +156,4 @@ public class CleanerTest extends BaseTestCase {
       new File(dir, "git-AHAHAHA"+i+".git").mkdir();
     }
   }
-
-
-  @DataProvider(name = "true,false")
-  public static Object[][] createData() {
-    return new Object[][] {
-      new Object[] { Boolean.TRUE },
-      new Object[] { Boolean.FALSE }
-    };
-  }
 }
