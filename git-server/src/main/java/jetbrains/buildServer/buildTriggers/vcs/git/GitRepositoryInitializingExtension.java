@@ -152,10 +152,10 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       Git git = new Git(db);
       RefSpec refSpec = new RefSpec().setSourceDestination("refs/*", "refs/*").setForceUpdate(true);
       try {
+        FetchSettings fetchSettings = new FetchSettings(gitRoot.getAuthSettings(), Collections.singleton(refSpec));
+        fetchSettings.setDoRemotePrune(true);
         myGitRepoOperations.fetchCommand(repositoryUrl).fetch(db,
-                                                              gitRoot.getRepositoryFetchURL().get(),
-                                                              new FetchSettings(gitRoot.getAuthSettings(),
-                                                                                Collections.singleton(refSpec)));
+                                                              gitRoot.getRepositoryFetchURL().get(), fetchSettings);
       } catch (IOException| VcsException e) {
         throw new RuntimeException("TeamCity can not fetch changes from remote repository: " + e.getMessage(), e);
       }

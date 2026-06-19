@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import jetbrains.buildServer.BaseTestCase;
@@ -214,13 +215,15 @@ public class FetchCommandImplTest extends BaseTestCase {
     cmd.setExePath(gitPath);
     cmd.setWorkingDirectory(work);
     final FetchCommandImpl fetch = new FetchCommandImpl(cmd);
-    fetch.setRefSpecsRefresher(new LsRemoteCommandImpl(cmd) {
+    AtomicBoolean wasLsRemoteExecuted = new AtomicBoolean(false);
+    fetch.setRefSpecsRefresher(() -> new LsRemoteCommandImpl(cmd) {
       @NotNull
       @Override
       public List<Ref> call() throws VcsException {
+        wasLsRemoteExecuted.set(true);
         return IntStream.rangeClosed(0, 5999).boxed().map(i -> new RefImpl("refs/heads/branch" + i, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).collect(Collectors.toList());
       }
-    });
+    }.call());
     fetch.setRemote(remote.getAbsolutePath());
     fetch.setAuthSettings(getEmptyAuthSettings());
 
@@ -234,6 +237,7 @@ public class FetchCommandImplTest extends BaseTestCase {
 
     fetch.call();
 
+    assertTrue(wasLsRemoteExecuted.get());
     File heads = new File(work, ".git/refs/heads");
     if (heads.exists() && !FileUtil.isEmptyDir(heads)) {
       assertEquals(6000, FileUtil.listFiles(heads, (d, n) -> true).length);
@@ -261,13 +265,13 @@ public class FetchCommandImplTest extends BaseTestCase {
     cmd.setExePath(gitPath);
     cmd.setWorkingDirectory(work);
     final FetchCommandImpl fetch = new FetchCommandImpl(cmd);
-    fetch.setRefSpecsRefresher(new LsRemoteCommandImpl(cmd) {
+    fetch.setRefSpecsRefresher(() -> new LsRemoteCommandImpl(cmd) {
       @NotNull
       @Override
       public List<Ref> call() throws VcsException {
         return IntStream.rangeClosed(0, 5999).boxed().map(i -> new RefImpl("refs/heads/branch" + i, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).collect(Collectors.toList());
       }
-    });
+    }.call());
     fetch.setRemote(remote.getAbsolutePath());
     fetch.setAuthSettings(getEmptyAuthSettings());
 
