@@ -179,6 +179,17 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     }, gitFacade);
   }
 
+  public int writeCommitGraph(@NotNull Repository db) throws VcsException {
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
+    
+    return gitFacade.commitGraph()
+              .setWriteCommand()
+              .setReachable()
+              .setStrategy("replace")
+              .call();
+  }
+
   private jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand createFetchCommand(@NotNull Repository db,
                                                                                               @NotNull URIish fetchURI,
                                                                                               @NotNull FetchSettings settings,
@@ -216,7 +227,10 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                                         }
                                         return Collections.emptyList();
                                      }
-               );
+               )
+               .setCommitGraphRefresher(() -> {
+                 return writeCommitGraph(db);
+               });
 
     for (String spec : refSpecs) {
       fetch.setRefspec(spec);

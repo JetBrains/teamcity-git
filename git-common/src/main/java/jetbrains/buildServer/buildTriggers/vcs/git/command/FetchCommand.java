@@ -32,6 +32,9 @@ public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
   FetchCommand setRefSpecsRefresher(Callable<List<Ref>> lsBranchRefresher);
 
   @NotNull
+  FetchCommand setCommitGraphRefresher(Callable<Integer> commitGraphRefresher) throws VcsException;
+
+  @NotNull
   FetchCommand setNoShowForcedUpdates(boolean noShowForcedUpdates);
 
   void call() throws VcsException;

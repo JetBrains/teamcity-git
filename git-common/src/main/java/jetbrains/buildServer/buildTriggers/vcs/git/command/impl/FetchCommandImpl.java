@@ -11,6 +11,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implements FetchCommand {
 
@@ -23,6 +24,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   private boolean myNoShowForcedUpdates = false;
 
   private Callable<List<Ref>> myListBranchesRefresher;
+  private Callable<Integer> myCommitGraphRefresher;
 
   public FetchCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -69,6 +71,13 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   @Override
   public FetchCommand setRefSpecsRefresher(Callable<List<Ref>> lsBranchRefresher) {
     myListBranchesRefresher = lsBranchRefresher;
+    return this;
+  }
+
+  @NotNull
+  @Override
+  public FetchCommand setCommitGraphRefresher(@Nullable Callable<Integer> commitGraphRefresher) throws VcsException {
+    myCommitGraphRefresher = commitGraphRefresher;
     return this;
   }
 
@@ -147,16 +156,30 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
         return false;
       }
 
-      if (!(e instanceof VcsException) || !(CommandUtil.isRefsError((VcsException)e))) {
+      if (!(e instanceof VcsException)) {
         return true;
       }
 
-      try {
-        refreshRefsAndStdin();
-        if (myRefSpecs.isEmpty())
+      if (CommandUtil.isRefsError((VcsException)e)) {
+        try {
+          refreshRefsAndStdin();
+          if (myRefSpecs.isEmpty()) {
+            return false;
+          }
+        } catch (VcsException ve) {
           return false;
-      } catch (VcsException ve) {
-        return false;
+        }
+      }
+
+      if (CommandUtil.isCommitGraphError((VcsException)e)) {
+        if (myCommitGraphRefresher != null) {
+          try {
+            int result = myCommitGraphRefresher.call();
+            return result == 0;
+          } catch (Exception ve) {
+            return false;
+          }
+        }
       }
 
       return true;

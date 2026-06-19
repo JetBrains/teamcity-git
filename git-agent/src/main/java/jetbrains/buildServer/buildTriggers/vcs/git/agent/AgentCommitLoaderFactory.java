@@ -10,7 +10,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.CountObjectsCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
@@ -378,6 +377,14 @@ public class AgentCommitLoaderFactory {
       }
     }
 
+    public int writeCommitGraph() throws VcsException {
+      final AgentGitFacade gitFacade = myGitFactory.create(myTargetDirectory);
+      return gitFacade.commitGraph()
+                      .setWriteCommand()
+                      .setReachable()
+                      .setStrategy("replace")
+                      .call();
+    }
 
     private void callFetchWithRetry(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) throws VcsException {
       final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
@@ -389,7 +396,8 @@ public class AgentCommitLoaderFactory {
                                               .setRetryAttempts(myPluginConfig.getRemoteOperationAttempts())
                                               .trace(myPluginConfig.getGitTraceEnv())
                                               .setNoShowForcedUpdates(myPluginConfig.isNoShowForcedUpdates())
-                                              .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()));
+                                              .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()))
+                                              .setCommitGraphRefresher(() -> writeCommitGraph());
 
 
       if(!myPluginConfig.isGitMaintenanceAutoEnabled()) {

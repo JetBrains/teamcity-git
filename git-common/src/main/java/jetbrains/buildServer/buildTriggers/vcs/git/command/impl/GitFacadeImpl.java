@@ -108,6 +108,12 @@ public class GitFacadeImpl implements GitFacade {
   }
 
   @NotNull
+  @Override
+  public CommitGraphCommand commitGraph() {
+    return new CommitGraphCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public DiffCommand diff() {
     return new DiffCommandImpl(createCommandLine());
   }

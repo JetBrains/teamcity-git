@@ -241,8 +241,13 @@ public class CommandUtil {
     if((attempt < Constants.FRESH_TOKEN_MAX_RETRY_ATTEMPTS) && isNotFoundWithFreshToken(ve, authSettings))
       return true;
 
-    if ((attempt == 1 || attemptsLeft) && shouldHandleIfRefError() && isRefsError(ve))
-      return true;
+    if ((attempt == 1 || attemptsLeft)){
+      if (shouldHandleIfRefError() && isRefsError(ve)) {
+        return true;
+      } else if (isCommitGraphError(ve)) {
+        return true;
+      }
+    }
 
     if (isRemoteAccessError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
@@ -271,6 +276,11 @@ public class CommandUtil {
     return isNotFoundRemoteRefError(e) ||
            msg.contains("some local refs could not be updated") || // git: fetch.c method: ref_transaction_rejection_handler. When branch was renamed
            msg.contains("cannot lock ref");
+  }
+
+  public static boolean isCommitGraphError(@NotNull VcsException e) {
+    final String msg = e.getMessage().toLowerCase();
+    return msg.contains("unable to find all commit-graph files");
   }
 
   @NotNull
