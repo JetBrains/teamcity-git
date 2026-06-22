@@ -334,6 +334,15 @@ public class FetchCommandImplTest extends BaseTestCase {
     assertFalse(logStr.contains("my_tag"));
   }
 
+
+  /**
+   * Test data under TW-100479 contains two clones of the same repository: "remote" (a few commits ahead) and "clone" (the local copy).
+   * The local copy has intentionally broken commit-graph files.
+   * The test verifies that:
+   *  1. the commit-graph in the local copy is indeed detected as corrupted before fetch,
+   *  2. fetch is executed against the remote and automatically repairs the broken commit-graph during the operation,
+   *  3. the revision after fetch differs from the one before, confirming the fetch actually pulled new commits.
+   */
   @Test
   public void fetch_corrupted_commit_graph() throws Exception {
     final String gitPath = getGitPath();
