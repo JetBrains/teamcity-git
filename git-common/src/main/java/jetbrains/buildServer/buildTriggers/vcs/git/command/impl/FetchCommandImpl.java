@@ -6,14 +6,12 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.CommitGraphCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implements FetchCommand {
 
@@ -116,11 +114,9 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
     cmd.setHasProgress(true);
 
-    byte[] refSpecsBytes = new byte[0];
     if (myRefSpecs.size() > 1 && GitVersion.fetchSupportsStdin(gitVersion)) {
       cmd.addParameter("--stdin");
       cmd.addParameter(getRemote());
-      refSpecsBytes = refSpecsToBytes(cmd);
     } else {
       cmd.addParameter(getRemote());
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));

@@ -42,7 +42,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND;
-import static org.testng.Assert.assertNotEquals;
 
 @Test
 public class FetchCommandImplTest extends BaseTestCase {

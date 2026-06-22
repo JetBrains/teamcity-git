@@ -258,27 +258,24 @@ public class CommandUtil {
   }
 
   public static boolean isRemoteAccessError(@NotNull VcsException e) {
-    final String msg = e.getMessage().toLowerCase();
     return isNotFoundRemoteRefError(e) ||
-           msg.contains("no remote repository specified") ||
-           msg.contains("no such remote") ||
-           msg.contains("access denied") ||
-           msg.contains("permission denied") ||
-           msg.contains("could not read from remote repository") ||
-           msg.contains("server does not allow request for unadvertised object") ||
-           msg.contains("cannot find commit");
+           isMessageContains(e, "no remote repository specified") ||
+           isMessageContains(e, "no such remote") ||
+           isMessageContains(e, "access denied") ||
+           isMessageContains(e, "permission denied") ||
+           isMessageContains(e, "could not read from remote repository") ||
+           isMessageContains(e, "server does not allow request for unadvertised object") ||
+           isMessageContains(e, "cannot find commit");
   }
 
   public static boolean isRefsError(@NotNull VcsException e) {
-    final String msg = e.getMessage().toLowerCase();
     return isNotFoundRemoteRefError(e) ||
-           msg.contains("some local refs could not be updated") || // git: fetch.c method: ref_transaction_rejection_handler. When branch was renamed
-           msg.contains("cannot lock ref");
+           isMessageContains(e, "some local refs could not be updated") || // git: fetch.c method: ref_transaction_rejection_handler. When branch was renamed
+           isMessageContains(e, "cannot lock ref");
   }
 
   public static boolean isCommitGraphError(@NotNull VcsException e) {
-    final String msg = e.getMessage().toLowerCase();
-    return msg.contains("unable to find all commit-graph files");
+    return isMessageContains(e, "unable to find all commit-graph files");
   }
 
   @NotNull
