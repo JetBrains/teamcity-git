@@ -126,11 +126,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
     }
 
-    if (CommandUtil.shouldHandleIfRefError()) { // todo add for other errors also
-      runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
-    } else {
-      runCmd(cmd.stdErrLogLevel("debug"), refSpecsBytes);
-    }
+    runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
   }
 
   @NotNull

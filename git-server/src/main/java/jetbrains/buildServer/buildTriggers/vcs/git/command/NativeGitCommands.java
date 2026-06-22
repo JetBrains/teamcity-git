@@ -226,8 +226,9 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                                      }
                );
 
-    if(myConfig.isGitMaintenanceAutoEnabled())
-    setCommitGraphRefresh(db, settings, fetch);
+    if(myConfig.refreshCommitGraphIfCorrupted()) {
+      setCommitGraphRefresh(db, settings, fetch);
+    }
 
     for (String spec : refSpecs) {
       fetch.setRefspec(spec);

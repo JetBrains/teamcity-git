@@ -241,10 +241,8 @@ public class CommandUtil {
     if((attempt < Constants.FRESH_TOKEN_MAX_RETRY_ATTEMPTS) && isNotFoundWithFreshToken(ve, authSettings))
       return true;
 
-    if ((attempt == 1 || attemptsLeft)){
-      if (shouldHandleIfRefError() && isRefsError(ve)) {
-        return true;
-      } else if (isCommitGraphError(ve)) {
+    if ((attempt == 1 || attemptsLeft)) {
+      if (shouldHandleIfRefError() && isRefsError(ve) || isCommitGraphError(ve)) {
         return true;
       }
     }

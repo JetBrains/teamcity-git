@@ -377,17 +377,7 @@ public class AgentCommitLoaderFactory {
       }
     }
 
-    public int writeCommitGraph() throws VcsException {
-      final AgentGitFacade gitFacade = myGitFactory.create(myTargetDirectory);
-      return gitFacade.commitGraph()
-                      .setWriteCommand()
-                      .setReachable()
-                      .setStrategy("replace")
-                      .call();
-    }
-
     private void callFetchWithRetry(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) throws VcsException {
-
       final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
                                               .setAuthSettings(myRoot.getAuthSettings())
                                               .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
