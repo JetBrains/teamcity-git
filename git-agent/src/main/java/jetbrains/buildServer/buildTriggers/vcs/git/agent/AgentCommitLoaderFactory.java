@@ -387,6 +387,7 @@ public class AgentCommitLoaderFactory {
     }
 
     private void callFetchWithRetry(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) throws VcsException {
+
       final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
                                               .setAuthSettings(myRoot.getAuthSettings())
                                               .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
@@ -396,9 +397,11 @@ public class AgentCommitLoaderFactory {
                                               .setRetryAttempts(myPluginConfig.getRemoteOperationAttempts())
                                               .trace(myPluginConfig.getGitTraceEnv())
                                               .setNoShowForcedUpdates(myPluginConfig.isNoShowForcedUpdates())
-                                              .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()))
-                                              .setCommitGraphRefresher(() -> writeCommitGraph());
+                                              .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()));
 
+      if(myPluginConfig.refreshCommitGraphIfCorrupted()) {
+         result.setRefreshCommitGraphIfCorrupted(myGitFactory.create(repositoryDir));
+      }
 
       if(!myPluginConfig.isGitMaintenanceAutoEnabled()) {
         result.addConfig("maintenance.auto", "false");

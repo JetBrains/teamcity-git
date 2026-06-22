@@ -22,15 +22,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitFacadeImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.RevParseCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RevParseCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.FetchCommandImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -45,6 +42,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND;
+import static org.testng.Assert.assertNotEquals;
 
 @Test
 public class FetchCommandImplTest extends BaseTestCase {
@@ -334,5 +332,59 @@ public class FetchCommandImplTest extends BaseTestCase {
 
     final String logStr = log.toString();
     assertFalse(logStr.contains("my_tag"));
+  }
+
+  @Test
+  public void fetch_corrupted_commit_graph() throws Exception {
+    final String gitPath = getGitPath();
+    final GitVersion version = new AgentGitFacadeImpl(gitPath).version().call();
+    if (!GitVersion.fetchSupportsStdin(version)) throw new SkipException("Git version is too old to run this test");
+
+    final File remote = GitTestUtil.dataFile("TW-100479/remote/commit_graph_test_repo");
+    final File clone =  GitTestUtil.dataFile("TW-100479/clone/commit_graph_test_repo_clone");
+
+    final File work = createTempDir();
+    FileUtil.copyDir(clone, work);
+
+    final GitCommandLine cmd1 = new GitCommandLine(new StubContext("git", version), getFakeGen());
+    cmd1.setExePath(gitPath);
+    cmd1.setWorkingDirectory(work);
+    CommitGraphCommand verifyCommitGraph = new CommitGraphCommandImpl(cmd1).setVerifyCommand();
+    int verify1 = verifyCommitGraph.call();
+    assertFalse(verify1 == 0);
+
+    final GitCommandLine revParseCmd = new GitCommandLine(new StubContext("git", version), getFakeGen());
+    revParseCmd.setExePath(gitPath);
+    revParseCmd.setWorkingDirectory(work);
+    RevParseCommand revParse = new RevParseCommandImpl(revParseCmd);
+    String currentRevision = revParse.setRef("HEAD").call();
+
+
+    final GitCommandLine cmd = new GitCommandLine(new StubContext("git", version), getFakeGen());
+    cmd.setExePath(gitPath);
+    cmd.setWorkingDirectory(work);
+    cmd.stdErrExpected(false);
+    final FetchCommand fetch = new FetchCommandImpl(cmd);
+    fetch.setRemote(remote.getAbsolutePath());
+    fetch.setAuthSettings(getEmptyAuthSettings());
+    fetch.setRefspec("+refs/heads/main:refs/heads/main1");
+    fetch.setRefreshCommitGraphIfCorrupted(new AgentGitFacadeImpl(gitPath, work));
+    fetch.call();
+
+    final GitCommandLine revParseCmd2 = new GitCommandLine(new StubContext("git", version), getFakeGen());
+    revParseCmd2.setExePath(gitPath);
+    revParseCmd2.setWorkingDirectory(work);
+    RevParseCommand revParse2 = new RevParseCommandImpl(revParseCmd2);
+    String currentRevision2 = revParse2.setRef("main1").call();
+
+    assertNotEquals(currentRevision, currentRevision2);
+    
+    final GitCommandLine cmd2 = new GitCommandLine(new StubContext("git", version), getFakeGen());
+    cmd2.setExePath(gitPath);
+    cmd2.setWorkingDirectory(work);
+    CommitGraphCommand verifyCommitGraph2 = new CommitGraphCommandImpl(cmd2).setVerifyCommand();
+    int verify2 = verifyCommitGraph2.call();
+    assertEquals(0, verify2);
+
   }
 }

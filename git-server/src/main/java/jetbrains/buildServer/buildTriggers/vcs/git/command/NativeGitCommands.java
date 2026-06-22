@@ -179,15 +179,12 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     }, gitFacade);
   }
 
-  public int writeCommitGraph(@NotNull Repository db) throws VcsException {
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
+  private void setCommitGraphRefresh(@NotNull Repository db, @NotNull FetchSettings settings, @NotNull jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand fetch) throws VcsException {
+    final GitExec gitExec = myGitDetector.detectGit();
+    final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
-    
-    return gitFacade.commitGraph()
-              .setWriteCommand()
-              .setReachable()
-              .setStrategy("replace")
-              .call();
+    gitFacade.setSshKeyManager(mySshKeyManager);
+    fetch.setRefreshCommitGraphIfCorrupted(gitFacade);
   }
 
   private jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand createFetchCommand(@NotNull Repository db,
@@ -227,10 +224,10 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                                         }
                                         return Collections.emptyList();
                                      }
-               )
-               .setCommitGraphRefresher(() -> {
-                 return writeCommitGraph(db);
-               });
+               );
+
+    if(myConfig.isGitMaintenanceAutoEnabled())
+    setCommitGraphRefresh(db, settings, fetch);
 
     for (String spec : refSpecs) {
       fetch.setRefspec(spec);

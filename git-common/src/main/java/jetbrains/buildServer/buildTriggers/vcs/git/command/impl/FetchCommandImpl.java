@@ -6,8 +6,10 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.CommitGraphCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -76,8 +78,12 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
   @NotNull
   @Override
-  public FetchCommand setCommitGraphRefresher(@Nullable Callable<Integer> commitGraphRefresher) throws VcsException {
-    myCommitGraphRefresher = commitGraphRefresher;
+  public FetchCommand setRefreshCommitGraphIfCorrupted(GitFacade facade) {
+    myCommitGraphRefresher = () -> facade.commitGraph()
+                                  .setWriteCommand()
+                                  .setReachable()
+                                  .setStrategy("replace")
+                                  .call();
     return this;
   }
 
@@ -120,7 +126,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
     }
 
-    if (CommandUtil.shouldHandleIfRefError()) {
+    if (CommandUtil.shouldHandleIfRefError()) { // todo add for other errors also
       runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
     } else {
       runCmd(cmd.stdErrLogLevel("debug"), refSpecsBytes);

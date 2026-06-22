@@ -98,6 +98,11 @@ public class PluginConfigBuilder {
         return true;
       }
 
+      @Override
+      public boolean refreshCommitGraphIfCorrupted() {
+        return true;
+      }
+
       @NotNull
       @Override
       public Map<String, Long> getCustomRecoverableMessages() {

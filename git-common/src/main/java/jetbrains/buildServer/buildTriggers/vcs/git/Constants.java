@@ -191,4 +191,23 @@ public interface Constants {
    * @since 2026.2
    */
   String GIT_EXECUTE_PRUNE_BEFORE_FETCH = "teamcity.git.fetch.prune.enabled";
+
+
+  /**
+   * Enables automatic recovery from corrupted commit-graph files.
+   * <p>
+   * Git uses commit-graph files to speed up operations by caching commit metadata. However, these files can become
+   * corrupted due to incomplete maintenance operations or other issues. When this happens, fetch operations may fail
+   * with an error message: "unable to find all commit-graph files".
+   * <p>
+   * When this property is enabled (default), TeamCity will automatically attempt to fix the corrupted commit-graph
+   * by executing {@code git commit-graph write --reachable --split=replace}. This command rebuilds the commit-graph
+   * from scratch, resolving the corruption and allowing the fetch operation to proceed.
+   * <p>
+   * It is recommended to keep this feature enabled to ensure repository operations continue smoothly even when
+   * commit-graph corruption occurs.
+   * TW-100479 TeamCity builds sporadically fail to perform checkout with Git 2.54.0: unable to find all commit-graph files
+   * @since 2026.2
+   */
+  String GIT_REFRESH_COMMIT_GRAPH_IF_CORRUPTED = "teamcity.git.commit.graph.refresh.enable";
 }

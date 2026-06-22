@@ -239,6 +239,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getBoolean(Constants.GIT_EXECUTE_PRUNE_BEFORE_FETCH);
   }
 
+  @Override
+  public boolean refreshCommitGraphIfCorrupted() {
+    return TeamCityProperties.getBooleanOrTrue(Constants.GIT_REFRESH_COMMIT_GRAPH_IF_CORRUPTED);
+  }
+
   public boolean isSeparateProcessForPatch() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.buildPatchInSeparateProcess");
   }
