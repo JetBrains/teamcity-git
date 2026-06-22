@@ -340,11 +340,16 @@ public class FetchCommandImplTest extends BaseTestCase {
     final GitVersion version = new AgentGitFacadeImpl(gitPath).version().call();
     if (!GitVersion.fetchSupportsStdin(version)) throw new SkipException("Git version is too old to run this test");
 
+    final File remoteCopy = createTempDir();
     final File remote = GitTestUtil.dataFile("TW-100479/remote/commit_graph_test_repo");
-    final File clone =  GitTestUtil.dataFile("TW-100479/clone/commit_graph_test_repo_clone");
+    FileUtil.copyDir(remote, remoteCopy);
+    FileUtil.rename(new File(remoteCopy, "_git1"), new File(remoteCopy, ".git"));
 
+    final File clone =  GitTestUtil.dataFile("TW-100479/clone/commit_graph_test_repo_clone");
     final File work = createTempDir();
     FileUtil.copyDir(clone, work);
+    FileUtil.rename(new File(work, "_git1"), new File(work, ".git"));
+
 
     final GitCommandLine cmd1 = new GitCommandLine(new StubContext("git", version), getFakeGen());
     cmd1.setExePath(gitPath);
@@ -365,7 +370,7 @@ public class FetchCommandImplTest extends BaseTestCase {
     cmd.setWorkingDirectory(work);
     cmd.stdErrExpected(false);
     final FetchCommand fetch = new FetchCommandImpl(cmd);
-    fetch.setRemote(remote.getAbsolutePath());
+    fetch.setRemote(remoteCopy.getAbsolutePath());
     fetch.setAuthSettings(getEmptyAuthSettings());
     fetch.setRefspec("+refs/heads/main:refs/heads/main1");
     fetch.setRefreshCommitGraphIfCorrupted(new AgentGitFacadeImpl(gitPath, work));
@@ -377,14 +382,14 @@ public class FetchCommandImplTest extends BaseTestCase {
     RevParseCommand revParse2 = new RevParseCommandImpl(revParseCmd2);
     String currentRevision2 = revParse2.setRef("main1").call();
 
-    assertNotEquals(currentRevision, currentRevision2);
-    
+    assertEquals("474ceedc0318686c1e5583d396c374c3452941f4", currentRevision);
+    assertEquals("64c8558fbd0beb9f5639f66082e6a1d092e30a93", currentRevision2);
+
     final GitCommandLine cmd2 = new GitCommandLine(new StubContext("git", version), getFakeGen());
     cmd2.setExePath(gitPath);
     cmd2.setWorkingDirectory(work);
     CommitGraphCommand verifyCommitGraph2 = new CommitGraphCommandImpl(cmd2).setVerifyCommand();
     int verify2 = verifyCommitGraph2.call();
     assertEquals(0, verify2);
-
   }
 }
