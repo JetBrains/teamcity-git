@@ -1,5 +1,0 @@
-0000000000000000000000000000000000000000 e2c3c7292e7a0cef502640d9a3f9265b5fae9677 Sample Author <sample@example.com> 1782124319 +0200	branch: Created from HEAD
-e2c3c7292e7a0cef502640d9a3f9265b5fae9677 5023a825df26e0f702d94bfd279c0b5d1f2180ce Sample Author <sample@example.com> 1782124319 +0200	commit: delta: update nu (24)
-5023a825df26e0f702d94bfd279c0b5d1f2180ce 3edc405d6038538387f6989367a9d5292b353426 Sample Author <sample@example.com> 1782124319 +0200	commit: tau: update tensor (25)
-3edc405d6038538387f6989367a9d5292b353426 05a893d60786c97bc436009178cb2d9ee1d4c5b3 Sample Author <sample@example.com> 1782124319 +0200	commit: nu: update phi (26)
-05a893d60786c97bc436009178cb2d9ee1d4c5b3 b0b6045cd50bff7973961215529291a58efd4035 Sample Author <sample@example.com> 1782124319 +0200	commit: mutex: update vertex (27)
