@@ -1,0 +1,9 @@
+# delta module — generated content
+delta mu 11042 tensor 549
+parser parser 17274 sigma 755
+alpha iota 14163 theta 186
+tau matrix 24027 matrix 94
+phi phi 26937 kappa 408
+parser lexer 8809 parser 344
+pixel shader 25806 mutex 730
+tau matrix 26675 thread 537

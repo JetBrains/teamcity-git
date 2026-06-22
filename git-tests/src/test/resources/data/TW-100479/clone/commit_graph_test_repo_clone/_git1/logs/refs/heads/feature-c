@@ -1,0 +1,10 @@
+0000000000000000000000000000000000000000 decef2a04252155923b9548ca55aea393312fbe3 Sample Author <sample@example.com> 1782124319 +0200	branch: Created from HEAD
+decef2a04252155923b9548ca55aea393312fbe3 572a1e9a83c45c305c8af13c84b8c15c1b7dc970 Sample Author <sample@example.com> 1782124319 +0200	commit: theta: update pi (21)
+572a1e9a83c45c305c8af13c84b8c15c1b7dc970 669f067eb6f2ca7fe23fea548a3320c951741b45 Sample Author <sample@example.com> 1782124319 +0200	commit: eta: update theta (22)
+669f067eb6f2ca7fe23fea548a3320c951741b45 e2c3c7292e7a0cef502640d9a3f9265b5fae9677 Sample Author <sample@example.com> 1782124319 +0200	commit: xi: update chi (23)
+e2c3c7292e7a0cef502640d9a3f9265b5fae9677 ac2668bfc2a1f0e81f315931b513963852d9e551 Sample Author <sample@example.com> 1782124319 +0200	commit: tau: update upsilon (28)
+ac2668bfc2a1f0e81f315931b513963852d9e551 e4b2e4708fb7b836f9c4aa8e01cdc9ac66bb1230 Sample Author <sample@example.com> 1782124319 +0200	commit: packet: update stream (29)
+e4b2e4708fb7b836f9c4aa8e01cdc9ac66bb1230 f3be4a645e17e23b7e71d44259c6184e90786562 Sample Author <sample@example.com> 1782124319 +0200	merge feature-d: Merge made by the 'ort' strategy.
+f3be4a645e17e23b7e71d44259c6184e90786562 bbfe63d32df0a25976f2c721477fca92b7ec52cc Sample Author <sample@example.com> 1782124319 +0200	commit: alpha: update iota (31)
+bbfe63d32df0a25976f2c721477fca92b7ec52cc c6fdb663661f1a9b901cbe0e3888b7484bc0eec4 Sample Author <sample@example.com> 1782124320 +0200	commit: quantum: update quantum (43)
+c6fdb663661f1a9b901cbe0e3888b7484bc0eec4 20547beeb0cca53e3bdf5f9a83c7478ecd6c29fe Sample Author <sample@example.com> 1782124320 +0200	commit: lexer: update lexer (47)

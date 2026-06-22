@@ -1,0 +1,1 @@
+0000000000000000000000000000000000000000 64c8558fbd0beb9f5639f66082e6a1d092e30a93 Sample Author <sample@example.com> 1782135184 +0200	fetch --recurse-submodules=no /Users/danila.manturov/source/TeamCity2/TeamCity/external-repos/teamcity-git/git-tests/src/test/resources/data/TW-100479/remote/commit_graph_test_repo +refs/heads/main:refs/remotes/origin/main: storing head
