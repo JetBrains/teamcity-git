@@ -13,6 +13,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcshostings.url.ServerURI;
 import jetbrains.buildServer.vcshostings.url.ServerURIParser;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -152,7 +153,7 @@ public class ContextImpl implements Context {
     if (TeamCityProperties.getBooleanOrTrue("teamcity.git.sendSshSendEnvRequestToken")) {
       final String token = myRoot.getProperty("sshSendEnvRequestToken");
       if (token == null) return null;
-      return token.contains("%") ? null : token;
+      return StringUtils.containsAny(token, "%\"'<>|&^`$") ? null : token;
     }
     return null;
   }
