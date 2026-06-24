@@ -237,6 +237,7 @@ public class CommandUtil {
     if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return attemptsLeft;
     if (isCanceledError(ve)) return false;
     if (isSslError(ve)) return false;
+    if (isQueueDrainingError(ve)) return attemptsLeft;
 
     if((attempt < Constants.FRESH_TOKEN_MAX_RETRY_ATTEMPTS) && isNotFoundWithFreshToken(ve, authSettings))
       return true;
@@ -252,6 +253,10 @@ public class CommandUtil {
       return true;
 
     return attemptsLeft;
+  }
+
+  private static boolean isQueueDrainingError(@NotNull VcsException e) {
+    return isMessageContains(e, "Queue is draining");
   }
 
   public static boolean isRemoteAccessError(@NotNull VcsException e) {
