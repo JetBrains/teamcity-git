@@ -170,13 +170,15 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       }
 
       if (CommandUtil.isCommitGraphError((VcsException)e)) {
-        if (myCommitGraphRefresher != null) {
-          try {
-            int result = myCommitGraphRefresher.call();
-            return result == 0;
-          } catch (Exception ve) {
-            return false;
-          }
+        if (myCommitGraphRefresher == null) {
+          return false;
+        }
+
+        try {
+          int result = myCommitGraphRefresher.call();
+          return result == 0;
+        } catch (Exception ve) {
+          return false;
         }
       }
 
