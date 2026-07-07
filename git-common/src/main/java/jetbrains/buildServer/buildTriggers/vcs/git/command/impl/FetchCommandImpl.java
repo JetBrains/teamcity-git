@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -23,6 +24,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   private boolean myNoShowForcedUpdates = false;
 
   private Callable<List<Ref>> myListBranchesRefresher;
+  private Callable<Integer> myCommitGraphRefresher;
 
   public FetchCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -74,6 +76,17 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
   @NotNull
   @Override
+  public FetchCommand setRefreshCommitGraphIfCorrupted(GitFacade facade) {
+    myCommitGraphRefresher = () -> facade.commitGraph()
+                                  .setWriteCommand()
+                                  .setReachable()
+                                  .setStrategy("replace")
+                                  .call();
+    return this;
+  }
+
+  @NotNull
+  @Override
   public FetchCommand setNoShowForcedUpdates(boolean noShowForcedUpdates) {
     myNoShowForcedUpdates = noShowForcedUpdates;
     return this;
@@ -101,21 +114,15 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
     cmd.setHasProgress(true);
 
-    byte[] refSpecsBytes = new byte[0];
     if (myRefSpecs.size() > 1 && GitVersion.fetchSupportsStdin(gitVersion)) {
       cmd.addParameter("--stdin");
       cmd.addParameter(getRemote());
-      refSpecsBytes = refSpecsToBytes(cmd);
     } else {
       cmd.addParameter(getRemote());
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
     }
 
-    if (CommandUtil.shouldHandleIfRefError()) {
-      runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
-    } else {
-      runCmd(cmd.stdErrLogLevel("debug"), refSpecsBytes);
-    }
+    runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
   }
 
   @NotNull
@@ -147,16 +154,32 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
         return false;
       }
 
-      if (!(e instanceof VcsException) || !(CommandUtil.isRefsError((VcsException)e))) {
+      if (!(e instanceof VcsException)) {
         return true;
       }
 
-      try {
-        refreshRefsAndStdin();
-        if (myRefSpecs.isEmpty())
+      if (CommandUtil.isRefsError((VcsException)e)) {
+        try {
+          refreshRefsAndStdin();
+          if (myRefSpecs.isEmpty()) {
+            return false;
+          }
+        } catch (VcsException ve) {
           return false;
-      } catch (VcsException ve) {
-        return false;
+        }
+      }
+
+      if (CommandUtil.isCommitGraphError((VcsException)e)) {
+        if (myCommitGraphRefresher == null) {
+          return false;
+        }
+
+        try {
+          int result = myCommitGraphRefresher.call();
+          return result == 0;
+        } catch (Exception ve) {
+          return false;
+        }
       }
 
       return true;
