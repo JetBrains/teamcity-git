@@ -188,7 +188,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
           final CommitResult result =
             myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString()).push(myDb, gitRoot, effectiveRef(gitRoot), commitId.name(), expectedOldTip);
           Loggers.VCS.info("Change '" + commitSettings.getDescription() + "' was successfully committed");
-          return result;
+          return CommitResult.markNewBranchCreated(result, myCreatingNewBranch);
         } finally {
           lock.unlock();
         }
