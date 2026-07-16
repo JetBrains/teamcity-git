@@ -544,7 +544,7 @@ public class SshAuthenticationTest extends BaseGitTestCase {
                                        .from("ubuntu:latest")
                                        .run("apt-get -y update")
                                        .run("apt-get -y install openssh-server")
-                                       .run("mkdir /var/run/sshd")
+                                       .run("mkdir -p /var/run/sshd")
                                        .run("ssh-keygen -A")
                                        .run("apt-get -y install git")
                                        .run("apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/")
