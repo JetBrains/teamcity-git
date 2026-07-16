@@ -63,6 +63,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isGitMaintenanceAutoEnabled();
 
+  boolean isPackRefsCleanupEnabled();
+
   boolean isCredHelperMatchesAllUrls();
 
   @NotNull

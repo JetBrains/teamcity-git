@@ -223,6 +223,12 @@ public class GitUtils {
     return SSH_V2 + "-" + teamcityVersion.replace(' ', '-') + originalSshClientVersion.substring(SSH_V2.length());
   }
 
+  public static void removePackedRefsNew(@NotNull File dotGit) {
+    final File refsNew = new File(dotGit, "packed-refs.new");
+    Loggers.VCS.info("Removing packed-refs.new file " + refsNew.getAbsolutePath());
+    FileUtil.delete(refsNew);
+  }
+
   public static void removeRefLocks(@NotNull File dotGit) {
     final File refs = new File(dotGit, "refs");
     if (!refs.isDirectory()) {

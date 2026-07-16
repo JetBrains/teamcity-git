@@ -81,7 +81,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     try {
       updateLocalMirror(myRoot.getRepositoryDir(), myRoot.getRepositoryFetchURL(), myRoot.getRepositoryOriginalFetchURL(), asRef(myFullBranchName, myRevision));
       //prepare refs for copying into working dir repository
-      myGitFactory.create(myRoot.getRepositoryDir()).packRefs().call();
+      myGitFactory.create(myRoot.getRepositoryDir()).packRefs().setErrorExpected(myPluginConfig.isPackRefsCleanupEnabled()).call();
     } finally {
       myLogger.activityFinished(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
     }
@@ -379,7 +379,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
                         submoduleUrl,
                         submodule.getRevisions());
       mirrorRepositoryDir = getSubmoduleMirror(submodule); // submodule mirrorRepositoryDir can change if couldn't remove it after unsuccessful fetch
-      myGitFactory.create(mirrorRepositoryDir).packRefs().call();
+      myGitFactory.create(mirrorRepositoryDir).packRefs().setErrorExpected(myPluginConfig.isPackRefsCleanupEnabled()).call();
       return mirrorRepositoryDir;
     } finally {
       myLogger.activityFinished(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
