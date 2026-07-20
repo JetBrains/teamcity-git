@@ -153,6 +153,16 @@ public class RetryTest extends BaseTestCase {
         public boolean isDebugEnabled() {
           return true;
         }
+
+        @Override
+        public boolean isInfoEnabled() {
+          return true;
+        }
+
+        @Override
+        public boolean isWarnEnabled() {
+          return true;
+        }
       };
     }
   }
