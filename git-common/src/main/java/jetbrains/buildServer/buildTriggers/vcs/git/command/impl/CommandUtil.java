@@ -187,7 +187,7 @@ public class CommandUtil {
   }
 
   public static boolean isNoSuchFileOrDirError(@NotNull VcsException e) {
-    return isMessageContains(e, "No such file or directory");
+    return isMessageContains(e, "No such file or directory") && isMessageContains(e, "exit code");
   }
 
   public static boolean isFileNameTooLongError(@NotNull VcsException e) {
