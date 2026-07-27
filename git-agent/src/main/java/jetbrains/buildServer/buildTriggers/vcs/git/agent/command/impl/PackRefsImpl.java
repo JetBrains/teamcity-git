@@ -17,7 +17,7 @@ public class PackRefsImpl extends BaseCommandImpl implements PackRefs {
   }
 
   @Override
-  public PackRefsImpl setErrorExpected(boolean expected) {
+  public PackRefs setErrorExpected(boolean expected) {
     myErrorExpected = expected;
     return this;
   }
