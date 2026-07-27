@@ -79,6 +79,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER = "teamcity.internal.git.agent.ignoreCheckoutRulesPostfixCheck";
 
   public static final String GIT_AUTO_MAINTENANCE_ENABLE = "teamcity.internal.git.maintenance.auto.enable";
+  public static final String GIT_PACK_REFS_CLEANUP_ENABLED = "teamcity.internal.git.packRefs.cleanup.enabled";
   public static final String GIT_REFRESH_COMMIT_GRAPH_IF_CORRUPTED = "teamcity.internal.git.commit.graph.refresh.enable";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class);
 
@@ -340,6 +341,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Override
   public boolean isGitMaintenanceAutoEnabled() {
     return Boolean.parseBoolean(myBuild.getSharedConfigParameters().getOrDefault(GIT_AUTO_MAINTENANCE_ENABLE, "true"));
+  }
+
+  @Override
+  public boolean isPackRefsCleanupEnabled() {
+    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().getOrDefault(GIT_PACK_REFS_CLEANUP_ENABLED, "true"));
   }
 
   public boolean isCredHelperMatchesAllUrls() {

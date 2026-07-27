@@ -389,6 +389,10 @@ public class AgentCommitLoaderFactory {
                                               .setNoShowForcedUpdates(myPluginConfig.isNoShowForcedUpdates())
                                               .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()));
 
+      if (myPluginConfig.isPackRefsCleanupEnabled()) {
+        result.addPreAction(() -> GitUtils.removePackedRefsNew(getGitDir()));
+      }
+
       if(myPluginConfig.refreshCommitGraphIfCorrupted()) {
          result.setRefreshCommitGraphIfCorrupted(myGitFactory.create(repositoryDir));
       }
