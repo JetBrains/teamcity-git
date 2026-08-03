@@ -145,7 +145,8 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
         if (replayed.isConflicted()) {
           LOG.info("Cherry-pick of " + original.name() + " into " + dstBranch + " failed with conflicts " + replayed.getConflicts());
           return CherryPickResult.createConflict(original.name(), replayed.getConflicts(),
-                                                 "Unable to cherry-pick " + original.name() + " into " + dstBranch, picked);
+                                                 "Unable to cherry-pick " + original.name() + " into " + dstBranch,
+                                                 asUnpublished(picked));
         }
 
         if (current.getTree().getId().equals(replayed.getTreeId())) {
@@ -175,6 +176,19 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       inserter.close();
       walk.close();
     }
+  }
+
+  /**
+   * The commits created before a conflict are discarded together with the operation, they never reach the
+   * repository, so they must not be reported as created.
+   */
+  @NotNull
+  private static List<CherryPickResult.PickedCommit> asUnpublished(@NotNull List<CherryPickResult.PickedCommit> picked) {
+    List<CherryPickResult.PickedCommit> result = new ArrayList<CherryPickResult.PickedCommit>(picked.size());
+    for (CherryPickResult.PickedCommit commit : picked) {
+      result.add(commit.isSkipped() ? commit : CherryPickResult.PickedCommit.pickable(commit.getSourceRevision()));
+    }
+    return result;
   }
 
   private void push(@NotNull GitVcsRoot gitRoot,

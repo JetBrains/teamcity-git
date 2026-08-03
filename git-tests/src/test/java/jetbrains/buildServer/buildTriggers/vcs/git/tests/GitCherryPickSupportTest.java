@@ -212,6 +212,8 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
     //the revisions processed before the conflicting one are reported, so the UI can tell how far the batch got
     then(sourceRevisions(result)).containsExactly(TOPIC_1);
+    //nothing was published, so the discarded commit must not be reported as an existing revision
+    then(createdRevisions(result)).isEmpty();
   }
 
 
