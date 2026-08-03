@@ -145,7 +145,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
         if (replayed.isConflicted()) {
           LOG.info("Cherry-pick of " + original.name() + " into " + dstBranch + " failed with conflicts " + replayed.getConflicts());
           return CherryPickResult.createConflict(original.name(), replayed.getConflicts(),
-                                                 "Unable to cherry-pick " + original.name() + " into " + dstBranch);
+                                                 "Unable to cherry-pick " + original.name() + " into " + dstBranch, picked);
         }
 
         if (current.getTree().getId().equals(replayed.getTreeId())) {
@@ -166,7 +166,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       }
 
       if (!publish)
-        return CherryPickResult.createSuccess(null, picked);
+        return CherryPickResult.createDryRunSuccess(picked);
 
       push(gitRoot, db, dstRef, current, branchTip);
       LOG.info("Cherry-pick of " + srcRevisions + " into " + dstBranch + " successfully finished, new revision " + current.name());

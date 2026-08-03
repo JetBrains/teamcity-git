@@ -191,6 +191,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
     then(result.isSuccess()).isFalse();
     then(result.isPerformed()).isFalse();
+    then(result.isConflict()).isTrue();
     then(result.getConflicts()).containsExactly("b");
     then(result.getConflictingSourceRevision()).isEqualTo(TOPIC_3);
     then(result.getError()).contains(TOPIC_3);
@@ -209,6 +210,8 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     then(result.isSuccess()).isFalse();
     then(result.getConflictingSourceRevision()).isEqualTo(TOPIC2_3);
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
+    //the revisions processed before the conflicting one are reported, so the UI can tell how far the batch got
+    then(sourceRevisions(result)).containsExactly(TOPIC_1);
   }
 
 
@@ -291,6 +294,9 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
                                                                 "refs/heads/master", CherryPickOptions.create());
 
     then(dryRun.isSuccess()).isTrue();
+    then(dryRun.isPerformed())
+      .overridingErrorMessage("a dry run publishes nothing, so it must not report the branch as updated")
+      .isFalse();
     then(dryRun.getResultRevision()).isNull();
     then(sourceRevisions(dryRun)).containsExactly(TOPIC_1, TOPIC_2);
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
