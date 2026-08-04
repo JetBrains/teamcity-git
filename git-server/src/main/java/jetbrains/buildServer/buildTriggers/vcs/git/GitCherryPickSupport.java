@@ -59,10 +59,10 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   }
 
   @NotNull
-  public CherryPickResult tryCherryPick(@NotNull VcsRoot root,
-                                        @NotNull List<String> srcRevisions,
-                                        @NotNull String dstBranch,
-                                        @NotNull CherryPickOptions options) throws VcsException {
+  public CherryPickResult dryRunCherryPick(@NotNull VcsRoot root,
+                                           @NotNull List<String> srcRevisions,
+                                           @NotNull String dstBranch,
+                                           @NotNull CherryPickOptions options) throws VcsException {
     return doCherryPick(root, srcRevisions, dstBranch, options, false);
   }
 
@@ -75,7 +75,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
     if (srcRevisions.isEmpty())
       return CherryPickResult.createError("No revisions to cherry-pick");
 
-    String operation = publish ? "cherryPick" : "tryCherryPick";
+    String operation = publish ? "cherryPick" : "dryRunCherryPick";
     LOG.info(operation + " in root " + root + ", revisions " + srcRevisions + ", destination " + dstBranch);
     OperationContext context = myVcs.createContext(root, operation);
     GitVcsRoot gitRoot = context.getGitRoot();

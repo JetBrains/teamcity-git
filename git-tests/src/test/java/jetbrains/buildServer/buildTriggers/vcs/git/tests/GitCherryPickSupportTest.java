@@ -289,11 +289,11 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
-  public void try_cherry_pick_does_not_publish_anything() throws Exception {
+  public void dry_run_does_not_publish_anything() throws Exception {
     String masterBefore = resolveRef(myRemote, "refs/heads/master");
 
-    CherryPickResult dryRun = myCherryPickSupport.tryCherryPick(myRoot, Arrays.asList(TOPIC_1, TOPIC_2),
-                                                                "refs/heads/master", CherryPickOptions.create());
+    CherryPickResult dryRun = myCherryPickSupport.dryRunCherryPick(myRoot, Arrays.asList(TOPIC_1, TOPIC_2),
+                                                                   "refs/heads/master", CherryPickOptions.create());
 
     then(dryRun.isSuccess()).isTrue();
     then(dryRun.isPerformed())
@@ -311,11 +311,11 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
-  public void try_cherry_pick_detects_conflicts() throws Exception {
+  public void dry_run_detects_conflicts() throws Exception {
     String masterBefore = resolveRef(myRemote, "refs/heads/master");
 
-    CherryPickResult dryRun = myCherryPickSupport.tryCherryPick(myRoot, Collections.singletonList(TOPIC_3),
-                                                                "refs/heads/master", CherryPickOptions.create());
+    CherryPickResult dryRun = myCherryPickSupport.dryRunCherryPick(myRoot, Collections.singletonList(TOPIC_3),
+                                                                   "refs/heads/master", CherryPickOptions.create());
 
     then(dryRun.isSuccess()).isFalse();
     then(dryRun.getConflicts()).containsExactly("b");
