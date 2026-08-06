@@ -93,9 +93,8 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   public void picks_single_commit_onto_branch() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
 
-    then(result.isSuccess()).isTrue();
-    then(result.isPerformed()).isTrue();
-    String newTip = result.getResultRevision();
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    String newTip = result.getNewBranchRevision();
     then(newTip).isNotNull().isNotEqualTo(MASTER);
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(newTip);
     then(parentRevisions(myRemote, newTip)).containsExactly(MASTER);
@@ -103,50 +102,39 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
     then(result.getPickedCommits()).hasSize(1);
     CherryPickResult.PickedCommit picked = result.getPickedCommits().get(0);
+    then(picked.getStatus()).isEqualTo(CherryPickResult.PickedCommit.Status.CREATED);
     then(picked.getSourceRevision()).isEqualTo(TOPIC_1);
     then(picked.getCreatedRevision()).isEqualTo(newTip);
-    then(picked.isSkipped()).isFalse();
+    then(picked.getConflictFiles()).isEmpty();
   }
 
 
   public void preserves_author_and_mentions_the_source_revision() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
 
-    String newTip = result.getResultRevision();
+    String newTip = result.getNewBranchRevision();
     then(authorIdent(myRemote, newTip)).isEqualTo(authorIdent(myRemote, TOPIC_1));
+    then(committerIdent(myRemote, newTip))
+      .overridingErrorMessage("the committer is the VCS root's identity, not the original one")
+      .isNotEqualTo(authorIdent(myRemote, TOPIC_1));
     then(fullMessage(myRemote, newTip)).isEqualTo(fullMessage(myRemote, TOPIC_1).trim() +
                                                   "\n\n(cherry picked from commit " + TOPIC_1 + ")\n");
   }
 
 
-  public void does_not_mention_the_source_revision_when_disabled() throws Exception {
-    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master",
-                                                             CherryPickOptions.create().withAppendSourceRevision(false));
-
-    then(fullMessage(myRemote, result.getResultRevision())).isEqualTo(fullMessage(myRemote, TOPIC_1));
-  }
-
-
-  public void uses_the_specified_committer() throws Exception {
-    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master",
-                                                             CherryPickOptions.create().withCommitter("Release Bot <bot@example.com>"));
-
-    String newTip = result.getResultRevision();
-    then(committerIdent(myRemote, newTip)).isEqualTo("Release Bot <bot@example.com>");
-    then(authorIdent(myRemote, newTip)).isEqualTo(authorIdent(myRemote, TOPIC_1));
-  }
-
-
   public void picks_several_commits_and_publishes_them_at_once() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Arrays.asList(TOPIC_1, TOPIC_2, TOPIC_3),
-                                                             "refs/heads/master", CherryPickOptions.create());
+                                                            "refs/heads/master", CherryPickOptions.create());
 
-    then(result.isPerformed()).isTrue();
-    String newTip = result.getResultRevision();
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    String newTip = result.getNewBranchRevision();
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(newTip);
     then(fileContent(myRemote, newTip, "b")).isEqualTo("b\nb\nb\n");
 
     then(sourceRevisions(result)).containsExactly(TOPIC_1, TOPIC_2, TOPIC_3);
+    then(statuses(result)).containsExactly(CherryPickResult.PickedCommit.Status.CREATED,
+                                          CherryPickResult.PickedCommit.Status.CREATED,
+                                          CherryPickResult.PickedCommit.Status.CREATED);
     List<String> created = createdRevisions(result);
     then(created).hasSize(3);
     then(created.get(2)).isEqualTo(newTip);
@@ -162,25 +150,25 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/topic", CherryPickOptions.create());
 
-    then(result.isSuccess()).isTrue();
-    then(result.isPerformed()).isFalse();
-    then(result.getNotPerformedReason()).contains("already present");
-    then(result.getResultRevision()).isEqualTo(topicBefore);
-    then(result.getPickedCommits().get(0).isSkipped()).isTrue();
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.ALREADY_PRESENT);
+    then(result.getMessage()).contains("already present");
+    then(result.getNewBranchRevision())
+      .overridingErrorMessage("nothing was published, so there is no new branch revision")
+      .isNull();
+    then(statuses(result)).containsExactly(CherryPickResult.PickedCommit.Status.ALREADY_PRESENT);
     then(resolveRef(myRemote, "refs/heads/topic")).isEqualTo(topicBefore);
   }
 
 
   public void picking_the_same_commit_twice_changes_nothing() throws Exception {
     CherryPickResult first = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
-    then(first.isPerformed()).isTrue();
+    then(first.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
 
     CherryPickResult second = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
 
-    then(second.isSuccess()).isTrue();
-    then(second.isPerformed()).isFalse();
-    then(second.getPickedCommits().get(0).isSkipped()).isTrue();
-    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(first.getResultRevision());
+    then(second.getStatus()).isEqualTo(CherryPickResult.Status.ALREADY_PRESENT);
+    then(statuses(second)).containsExactly(CherryPickResult.PickedCommit.Status.ALREADY_PRESENT);
+    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(first.getNewBranchRevision());
   }
 
 
@@ -189,13 +177,14 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_3, "refs/heads/master", CherryPickOptions.create());
 
-    then(result.isSuccess()).isFalse();
-    then(result.isPerformed()).isFalse();
-    then(result.isConflict()).isTrue();
-    then(result.getConflicts()).containsExactly("b");
-    then(result.getConflictingSourceRevision()).isEqualTo(TOPIC_3);
-    then(result.getError()).contains(TOPIC_3);
-    then(result.getResultRevision()).isNull();
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.CONFLICT);
+    then(result.getMessage()).contains(TOPIC_3);
+    then(result.getNewBranchRevision()).isNull();
+    then(result.getPickedCommits()).hasSize(1);
+    CherryPickResult.PickedCommit conflicting = result.getPickedCommits().get(0);
+    then(conflicting.getStatus()).isEqualTo(CherryPickResult.PickedCommit.Status.CONFLICT);
+    then(conflicting.getSourceRevision()).isEqualTo(TOPIC_3);
+    then(conflicting.getConflictFiles()).containsExactly("b");
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
   }
 
@@ -205,25 +194,36 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
     //the first revision applies cleanly, the second one conflicts with it
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Arrays.asList(TOPIC_1, TOPIC2_3),
-                                                             "refs/heads/master", CherryPickOptions.create());
+                                                            "refs/heads/master", CherryPickOptions.create());
 
-    then(result.isSuccess()).isFalse();
-    then(result.getConflictingSourceRevision()).isEqualTo(TOPIC2_3);
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.CONFLICT);
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
-    //the revisions processed before the conflicting one are reported, so the UI can tell how far the batch got
-    then(sourceRevisions(result)).containsExactly(TOPIC_1);
-    //nothing was published, so the discarded commit must not be reported as an existing revision
+    then(sourceRevisions(result)).containsExactly(TOPIC_1, TOPIC2_3);
+    //the commit built for the first revision was discarded together with the operation, so it is not a created one
+    then(statuses(result)).containsExactly(CherryPickResult.PickedCommit.Status.PICKABLE,
+                                          CherryPickResult.PickedCommit.Status.CONFLICT);
     then(createdRevisions(result)).isEmpty();
+  }
+
+
+  public void reports_the_revisions_after_the_conflicting_one_as_not_attempted() throws Exception {
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Arrays.asList(TOPIC_3, TOPIC_1),
+                                                            "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.CONFLICT);
+    then(sourceRevisions(result)).containsExactly(TOPIC_3, TOPIC_1);
+    then(statuses(result)).containsExactly(CherryPickResult.PickedCommit.Status.CONFLICT,
+                                          CherryPickResult.PickedCommit.Status.NOT_ATTEMPTED);
   }
 
 
   public void picks_merge_commit_with_the_specified_mainline_parent() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Collections.singletonList(MERGE_INTO_MASTER),
-                                                             "refs/heads/master",
-                                                             CherryPickOptions.create().withMainlineParentNumber(1));
+                                                            "refs/heads/master",
+                                                            CherryPickOptions.create().withMainlineParentNumber(1));
 
-    then(result.isPerformed()).isTrue();
-    String newTip = result.getResultRevision();
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    String newTip = result.getNewBranchRevision();
     //the changes of the merge commit are replayed as a regular commit with a single parent
     then(parentRevisions(myRemote, newTip)).containsExactly(MASTER);
     then(fileContent(myRemote, newTip, "b")).isEqualTo("b\nb\nb\n");
@@ -235,27 +235,27 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, MERGE_INTO_MASTER, "refs/heads/master", CherryPickOptions.create());
 
-    then(result.isSuccess()).isFalse();
-    then(result.getError()).contains("merge commit");
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).contains("merge commit");
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
   }
 
 
   public void rejects_mainline_parent_out_of_range() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Collections.singletonList(MERGE_INTO_MASTER),
-                                                             "refs/heads/master",
-                                                             CherryPickOptions.create().withMainlineParentNumber(3));
+                                                            "refs/heads/master",
+                                                            CherryPickOptions.create().withMainlineParentNumber(3));
 
-    then(result.isSuccess()).isFalse();
-    then(result.getError()).contains("out of range");
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).contains("out of range");
   }
 
 
   public void reports_missing_destination_branch() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/no-such-branch", CherryPickOptions.create());
 
-    then(result.isSuccess()).isFalse();
-    then(result.getError()).contains("no-such-branch").contains("doesn't exist");
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).contains("no-such-branch").contains("doesn't exist");
     then(resolveRef(myRemote, "refs/heads/no-such-branch")).isNull();
   }
 
@@ -264,28 +264,28 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     String masterBefore = resolveRef(myRemote, "refs/heads/master");
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, ObjectId.zeroId().name(), "refs/heads/master",
-                                                             CherryPickOptions.create());
+                                                            CherryPickOptions.create());
 
-    then(result.isSuccess()).isFalse();
-    then(result.getError()).isNotNull();
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).isNotNull();
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
+  }
+
+
+  public void rejects_an_empty_request() throws Exception {
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Collections.<String>emptyList(), "refs/heads/master",
+                                                            CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).isNotNull();
   }
 
 
   public void accepts_short_destination_branch_name() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "master", CherryPickOptions.create());
 
-    then(result.isPerformed()).isTrue();
-    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(result.getResultRevision());
-  }
-
-
-  public void reports_that_there_is_nothing_to_pick() throws Exception {
-    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Collections.<String>emptyList(), "refs/heads/master",
-                                                             CherryPickOptions.create());
-
-    then(result.isSuccess()).isFalse();
-    then(result.getError()).isNotNull();
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(result.getNewBranchRevision());
   }
 
 
@@ -293,21 +293,21 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     String masterBefore = resolveRef(myRemote, "refs/heads/master");
 
     CherryPickResult dryRun = myCherryPickSupport.dryRunCherryPick(myRoot, Arrays.asList(TOPIC_1, TOPIC_2),
-                                                                   "refs/heads/master", CherryPickOptions.create());
+                                                                  "refs/heads/master", CherryPickOptions.create());
 
-    then(dryRun.isSuccess()).isTrue();
-    then(dryRun.isPerformed())
-      .overridingErrorMessage("a dry run publishes nothing, so it must not report the branch as updated")
-      .isFalse();
-    then(dryRun.getResultRevision()).isNull();
+    then(dryRun.getStatus()).isEqualTo(CherryPickResult.Status.PICKABLE);
+    then(dryRun.getNewBranchRevision()).isNull();
     then(sourceRevisions(dryRun)).containsExactly(TOPIC_1, TOPIC_2);
+    then(statuses(dryRun)).containsExactly(CherryPickResult.PickedCommit.Status.PICKABLE,
+                                           CherryPickResult.PickedCommit.Status.PICKABLE);
+    then(createdRevisions(dryRun)).isEmpty();
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
 
     //the real operation still works after the dry run
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Arrays.asList(TOPIC_1, TOPIC_2),
-                                                             "refs/heads/master", CherryPickOptions.create());
-    then(result.isPerformed()).isTrue();
-    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(result.getResultRevision());
+                                                            "refs/heads/master", CherryPickOptions.create());
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(result.getNewBranchRevision());
   }
 
 
@@ -315,11 +315,23 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     String masterBefore = resolveRef(myRemote, "refs/heads/master");
 
     CherryPickResult dryRun = myCherryPickSupport.dryRunCherryPick(myRoot, Collections.singletonList(TOPIC_3),
-                                                                   "refs/heads/master", CherryPickOptions.create());
+                                                                  "refs/heads/master", CherryPickOptions.create());
 
-    then(dryRun.isSuccess()).isFalse();
-    then(dryRun.getConflicts()).containsExactly("b");
+    then(dryRun.getStatus()).isEqualTo(CherryPickResult.Status.CONFLICT);
+    then(dryRun.getPickedCommits().get(0).getConflictFiles()).containsExactly("b");
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
+  }
+
+
+  public void dry_run_reports_already_present_revisions_the_same_way_as_the_real_call() throws Exception {
+    CherryPickResult dryRun = myCherryPickSupport.dryRunCherryPick(myRoot, Collections.singletonList(TOPIC_1),
+                                                                  "refs/heads/topic", CherryPickOptions.create());
+
+    then(dryRun.getStatus())
+      .overridingErrorMessage("ALREADY_PRESENT takes precedence when there is nothing left to replay, a dry run included")
+      .isEqualTo(CherryPickResult.Status.ALREADY_PRESENT);
+    then(dryRun.getNewBranchRevision()).isNull();
+    then(statuses(dryRun)).containsExactly(CherryPickResult.PickedCommit.Status.ALREADY_PRESENT);
   }
 
 
@@ -359,8 +371,8 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     String masterAfter = resolveRef(myRemote, "refs/heads/master");
     List<String> published = new ArrayList<>();
     for (CherryPickResult result : Arrays.asList(result1.get(), result2.get())) {
-      if (result != null && result.isPerformed())
-        published.add(result.getResultRevision());
+      if (result != null && result.getStatus() == CherryPickResult.Status.PICKED)
+        published.add(result.getNewBranchRevision());
     }
     //a push is a compare-and-swap against the tip observed before the pick, so a losing thread must not overwrite the winner
     then(published).isNotEmpty();
@@ -380,6 +392,15 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
       revisions.add(picked.getSourceRevision());
     }
     return revisions;
+  }
+
+  @NotNull
+  private static List<CherryPickResult.PickedCommit.Status> statuses(@NotNull CherryPickResult result) {
+    List<CherryPickResult.PickedCommit.Status> statuses = new ArrayList<>();
+    for (CherryPickResult.PickedCommit picked : result.getPickedCommits()) {
+      statuses.add(picked.getStatus());
+    }
+    return statuses;
   }
 
   @NotNull

@@ -45,12 +45,15 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
       try {
         Map<String, Ref> remoteRefs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
         Ref existingRef = remoteRefs.get(ref);
+        Repository db = context.getRepository();
         if (existingRef != null && existingRef.getObjectId() != null) {
-          LOG.info("Branch " + branchName + " already exists in root " + root + " at revision " + existingRef.getObjectId().name());
-          return BranchCreationResult.alreadyExists(branchName, existingRef.getObjectId().name());
+          String existingRevision = existingRef.getObjectId().name();
+          LOG.info("Branch " + branchName + " already exists in root " + root + " at revision " + existingRevision);
+          return pointsTo(db, existingRevision, revision)
+                 ? BranchCreationResult.alreadyAtRevision(branchName, existingRevision)
+                 : BranchCreationResult.existsAtOtherRevision(branchName, existingRevision);
         }
 
-        Repository db = context.getRepository();
         RevCommit commit = myCommitLoader.findCommit(db, revision);
         if (commit == null)
           commit = myCommitLoader.loadCommit(context, gitRoot, revision);
@@ -72,5 +75,17 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
         context.close();
       }
     });
+  }
+
+  /**
+   * Tells whether the existing branch already points to the requested revision. The revisions are compared as
+   * strings first, so an existing branch is recognized without fetching anything; if they differ, the requested
+   * revision is resolved in the mirror when it happens to be there, which also covers an abbreviated revision.
+   */
+  private boolean pointsTo(@NotNull Repository db, @NotNull String existingRevision, @NotNull String requestedRevision) {
+    if (existingRevision.equalsIgnoreCase(requestedRevision))
+      return true;
+    RevCommit requested = myCommitLoader.findCommit(db, requestedRevision);
+    return requested != null && existingRevision.equals(requested.name());
   }
 }

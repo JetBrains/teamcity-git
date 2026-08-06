@@ -74,7 +74,7 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   public void creates_branch_at_the_specified_revision() throws Exception {
     BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
 
-    then(result.isCreated()).isTrue();
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
     then(result.getBranchName()).isEqualTo("refs/heads/release-1.0");
     then(result.getRevision()).isEqualTo(MASTER);
     then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER);
@@ -85,7 +85,7 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   public void creates_branch_at_a_revision_which_is_not_a_branch_tip() throws Exception {
     BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-0.9", MASTER_PARENT);
 
-    then(result.isCreated()).isTrue();
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
     then(resolveRef(myRemote, "refs/heads/release-0.9")).isEqualTo(MASTER_PARENT);
   }
 
@@ -93,7 +93,7 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   public void accepts_short_branch_name() throws Exception {
     BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "release-1.0", MASTER);
 
-    then(result.isCreated()).isTrue();
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
     then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER);
   }
 
@@ -103,7 +103,7 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
 
     BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
 
-    then(result.isCreated()).isFalse();
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.ALREADY_AT_REVISION);
     then(result.getRevision()).isEqualTo(MASTER);
     then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER);
   }
@@ -112,7 +112,9 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   public void does_not_move_the_existing_branch() throws Exception {
     BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/master", MASTER_PARENT);
 
-    then(result.isCreated()).isFalse();
+    then(result.getStatus())
+      .overridingErrorMessage("the branch exists at another revision, which the caller has to be able to detect")
+      .isEqualTo(BranchCreationResult.Status.EXISTS_AT_OTHER_REVISION);
     then(result.getRevision()).isEqualTo(MASTER);
     then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(MASTER);
   }
@@ -131,13 +133,13 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
 
   public void hotfix_flow_creates_a_release_branch_and_picks_commits_into_it() throws Exception {
     BranchCreationResult branch = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
-    then(branch.isCreated()).isTrue();
+    then(branch.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
 
     CherryPickResult picked = myCherryPickSupport.cherryPick(myRoot, Arrays.asList(TOPIC_1, TOPIC_2),
                                                              "refs/heads/release-1.0", CherryPickOptions.create());
 
-    then(picked.isPerformed()).isTrue();
-    then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(picked.getResultRevision());
+    then(picked.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(picked.getNewBranchRevision());
     then(resolveRef(myRemote, "refs/heads/master"))
       .overridingErrorMessage("the hotfix must not touch the branch it was created from")
       .isEqualTo(MASTER);

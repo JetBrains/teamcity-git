@@ -11,7 +11,6 @@ import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.CommitBuilder;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectInserter;
-import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -73,7 +72,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                                         @NotNull CherryPickOptions options,
                                         boolean publish) throws VcsException {
     if (srcRevisions.isEmpty())
-      return CherryPickResult.createError("No revisions to cherry-pick");
+      return CherryPickResult.createRejected("No revisions to cherry-pick");
 
     String operation = publish ? "cherryPick" : "dryRunCherryPick";
     LOG.info(operation + " in root " + root + ", revisions " + srcRevisions + ", destination " + dstBranch);
@@ -88,13 +87,13 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
             return pickRevisions(context, gitRoot, db, srcRevisions, dstBranch, options, publish);
           } catch (CherryPickRejectedException e) {
             LOG.info(operation + " was rejected, root " + root + ", destination " + dstBranch + ": " + e.getMessage());
-            return CherryPickResult.createError(e.getMessage());
+            return CherryPickResult.createRejected(e.getMessage());
           } catch (PushFailedException e) {
             attemptsLeft--;
             LOG.info("Failed to publish the cherry-pick result, root " + root + ", destination " + dstBranch +
                      ", attempts left " + attemptsLeft, e.getCause());
             if (attemptsLeft <= 0)
-              return CherryPickResult.createError(e.getMessage());
+              return CherryPickResult.createRejected(e.getMessage());
           }
         }
       } catch (Exception e) {
@@ -130,13 +129,14 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       List<CherryPickResult.PickedCommit> picked = new ArrayList<CherryPickResult.PickedCommit>();
       boolean anythingPicked = false;
 
-      for (String srcRevision : srcRevisions) {
+      for (int i = 0; i < srcRevisions.size(); i++) {
+        String srcRevision = srcRevisions.get(i);
         RevCommit original = walk.parseCommit(loadSourceCommit(context, gitRoot, db, srcRevision));
 
         boolean alreadyReachable = walk.isMergedInto(original, current);
         walk.reset(); //isMergedInto leaves the walk in a state unsuitable for further traversals
         if (alreadyReachable) {
-          picked.add(CherryPickResult.PickedCommit.skipped(original.name(), "the commit is already reachable from " + dstBranch));
+          picked.add(CherryPickResult.PickedCommit.alreadyPresent(srcRevision));
           continue;
         }
 
@@ -144,34 +144,31 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
         CommitReplay.Result replayed = CommitReplay.replay(db, original, current, base);
         if (replayed.isConflicted()) {
           LOG.info("Cherry-pick of " + original.name() + " into " + dstBranch + " failed with conflicts " + replayed.getConflicts());
-          return CherryPickResult.createConflict(original.name(), replayed.getConflicts(),
-                                                 "Unable to cherry-pick " + original.name() + " into " + dstBranch,
-                                                 asUnpublished(picked));
+          return CherryPickResult.createConflict("Unable to cherry-pick " + original.name() + " into " + dstBranch,
+                                                 reportConflict(picked, srcRevisions, i, replayed.getConflicts()));
         }
 
         if (current.getTree().getId().equals(replayed.getTreeId())) {
-          picked.add(CherryPickResult.PickedCommit.skipped(original.name(), "the changes are already applied in " + dstBranch));
+          picked.add(CherryPickResult.PickedCommit.alreadyPresent(srcRevision));
           continue;
         }
 
-        ObjectId created = createCommit(gitRoot, db, inserter, original, current, replayed.getTreeId(), options);
+        ObjectId created = createCommit(gitRoot, db, inserter, original, current, replayed.getTreeId());
         current = walk.parseCommit(created);
         anythingPicked = true;
-        picked.add(publish ? CherryPickResult.PickedCommit.created(original.name(), created.name())
-                           : CherryPickResult.PickedCommit.pickable(original.name()));
+        picked.add(publish ? CherryPickResult.PickedCommit.created(srcRevision, created.name())
+                           : CherryPickResult.PickedCommit.pickable(srcRevision));
       }
 
-      if (!anythingPicked) {
-        return CherryPickResult.createNotPerformed("All the requested changes are already present in " + dstBranch,
-                                                   publish ? branchTip.name() : null, picked);
-      }
+      if (!anythingPicked)
+        return CherryPickResult.createAlreadyPresent("All the requested changes are already present in " + dstBranch, picked);
 
       if (!publish)
-        return CherryPickResult.createDryRunSuccess(picked);
+        return CherryPickResult.createPickable(picked);
 
       push(gitRoot, db, dstRef, current, branchTip);
       LOG.info("Cherry-pick of " + srcRevisions + " into " + dstBranch + " successfully finished, new revision " + current.name());
-      return CherryPickResult.createSuccess(current.name(), picked);
+      return CherryPickResult.createPicked(current.name(), picked);
     } finally {
       inserter.close();
       walk.close();
@@ -179,14 +176,26 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   }
 
   /**
-   * The commits created before a conflict are discarded together with the operation, they never reach the
-   * repository, so they must not be reported as created.
+   * Nothing is published on a conflict, so the commits built before it are reported as pickable rather than as
+   * created ones; the revisions after the conflicting one were not processed at all.
+   *
+   * @param processed what happened to the revisions before the conflicting one
+   * @param conflictingIndex index of the conflicting revision in srcRevisions
    */
   @NotNull
-  private static List<CherryPickResult.PickedCommit> asUnpublished(@NotNull List<CherryPickResult.PickedCommit> picked) {
-    List<CherryPickResult.PickedCommit> result = new ArrayList<CherryPickResult.PickedCommit>(picked.size());
-    for (CherryPickResult.PickedCommit commit : picked) {
-      result.add(commit.isSkipped() ? commit : CherryPickResult.PickedCommit.pickable(commit.getSourceRevision()));
+  private static List<CherryPickResult.PickedCommit> reportConflict(@NotNull List<CherryPickResult.PickedCommit> processed,
+                                                                   @NotNull List<String> srcRevisions,
+                                                                   int conflictingIndex,
+                                                                   @NotNull List<String> conflictFiles) {
+    List<CherryPickResult.PickedCommit> result = new ArrayList<CherryPickResult.PickedCommit>(srcRevisions.size());
+    for (CherryPickResult.PickedCommit commit : processed) {
+      result.add(commit.getStatus() == CherryPickResult.PickedCommit.Status.ALREADY_PRESENT
+                 ? commit
+                 : CherryPickResult.PickedCommit.pickable(commit.getSourceRevision()));
+    }
+    result.add(CherryPickResult.PickedCommit.conflict(srcRevisions.get(conflictingIndex), conflictFiles));
+    for (String notAttempted : srcRevisions.subList(conflictingIndex + 1, srcRevisions.size())) {
+      result.add(CherryPickResult.PickedCommit.notAttempted(notAttempted));
     }
     return result;
   }
@@ -255,34 +264,24 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                                 @NotNull ObjectInserter inserter,
                                 @NotNull RevCommit original,
                                 @NotNull RevCommit parent,
-                                @NotNull ObjectId treeId,
-                                @NotNull CherryPickOptions options) throws IOException {
+                                @NotNull ObjectId treeId) throws IOException {
     CommitBuilder cb = new CommitBuilder();
     cb.setTreeId(treeId);
     cb.setParentId(parent);
     cb.setAuthor(GitServerUtil.getAuthorIdent(original));
-    cb.setCommitter(getCommitter(gitRoot, db, options));
-    cb.setMessage(getCommitMessage(original, options));
+    cb.setCommitter(PersonIdentFactory.getTagger(gitRoot, db));
+    cb.setMessage(getCommitMessage(original));
     ObjectId commitId = inserter.insert(cb);
     inserter.flush();
     return commitId;
-  }
-
-  @NotNull
-  private PersonIdent getCommitter(@NotNull GitVcsRoot gitRoot, @NotNull Repository db, @NotNull CherryPickOptions options) {
-    String committer = options.getCommitter();
-    return committer != null ? PersonIdentFactory.parseIdent(committer) : PersonIdentFactory.getTagger(gitRoot, db);
   }
 
   /**
    * @return message of the original commit, with the picked revision mentioned the way 'git cherry-pick -x' does it
    */
   @NotNull
-  private String getCommitMessage(@NotNull RevCommit original, @NotNull CherryPickOptions options) {
+  private String getCommitMessage(@NotNull RevCommit original) {
     String message = GitServerUtil.getFullMessage(original);
-    if (!options.isAppendSourceRevision())
-      return message;
-
     String sourceRevisionLine = "(cherry picked from commit " + original.name() + ")";
     if (message.contains(sourceRevisionLine))
       return message;
