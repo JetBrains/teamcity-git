@@ -32,7 +32,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.PluginConfigBuilder.pluginConfig;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.assertj.core.api.BDDAssertions.then;
 
@@ -85,8 +84,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
                                                                     r -> null,
                                                                     (a, b, c) -> {},
                                                                     myKnownHostsManager);
-    return new GitCherryPickSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(),
-                                    builder.getPluginConfig(), repoOperations);
+    return new GitCherryPickSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), repoOperations);
   }
 
 
@@ -336,9 +334,6 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
 
   public void concurrent_cherry_picks_into_the_same_branch() throws Exception {
-    //disable retries, so that the loser of the race reports a failure instead of picking again
-    myCherryPickSupport = createCherryPickSupport(gitSupport().withPluginConfig(pluginConfig().setPaths(myPaths).setMergeRetryAttempts(0)));
-
     CountDownLatch start = new CountDownLatch(1);
     CountDownLatch ready = new CountDownLatch(2);
     AtomicReference<CherryPickResult> result1 = new AtomicReference<>();
@@ -371,7 +366,14 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     String masterAfter = resolveRef(myRemote, "refs/heads/master");
     List<String> published = new ArrayList<>();
     for (CherryPickResult result : Arrays.asList(result1.get(), result2.get())) {
-      if (result != null && result.getStatus() == CherryPickResult.Status.PICKED)
+      then(result)
+        .overridingErrorMessage("a lost race must be reported as a result, not as an exception")
+        .isNotNull();
+      //a lost race publishes nothing; a thread which ran after the other one finds the change already applied
+      then(result.getStatus()).isIn(CherryPickResult.Status.PICKED,
+                                    CherryPickResult.Status.REJECTED,
+                                    CherryPickResult.Status.ALREADY_PRESENT);
+      if (result.getStatus() == CherryPickResult.Status.PICKED)
         published.add(result.getNewBranchRevision());
     }
     //a push is a compare-and-swap against the tip observed before the pick, so a losing thread must not overwrite the winner

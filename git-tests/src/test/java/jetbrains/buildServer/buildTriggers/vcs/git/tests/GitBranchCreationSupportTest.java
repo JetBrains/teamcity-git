@@ -65,7 +65,7 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
                                                                     myKnownHostsManager);
     myBranchCreationSupport = new GitBranchCreationSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), repoOperations);
     myCherryPickSupport = new GitCherryPickSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(),
-                                                   builder.getPluginConfig(), repoOperations);
+                                                   repoOperations);
     myRemote = getRemoteRepositoryDir("merge");
     myRoot = vcsRoot().withFetchUrl(myRemote).build();
   }

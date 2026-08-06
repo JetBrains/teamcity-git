@@ -25,6 +25,7 @@ import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.commons.codec.CharEncoding;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -437,15 +438,22 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final String debugInfo = LogUtil.describe(gitRoot);
     try {
       return executeCommand(ctx, "push", debugInfo, () -> {
-        gitFacade.push()
-                 .setRemote(gitRoot.getRepositoryPushURL().toString())
-                 .setRefspec(fullRef)
-                 .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
-                 .setTimeout(myConfig.getPushTimeoutSeconds())
-                 .setRetryAttempts(myConfig.getConnectionRetryAttempts())
-                 .setRepoUrl(gitRoot.getRepositoryPushURL().get())
-                 .trace(myConfig.getGitTraceEnv())
-                 .call();
+        //the local update-ref above is a compare-and-swap in the mirror only; the lease makes the remote side reject
+        //the push as well when the ref no longer points to the revision the update was based on, which a plain push
+        //accepts silently if the ref was deleted or rewound meanwhile. A branch being created has no revision to
+        //protect, its 'ref must not exist' condition is the zero id passed to update-ref.
+        final jetbrains.buildServer.buildTriggers.vcs.git.command.PushCommand pushCmd = gitFacade.push();
+        if (!ObjectId.zeroId().name().equals(lastCommit)) {
+          pushCmd.setForceWithLease(fullRef, lastCommit);
+        }
+        pushCmd.setRemote(gitRoot.getRepositoryPushURL().toString())
+               .setRefspec(fullRef)
+               .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+               .setTimeout(myConfig.getPushTimeoutSeconds())
+               .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+               .setRepoUrl(gitRoot.getRepositoryPushURL().get())
+               .trace(myConfig.getGitTraceEnv())
+               .call();
         return CommitResult.createSuccessResult(commit);
       }, gitFacade);
     } catch (VcsException e) {

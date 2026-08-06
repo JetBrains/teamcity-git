@@ -33,18 +33,15 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
-  private final ServerPluginConfig myPluginConfig;
   private final GitRepoOperations myRepoOperations;
 
   public GitCherryPickSupport(@NotNull GitVcsSupport vcs,
                               @NotNull CommitLoader commitLoader,
                               @NotNull RepositoryManager repositoryManager,
-                              @NotNull ServerPluginConfig pluginConfig,
                               @NotNull GitRepoOperations repoOperations) {
     myVcs = vcs;
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
-    myPluginConfig = pluginConfig;
     myRepoOperations = repoOperations;
     myVcs.addExtension(this);
   }
@@ -80,22 +77,13 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
     GitVcsRoot gitRoot = context.getGitRoot();
     return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
       try {
-        Repository db = context.getRepository();
-        int attemptsLeft = Math.max(1, myPluginConfig.getMergeRetryAttempts());
-        while (true) {
-          try {
-            return pickRevisions(context, gitRoot, db, srcRevisions, dstBranch, options, publish);
-          } catch (CherryPickRejectedException e) {
-            LOG.info(operation + " was rejected, root " + root + ", destination " + dstBranch + ": " + e.getMessage());
-            return CherryPickResult.createRejected(e.getMessage());
-          } catch (PushFailedException e) {
-            attemptsLeft--;
-            LOG.info("Failed to publish the cherry-pick result, root " + root + ", destination " + dstBranch +
-                     ", attempts left " + attemptsLeft, e.getCause());
-            if (attemptsLeft <= 0)
-              return CherryPickResult.createRejected(e.getMessage());
-          }
-        }
+        //the operation is not retried: its result is computed against the revision the destination branch pointed
+        //to when it started, so publishing it after a concurrent update would mean publishing something the caller
+        //never asked for
+        return pickRevisions(context, gitRoot, context.getRepository(), srcRevisions, dstBranch, options, publish);
+      } catch (CherryPickRejectedException e) {
+        LOG.info(operation + " was rejected, root " + root + ", destination " + dstBranch + ": " + e.getMessage());
+        return CherryPickResult.createRejected(e.getMessage());
       } catch (Exception e) {
         throw context.wrapException(e);
       } finally {
@@ -111,7 +99,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                                          @NotNull List<String> srcRevisions,
                                          @NotNull String dstBranch,
                                          @NotNull CherryPickOptions options,
-                                         boolean publish) throws IOException, VcsException, CherryPickRejectedException, PushFailedException {
+                                         boolean publish) throws IOException, VcsException, CherryPickRejectedException {
     String dstRef = GitUtils.expandRef(dstBranch);
     Map<String, Ref> remoteRefs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
     Ref remoteDstRef = remoteRefs.get(dstRef);
@@ -204,14 +192,21 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                     @NotNull Repository db,
                     @NotNull String dstRef,
                     @NotNull RevCommit newTip,
-                    @NotNull RevCommit expectedOldTip) throws PushFailedException {
+                    @NotNull RevCommit expectedOldTip) throws VcsException, CherryPickRejectedException {
     ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
     lock.lock();
     try {
       myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString())
                       .push(db, gitRoot, dstRef, newTip.name(), expectedOldTip.name());
     } catch (VcsException e) {
-      throw new PushFailedException(e);
+      if (isUpdatedConcurrently(gitRoot, dstRef, expectedOldTip)) {
+        LOG.info("Cherry-pick result was not published, " + dstRef + " was updated concurrently, root " + gitRoot, e);
+        throw new CherryPickRejectedException("The '" + dstRef + "' destination branch was updated concurrently, " +
+                                              "nothing was published");
+      }
+      //the push failed for a reason of its own, authentication or the network for instance: that is not a rejected
+      //cherry-pick but a failure of the operation, so it must not be reported as a result
+      throw e;
     } finally {
       lock.unlock();
     }
@@ -219,19 +214,36 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
 
   /**
    * Loads the commit to pick, fetching it if it is missing in the mirror.
+   *
+   * @throws CherryPickRejectedException if the repository has no such revision; a fetch which fails for a reason of
+   * its own reports a {@link VcsException}, because that is a failure of the operation and not its result
    */
   @NotNull
   private RevCommit loadSourceCommit(@NotNull OperationContext context,
                                      @NotNull GitVcsRoot gitRoot,
                                      @NotNull Repository db,
-                                     @NotNull String revision) throws CherryPickRejectedException, IOException {
+                                     @NotNull String revision) throws CherryPickRejectedException, VcsException, IOException {
     RevCommit commit = myCommitLoader.findCommit(db, revision);
     if (commit != null)
       return commit;
     try {
       return myCommitLoader.loadCommit(context, gitRoot, revision);
-    } catch (VcsException e) {
+    } catch (RevisionNotFoundException e) {
       throw new CherryPickRejectedException("Cannot cherry-pick revision " + revision + ": " + e.getMessage());
+    }
+  }
+
+  /**
+   * Tells a lost compare-and-swap from a failure of the push itself: the result cannot be published when the
+   * destination branch no longer points to the revision the operation was computed against.
+   */
+  private boolean isUpdatedConcurrently(@NotNull GitVcsRoot gitRoot, @NotNull String dstRef, @NotNull RevCommit expectedTip) {
+    try {
+      Ref current = myVcs.getRemoteRefs(gitRoot.getOriginalRoot()).get(dstRef);
+      return current == null || current.getObjectId() == null || !expectedTip.name().equals(current.getObjectId().name());
+    } catch (VcsException e) {
+      LOG.debug("Cannot check whether " + dstRef + " was updated concurrently, root " + gitRoot, e);
+      return false;
     }
   }
 
@@ -315,12 +327,4 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
     }
   }
 
-  /**
-   * Publishing the result failed, most probably because the destination branch was updated concurrently.
-   */
-  private static class PushFailedException extends Exception {
-    private PushFailedException(@NotNull VcsException cause) {
-      super(cause.getMessage(), cause);
-    }
-  }
 }
