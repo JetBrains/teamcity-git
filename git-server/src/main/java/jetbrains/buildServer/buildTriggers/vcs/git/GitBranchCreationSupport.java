@@ -38,6 +38,8 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
                                            @NotNull String branchName,
                                            @NotNull String revision) throws VcsException {
     LOG.info("Create branch " + branchName + " at revision " + revision + " in root " + root);
+    if (!ObjectId.isId(revision))
+      throw new VcsException("Cannot create branch " + branchName + ": '" + revision + "' is not a full revision");
     String ref = GitUtils.expandRef(branchName);
     OperationContext context = myVcs.createContext(root, "createBranch");
     GitVcsRoot gitRoot = context.getGitRoot();
@@ -49,7 +51,7 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
         if (existingRef != null && existingRef.getObjectId() != null) {
           String existingRevision = existingRef.getObjectId().name();
           LOG.info("Branch " + branchName + " already exists in root " + root + " at revision " + existingRevision);
-          return pointsTo(db, existingRevision, revision)
+          return existingRevision.equalsIgnoreCase(revision)
                  ? BranchCreationResult.alreadyAtRevision(branchName, existingRevision)
                  : BranchCreationResult.existsAtOtherRevision(branchName, existingRevision);
         }
@@ -77,15 +79,4 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
     });
   }
 
-  /**
-   * Tells whether the existing branch already points to the requested revision. The revisions are compared as
-   * strings first, so an existing branch is recognized without fetching anything; if they differ, the requested
-   * revision is resolved in the mirror when it happens to be there, which also covers an abbreviated revision.
-   */
-  private boolean pointsTo(@NotNull Repository db, @NotNull String existingRevision, @NotNull String requestedRevision) {
-    if (existingRevision.equalsIgnoreCase(requestedRevision))
-      return true;
-    RevCommit requested = myCommitLoader.findCommit(db, requestedRevision);
-    return requested != null && existingRevision.equals(requested.name());
-  }
 }

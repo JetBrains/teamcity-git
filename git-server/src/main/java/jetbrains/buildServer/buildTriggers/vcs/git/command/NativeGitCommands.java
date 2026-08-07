@@ -433,20 +433,25 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
-    gitFacade.updateRef().setRef(fullRef).setRevision(commit).setOldValue(lastCommit).call();
+    if (ObjectId.zeroId().name().equals(lastCommit)) {
+      //a branch is being created: the local ref is only a mirror of the remote one and can still be there for a
+      //branch which was deleted remotely, so it must not block the creation. The precondition that matters is the
+      //remote one, and the lease below enforces it
+      gitFacade.updateRef().setRef(fullRef).setRevision(commit).call();
+    } else {
+      gitFacade.updateRef().setRef(fullRef).setRevision(commit).setOldValue(lastCommit).call();
+    }
 
     final String debugInfo = LogUtil.describe(gitRoot);
     try {
       return executeCommand(ctx, "push", debugInfo, () -> {
-        //the local update-ref above is a compare-and-swap in the mirror only; the lease makes the remote side reject
-        //the push as well when the ref no longer points to the revision the update was based on, which a plain push
-        //accepts silently if the ref was deleted or rewound meanwhile. A branch being created has no revision to
-        //protect, its 'ref must not exist' condition is the zero id passed to update-ref.
+        //the update-ref above is a compare-and-swap in the mirror only; the lease makes the remote side reject the
+        //push as well when the ref no longer points to the revision the update was based on, which a plain push
+        //accepts silently if the ref was deleted or rewound meanwhile. The zero id is the expected value for a
+        //branch being created and means 'the ref must not exist'
         final jetbrains.buildServer.buildTriggers.vcs.git.command.PushCommand pushCmd = gitFacade.push();
-        if (!ObjectId.zeroId().name().equals(lastCommit)) {
-          pushCmd.setForceWithLease(fullRef, lastCommit);
-        }
-        pushCmd.setRemote(gitRoot.getRepositoryPushURL().toString())
+        pushCmd.setForceWithLease(fullRef, lastCommit)
+               .setRemote(gitRoot.getRepositoryPushURL().toString())
                .setRefspec(fullRef)
                .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
                .setTimeout(myConfig.getPushTimeoutSeconds())

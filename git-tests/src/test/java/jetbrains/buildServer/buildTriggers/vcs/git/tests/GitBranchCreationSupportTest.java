@@ -18,6 +18,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
@@ -120,6 +121,29 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
+  public void creates_a_branch_which_was_deleted_remotely_after_it_was_mirrored() throws Exception {
+    myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
+    //the mirror keeps the branch until it is pruned, and that stale ref must not block the creation
+    deleteRef(myRemote, "refs/heads/release-1.0");
+
+    BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER_PARENT);
+
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
+    then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER_PARENT);
+  }
+
+
+  public void rejects_a_revision_which_is_not_a_full_one() throws Exception {
+    try {
+      myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER.substring(0, 8));
+      fail("VcsException is expected for a revision which is not a full one");
+    } catch (VcsException e) {
+      then(e.getMessage()).contains(MASTER.substring(0, 8));
+    }
+    then(resolveRef(myRemote, "refs/heads/release-1.0")).isNull();
+  }
+
+
   public void rejects_unknown_revision() throws Exception {
     try {
       myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", ObjectId.zeroId().name());
@@ -145,6 +169,15 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
       .isEqualTo(MASTER);
   }
 
+
+  private static void deleteRef(@NotNull File bareRepo, @NotNull String ref) throws Exception {
+    try (Repository r = new RepositoryBuilder().setBare().setGitDir(bareRepo).build()) {
+      RefUpdate update = r.updateRef(GitUtils.expandRef(ref));
+      update.setForceUpdate(true);
+      RefUpdate.Result result = update.delete();
+      then(result).isIn(RefUpdate.Result.FORCED, RefUpdate.Result.FAST_FORWARD, RefUpdate.Result.NO_CHANGE);
+    }
+  }
 
   @Nullable
   private static String resolveRef(@NotNull File bareRepo, @NotNull String ref) throws Exception {

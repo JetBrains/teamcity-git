@@ -270,6 +270,21 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
+  public void rejects_a_malformed_source_revision() throws Exception {
+    String masterBefore = resolveRef(myRemote, "refs/heads/master");
+
+    //an abbreviated revision is not a full object id either, and the repository cannot even be asked about it
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1.substring(0, 8), "refs/heads/master",
+                                                            CherryPickOptions.create());
+
+    then(result.getStatus())
+      .overridingErrorMessage("a revision which cannot be picked is a result, not a failure of the operation")
+      .isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).contains(TOPIC_1.substring(0, 8));
+    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
+  }
+
+
   public void rejects_an_empty_request() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Collections.<String>emptyList(), "refs/heads/master",
                                                             CherryPickOptions.create());

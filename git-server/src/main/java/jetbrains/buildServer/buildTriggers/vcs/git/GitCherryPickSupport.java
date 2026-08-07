@@ -17,6 +17,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static java.util.Arrays.asList;
 
@@ -199,13 +200,28 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString())
                       .push(db, gitRoot, dstRef, newTip.name(), expectedOldTip.name());
     } catch (VcsException e) {
-      if (isUpdatedConcurrently(gitRoot, dstRef, expectedOldTip)) {
+      String published;
+      try {
+        published = getRemoteRevision(gitRoot, dstRef);
+      } catch (VcsException cannotTell) {
+        LOG.debug("Cannot read " + dstRef + " to find out why the push failed, root " + gitRoot, cannotTell);
+        throw e;
+      }
+
+      if (newTip.name().equals(published)) {
+        //the remote accepted the update and the answer was lost on the way back: the result is published, and
+        //reporting a failure would make the caller pick the same revisions once again
+        LOG.warn("The push reported a failure, but " + dstRef + " points to the cherry-pick result " + newTip.name() +
+                 ", root " + gitRoot, e);
+        return;
+      }
+      if (!expectedOldTip.name().equals(published)) {
         LOG.info("Cherry-pick result was not published, " + dstRef + " was updated concurrently, root " + gitRoot, e);
         throw new CherryPickRejectedException("The '" + dstRef + "' destination branch was updated concurrently, " +
                                               "nothing was published");
       }
-      //the push failed for a reason of its own, authentication or the network for instance: that is not a rejected
-      //cherry-pick but a failure of the operation, so it must not be reported as a result
+      //the branch is where it was and the push failed for a reason of its own, authentication or the network for
+      //instance: that is not a rejected cherry-pick but a failure of the operation
       throw e;
     } finally {
       lock.unlock();
@@ -223,6 +239,11 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                                      @NotNull GitVcsRoot gitRoot,
                                      @NotNull Repository db,
                                      @NotNull String revision) throws CherryPickRejectedException, VcsException, IOException {
+    if (!ObjectId.isId(revision)) {
+      //an abbreviated or a malformed revision is not something the repository can be asked about, and the contract
+      //reports a revision which cannot be picked as a result rather than as a failure of the operation
+      throw new CherryPickRejectedException("Cannot cherry-pick revision " + revision + ": it is not a full revision");
+    }
     RevCommit commit = myCommitLoader.findCommit(db, revision);
     if (commit != null)
       return commit;
@@ -234,17 +255,12 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   }
 
   /**
-   * Tells a lost compare-and-swap from a failure of the push itself: the result cannot be published when the
-   * destination branch no longer points to the revision the operation was computed against.
+   * @return revision the branch points to on the remote side, null if there is no such branch
    */
-  private boolean isUpdatedConcurrently(@NotNull GitVcsRoot gitRoot, @NotNull String dstRef, @NotNull RevCommit expectedTip) {
-    try {
-      Ref current = myVcs.getRemoteRefs(gitRoot.getOriginalRoot()).get(dstRef);
-      return current == null || current.getObjectId() == null || !expectedTip.name().equals(current.getObjectId().name());
-    } catch (VcsException e) {
-      LOG.debug("Cannot check whether " + dstRef + " was updated concurrently, root " + gitRoot, e);
-      return false;
-    }
+  @Nullable
+  private String getRemoteRevision(@NotNull GitVcsRoot gitRoot, @NotNull String ref) throws VcsException {
+    Ref remoteRef = myVcs.getRemoteRefs(gitRoot.getOriginalRoot()).get(ref);
+    return remoteRef == null || remoteRef.getObjectId() == null ? null : remoteRef.getObjectId().name();
   }
 
   /**
