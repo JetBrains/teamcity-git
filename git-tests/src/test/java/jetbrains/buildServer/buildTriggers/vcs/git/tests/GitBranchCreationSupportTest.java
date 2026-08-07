@@ -2,8 +2,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.function.Function;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitBranchCreationSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitCherryPickSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitRepoOperations;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
@@ -56,19 +58,28 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
+    createSupports(null);
+    myRemote = getRemoteRepositoryDir("merge");
+    myRoot = vcsRoot().withFetchUrl(myRemote).build();
+  }
+
+  /**
+   * @param intercept applied to the real git operations when a test needs to interfere with the push
+   */
+  private void createSupports(@Nullable Function<GitRepoOperations, GitRepoOperations> intercept) throws Exception {
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     GitSupportBuilder builder = gitSupport().withServerPaths(paths);
     myGit = builder.build();
-    GitRepoOperationsImpl repoOperations = new GitRepoOperationsImpl(builder.getPluginConfig(),
-                                                                    builder.getTransportFactory(),
-                                                                    r -> null,
-                                                                    (a, b, c) -> {},
-                                                                    myKnownHostsManager);
+    GitRepoOperations repoOperations = new GitRepoOperationsImpl(builder.getPluginConfig(),
+                                                                 builder.getTransportFactory(),
+                                                                 r -> null,
+                                                                 (a, b, c) -> {},
+                                                                 myKnownHostsManager);
+    if (intercept != null)
+      repoOperations = intercept.apply(repoOperations);
     myBranchCreationSupport = new GitBranchCreationSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), repoOperations);
     myCherryPickSupport = new GitCherryPickSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(),
                                                    repoOperations);
-    myRemote = getRemoteRepositoryDir("merge");
-    myRoot = vcsRoot().withFetchUrl(myRemote).build();
   }
 
 
@@ -133,6 +144,22 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
+  public void does_not_move_a_branch_created_between_the_check_and_the_push() throws Exception {
+    //somebody creates the branch at an ancestor of the requested revision in the window the operation cannot see:
+    //a push without a lease would fast-forward it and report the branch as created
+    createSupports(ops -> new PushInterceptingRepoOperations(ops)
+      .beforePush(() -> setRef(myRemote, "refs/heads/release-1.0", MASTER_PARENT)));
+
+    BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
+
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.EXISTS_AT_OTHER_REVISION);
+    then(result.getRevision()).isEqualTo(MASTER_PARENT);
+    then(resolveRef(myRemote, "refs/heads/release-1.0"))
+      .overridingErrorMessage("the branch created by somebody else must not be moved")
+      .isEqualTo(MASTER_PARENT);
+  }
+
+
   public void rejects_a_revision_which_is_not_a_full_one() throws Exception {
     try {
       myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER.substring(0, 8));
@@ -169,6 +196,15 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
       .isEqualTo(MASTER);
   }
 
+
+  private static void setRef(@NotNull File bareRepo, @NotNull String ref, @NotNull String revision) throws Exception {
+    try (Repository r = new RepositoryBuilder().setBare().setGitDir(bareRepo).build()) {
+      RefUpdate update = r.updateRef(GitUtils.expandRef(ref));
+      update.setNewObjectId(ObjectId.fromString(revision));
+      update.setForceUpdate(true);
+      then(update.forceUpdate()).isIn(RefUpdate.Result.NEW, RefUpdate.Result.FORCED, RefUpdate.Result.FAST_FORWARD);
+    }
+  }
 
   private static void deleteRef(@NotNull File bareRepo, @NotNull String ref) throws Exception {
     try (Repository r = new RepositoryBuilder().setBare().setGitDir(bareRepo).build()) {

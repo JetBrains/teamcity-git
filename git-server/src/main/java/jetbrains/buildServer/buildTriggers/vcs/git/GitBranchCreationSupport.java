@@ -1,7 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.vcs.BranchCreationResult;
 import jetbrains.buildServer.vcs.BranchCreationSupport;
@@ -12,6 +11,7 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class GitBranchCreationSupport implements BranchCreationSupport, GitServerExtension {
 
@@ -45,15 +45,11 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
     GitVcsRoot gitRoot = context.getGitRoot();
     return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
       try {
-        Map<String, Ref> remoteRefs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
-        Ref existingRef = remoteRefs.get(ref);
         Repository db = context.getRepository();
-        if (existingRef != null && existingRef.getObjectId() != null) {
-          String existingRevision = existingRef.getObjectId().name();
-          LOG.info("Branch " + branchName + " already exists in root " + root + " at revision " + existingRevision);
-          return existingRevision.equalsIgnoreCase(revision)
-                 ? BranchCreationResult.alreadyAtRevision(branchName, existingRevision)
-                 : BranchCreationResult.existsAtOtherRevision(branchName, existingRevision);
+        BranchCreationResult existing = getExistingBranch(gitRoot, ref, branchName, revision);
+        if (existing != null) {
+          LOG.info("Branch " + branchName + " already exists in root " + root + " at revision " + existing.getRevision());
+          return existing;
         }
 
         RevCommit commit = myCommitLoader.findCommit(db, revision);
@@ -63,9 +59,18 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
         ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
         lock.lock();
         try {
-          //the zero id means the ref must not exist yet, so a concurrent creation fails instead of being overwritten
+          //the zero id means the ref must not exist yet, so a branch created meanwhile is reported instead of
+          //being moved by this push
           myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString())
                           .push(db, gitRoot, ref, commit.name(), ObjectId.zeroId().name());
+        } catch (VcsException e) {
+          BranchCreationResult createdMeanwhile = getExistingBranch(gitRoot, ref, branchName, revision);
+          if (createdMeanwhile != null) {
+            LOG.info("Branch " + branchName + " was created concurrently in root " + root + " at revision " +
+                     createdMeanwhile.getRevision(), e);
+            return createdMeanwhile;
+          }
+          throw e;
         } finally {
           lock.unlock();
         }
@@ -79,4 +84,22 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
     });
   }
 
+  /**
+   * @return how the branch which is already there relates to the requested revision, null if there is no such
+   * branch on the remote side
+   */
+  @Nullable
+  private BranchCreationResult getExistingBranch(@NotNull GitVcsRoot gitRoot,
+                                                 @NotNull String ref,
+                                                 @NotNull String branchName,
+                                                 @NotNull String revision) throws VcsException {
+    Ref existingRef = myVcs.getRemoteRefs(gitRoot.getOriginalRoot()).get(ref);
+    if (existingRef == null || existingRef.getObjectId() == null)
+      return null;
+
+    String existingRevision = existingRef.getObjectId().name();
+    return existingRevision.equalsIgnoreCase(revision)
+           ? BranchCreationResult.alreadyAtRevision(branchName, existingRevision)
+           : BranchCreationResult.existsAtOtherRevision(branchName, existingRevision);
+  }
 }

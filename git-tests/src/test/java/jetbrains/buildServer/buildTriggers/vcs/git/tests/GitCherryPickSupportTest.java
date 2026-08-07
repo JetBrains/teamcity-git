@@ -8,7 +8,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitCherryPickSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitRepoOperations;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
@@ -17,10 +19,12 @@ import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CherryPickOptions;
 import jetbrains.buildServer.vcs.CherryPickResult;
 import jetbrains.buildServer.vcs.CherryPickSupport;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -34,6 +38,7 @@ import org.testng.annotations.Test;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.assertj.core.api.BDDAssertions.then;
+import static org.testng.AssertJUnit.fail;
 
 /**
  * The 'merge' repository used by these tests looks as follows:
@@ -78,12 +83,23 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
   @NotNull
   private CherryPickSupport createCherryPickSupport(@NotNull GitSupportBuilder builder) throws Exception {
+    return createCherryPickSupport(builder, null);
+  }
+
+  /**
+   * @param intercept applied to the real git operations when a test needs to interfere with the push
+   */
+  @NotNull
+  private CherryPickSupport createCherryPickSupport(@NotNull GitSupportBuilder builder,
+                                                    @Nullable Function<GitRepoOperations, GitRepoOperations> intercept) throws Exception {
     myGit = builder.build();
-    GitRepoOperationsImpl repoOperations = new GitRepoOperationsImpl(builder.getPluginConfig(),
-                                                                    builder.getTransportFactory(),
-                                                                    r -> null,
-                                                                    (a, b, c) -> {},
-                                                                    myKnownHostsManager);
+    GitRepoOperations repoOperations = new GitRepoOperationsImpl(builder.getPluginConfig(),
+                                                                 builder.getTransportFactory(),
+                                                                 r -> null,
+                                                                 (a, b, c) -> {},
+                                                                 myKnownHostsManager);
+    if (intercept != null)
+      repoOperations = intercept.apply(repoOperations);
     return new GitCherryPickSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), repoOperations);
   }
 
@@ -348,6 +364,65 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
+  public void rejects_the_pick_when_the_branch_is_updated_between_the_fetch_and_the_push() throws Exception {
+    //another writer advances the destination branch in the window the operation cannot see
+    myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
+                                                  ops -> new PushInterceptingRepoOperations(ops)
+                                                    .beforePush(() -> setRef(myRemote, "refs/heads/master", TOPIC2_1)));
+
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus())
+      .overridingErrorMessage("the result was computed against a revision the branch no longer points to")
+      .isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).contains("concurrently");
+    then(result.getNewBranchRevision()).isNull();
+    then(resolveRef(myRemote, "refs/heads/master"))
+      .overridingErrorMessage("the other writer's revision must survive")
+      .isEqualTo(TOPIC2_1);
+  }
+
+
+  public void reports_the_result_as_published_when_the_push_answer_is_lost() throws Exception {
+    //the remote accepts the update, but the caller sees a failure instead of the answer
+    myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
+                                                  ops -> new PushInterceptingRepoOperations(ops)
+                                                    .failAfterPush("Connection reset by peer"));
+
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus())
+      .overridingErrorMessage("the revisions are published, reporting a rejection would make the caller pick them twice")
+      .isEqualTo(CherryPickResult.Status.PICKED);
+    String newTip = result.getNewBranchRevision();
+    then(newTip).isNotNull().isNotEqualTo(MASTER);
+    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(newTip);
+  }
+
+
+  public void fails_when_the_push_fails_and_the_branch_is_where_it_was() throws Exception {
+    //the branch has not moved, so the failure is the push's own and must not be reported as a cherry-pick result
+    myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
+                                                  ops -> new PushInterceptingRepoOperations(ops) {
+                                                    @NotNull
+                                                    @Override
+                                                    public jetbrains.buildServer.buildTriggers.vcs.git.PushCommand pushCommand(@NotNull String repoUrl) {
+                                                      return (db, gitRoot, ref, commit, lastCommit) -> {
+                                                        throw new VcsException("Authentication failed");
+                                                      };
+                                                    }
+                                                  });
+
+    try {
+      myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
+      fail("VcsException is expected when the push itself fails");
+    } catch (VcsException e) {
+      then(e.getMessage()).contains("Authentication failed");
+    }
+    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(MASTER);
+  }
+
+
   public void concurrent_cherry_picks_into_the_same_branch() throws Exception {
     CountDownLatch start = new CountDownLatch(1);
     CountDownLatch ready = new CountDownLatch(2);
@@ -428,6 +503,15 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
         revisions.add(picked.getCreatedRevision());
     }
     return revisions;
+  }
+
+  private static void setRef(@NotNull File bareRepo, @NotNull String ref, @NotNull String revision) throws Exception {
+    try (Repository r = new RepositoryBuilder().setBare().setGitDir(bareRepo).build()) {
+      RefUpdate update = r.updateRef(GitUtils.expandRef(ref));
+      update.setNewObjectId(ObjectId.fromString(revision));
+      update.setForceUpdate(true);
+      then(update.forceUpdate()).isIn(RefUpdate.Result.FORCED, RefUpdate.Result.FAST_FORWARD, RefUpdate.Result.NEW);
+    }
   }
 
   @Nullable
