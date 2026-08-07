@@ -22,6 +22,7 @@ public class EchoArgumentEscapingTest {
     assertEquals("", escaper.escape(null));
     assertEquals("^\"", escaper.escape("\""));
     assertEquals("^\"^<", escaper.escape("\"<"));
+    assertEquals("ab", escaper.escape("a\r\nb"));
   }
 
   public void unix_escaping() {
