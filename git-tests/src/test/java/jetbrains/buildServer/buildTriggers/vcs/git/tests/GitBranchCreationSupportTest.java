@@ -160,6 +160,18 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
+  public void rejects_a_name_which_is_not_a_branch_ref() throws Exception {
+    //a qualified ref is taken as is, so a tag must not be created by an operation which creates a branch
+    try {
+      myBranchCreationSupport.createBranch(myRoot, "refs/tags/v1.0", MASTER);
+      fail("VcsException is expected for a ref which is not a branch");
+    } catch (VcsException e) {
+      then(e.getMessage()).contains("refs/tags/v1.0");
+    }
+    then(resolveRef(myRemote, "refs/tags/v1.0")).isNull();
+  }
+
+
   public void rejects_a_revision_which_is_not_a_full_one() throws Exception {
     try {
       myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER.substring(0, 8));

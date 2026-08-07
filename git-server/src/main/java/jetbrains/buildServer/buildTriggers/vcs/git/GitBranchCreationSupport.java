@@ -41,6 +41,10 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
     if (!ObjectId.isId(revision))
       throw new VcsException("Cannot create branch " + branchName + ": '" + revision + "' is not a full revision");
     String ref = GitUtils.expandRef(branchName);
+    if (!GitServerUtil.isBranch(ref)) {
+      //a qualified ref is taken as is, and creating a tag or a note is not what this operation is for
+      throw new VcsException("Cannot create branch " + branchName + ": '" + ref + "' is not a branch");
+    }
     OperationContext context = myVcs.createContext(root, "createBranch");
     GitVcsRoot gitRoot = context.getGitRoot();
     return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
@@ -64,7 +68,14 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
           myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString())
                           .push(db, gitRoot, ref, commit.name(), ObjectId.zeroId().name());
         } catch (VcsException e) {
-          BranchCreationResult createdMeanwhile = getExistingBranch(gitRoot, ref, branchName, revision);
+          BranchCreationResult createdMeanwhile;
+          try {
+            createdMeanwhile = getExistingBranch(gitRoot, ref, branchName, revision);
+          } catch (VcsException cannotTell) {
+            //reading the branch failed too, so the reason of the push failure is the only thing left to report
+            LOG.debug("Cannot read " + ref + " to find out why the push failed, root " + root, cannotTell);
+            throw e;
+          }
           if (createdMeanwhile != null) {
             LOG.info("Branch " + branchName + " was created concurrently in root " + root + " at revision " +
                      createdMeanwhile.getRevision(), e);

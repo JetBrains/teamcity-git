@@ -26,8 +26,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   private static final Logger LOG = Logger.getInstance(GitCherryPickSupport.class.getName());
 
   /**
-   * A line of the form 'Signed-off-by: ...' or '(cherry picked from commit ...)' at the end of a commit message,
-   * the 'cherry picked from' line is appended to such a block without an empty line in between.
+   * A line of the form 'Signed-off-by: ...' or '(cherry picked from commit ...)', see {@link #endsWithTrailerBlock}.
    */
   private static final Pattern TRAILER_LINE = Pattern.compile("(?:[A-Za-z][A-Za-z-]*: .*|\\(cherry picked from commit [0-9a-f]+\\))");
 
@@ -102,18 +101,20 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                                          @NotNull CherryPickOptions options,
                                          boolean publish) throws IOException, VcsException, CherryPickRejectedException {
     String dstRef = GitUtils.expandRef(dstBranch);
+    if (!GitServerUtil.isBranch(dstRef)) {
+      //a qualified ref is taken as is, and a tag or a note is not something this operation may update
+      throw new CherryPickRejectedException("The '" + dstBranch + "' destination is not a branch");
+    }
     Map<String, Ref> remoteRefs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
     Ref remoteDstRef = remoteRefs.get(dstRef);
     if (remoteDstRef == null || remoteDstRef.getObjectId() == null)
       throw new CherryPickRejectedException("The '" + dstBranch + "' destination branch doesn't exist");
 
-    RefSpec spec = new RefSpec().setSource(dstRef).setDestination(dstRef).setForceUpdate(true);
-    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), new FetchSettings(gitRoot.getAuthSettings(), asList(spec)));
+    String observedRevision = remoteDstRef.getObjectId().name();
+    fetchDestinationBranch(gitRoot, db, dstBranch, dstRef, observedRevision);
 
-    RevWalk walk = new RevWalk(db);
-    ObjectInserter inserter = db.newObjectInserter();
-    try {
-      RevCommit branchTip = walk.parseCommit(myCommitLoader.loadCommit(context, gitRoot, remoteDstRef.getObjectId().name()));
+    try (RevWalk walk = new RevWalk(db); ObjectInserter inserter = db.newObjectInserter()) {
+      RevCommit branchTip = walk.parseCommit(loadBranchTip(context, gitRoot, dstBranch, observedRevision));
       RevCommit current = branchTip;
       List<CherryPickResult.PickedCommit> picked = new ArrayList<CherryPickResult.PickedCommit>();
       boolean anythingPicked = false;
@@ -158,10 +159,62 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       push(gitRoot, db, dstRef, current, branchTip);
       LOG.info("Cherry-pick of " + srcRevisions + " into " + dstBranch + " successfully finished, new revision " + current.name());
       return CherryPickResult.createPicked(current.name(), picked);
-    } finally {
-      inserter.close();
-      walk.close();
     }
+  }
+
+  /**
+   * Brings the destination branch into the mirror, telling a concurrent update of it from a failure of the fetch
+   * itself: the branch can be deleted or rewound between the moment it was read and the fetch, and the fetch of a
+   * ref which is no longer there fails.
+   *
+   * @param observedRevision revision the branch pointed to when it was read
+   */
+  private void fetchDestinationBranch(@NotNull GitVcsRoot gitRoot,
+                                      @NotNull Repository db,
+                                      @NotNull String dstBranch,
+                                      @NotNull String dstRef,
+                                      @NotNull String observedRevision) throws IOException, VcsException, CherryPickRejectedException {
+    RefSpec spec = new RefSpec().setSource(dstRef).setDestination(dstRef).setForceUpdate(true);
+    try {
+      myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), new FetchSettings(gitRoot.getAuthSettings(), asList(spec)));
+    } catch (IOException | VcsException e) {
+      String current;
+      try {
+        current = getRemoteRevision(gitRoot, dstRef);
+      } catch (VcsException cannotTell) {
+        LOG.debug("Cannot read " + dstRef + " to find out why the fetch failed, root " + gitRoot, cannotTell);
+        throw e;
+      }
+      if (!observedRevision.equals(current)) {
+        LOG.info("Cherry-pick was not started, " + dstRef + " was updated concurrently, root " + gitRoot, e);
+        throw updatedConcurrently(dstBranch);
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Loads the revision the destination branch pointed to when the operation started.
+   *
+   * @throws CherryPickRejectedException if that revision is already gone, which means the branch was updated
+   * between the moment it was read and the fetch: the result would be computed against a revision nobody has
+   */
+  @NotNull
+  private RevCommit loadBranchTip(@NotNull OperationContext context,
+                                  @NotNull GitVcsRoot gitRoot,
+                                  @NotNull String dstBranch,
+                                  @NotNull String revision) throws VcsException, IOException, CherryPickRejectedException {
+    try {
+      return myCommitLoader.loadCommit(context, gitRoot, revision);
+    } catch (RevisionNotFoundException e) {
+      throw updatedConcurrently(dstBranch);
+    }
+  }
+
+  @NotNull
+  private static CherryPickRejectedException updatedConcurrently(@NotNull String dstBranch) {
+    return new CherryPickRejectedException("The '" + dstBranch + "' destination branch was updated concurrently, " +
+                                          "nothing was published");
   }
 
   /**
@@ -217,8 +270,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       }
       if (!expectedOldTip.name().equals(published)) {
         LOG.info("Cherry-pick result was not published, " + dstRef + " was updated concurrently, root " + gitRoot, e);
-        throw new CherryPickRejectedException("The '" + dstRef + "' destination branch was updated concurrently, " +
-                                              "nothing was published");
+        throw updatedConcurrently(dstRef);
       }
       //the branch is where it was and the push failed for a reason of its own, authentication or the network for
       //instance: that is not a rejected cherry-pick but a failure of the operation
@@ -309,20 +361,27 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
    */
   @NotNull
   private String getCommitMessage(@NotNull RevCommit original) {
-    String message = GitServerUtil.getFullMessage(original);
-    String sourceRevisionLine = "(cherry picked from commit " + original.name() + ")";
-    if (message.contains(sourceRevisionLine))
-      return message;
-
-    StringBuilder result = new StringBuilder(trimTrailingWhitespace(message));
-    if (result.length() > 0)
-      result.append(endsWithTrailer(result.toString()) ? "\n" : "\n\n");
-    return result.append(sourceRevisionLine).append("\n").toString();
+    String message = trimTrailingWhitespace(GitServerUtil.getFullMessage(original));
+    StringBuilder result = new StringBuilder(message);
+    if (!message.isEmpty())
+      result.append(endsWithTrailerBlock(message) ? "\n" : "\n\n");
+    return result.append("(cherry picked from commit ").append(original.name()).append(")\n").toString();
   }
 
-  private static boolean endsWithTrailer(@NotNull String message) {
-    int lastLineStart = message.lastIndexOf('\n') + 1;
-    return TRAILER_LINE.matcher(message.substring(lastLineStart)).matches();
+  /**
+   * @return true if the last paragraph of the message consists of trailer lines only: that is the block
+   * 'git cherry-pick -x' appends its line to without an empty line in between. A message of a single paragraph is
+   * the subject and its body, so the line is separated from it even when its last line looks like a trailer
+   */
+  private static boolean endsWithTrailerBlock(@NotNull String message) {
+    int blockStart = message.lastIndexOf("\n\n");
+    if (blockStart < 0)
+      return false;
+    for (String line : message.substring(blockStart + 2).split("\n")) {
+      if (!TRAILER_LINE.matcher(line).matches())
+        return false;
+    }
+    return true;
   }
 
   @NotNull
@@ -335,7 +394,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   }
 
   /**
-   * The cherry-pick cannot be performed, the reason is reported to the caller via {@link CherryPickResult#getError()}.
+   * The cherry-pick cannot be performed, the reason is reported to the caller via {@link CherryPickResult#getMessage()}.
    */
   private static class CherryPickRejectedException extends Exception {
     private CherryPickRejectedException(@NotNull String message) {

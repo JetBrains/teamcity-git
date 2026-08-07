@@ -21,7 +21,9 @@ import jetbrains.buildServer.vcs.CherryPickResult;
 import jetbrains.buildServer.vcs.CherryPickSupport;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.lib.CommitBuilder;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectInserter;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefUpdate;
@@ -60,6 +62,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   private static final String TOPIC2_1 = "d73cf95b203b77a4f9ca969ac454e69eaebbf697";
   private static final String TOPIC2_3 = "cc69c22bd5d25779e58ad91008e685cbbe7f700a";
   private static final String MASTER = "f727882267df4f8fe0bc58c18559591918aefc54";
+  private static final String MASTER_PARENT = "2ffada4169e6bd7961d107f607fcdcc0e6c7749d";
   private static final String MERGE_INTO_MASTER = "68b73163526a29a1f5a341f3b6fcd0d928748579";
 
   private GitVcsSupport myGit;
@@ -310,6 +313,16 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
+  public void rejects_a_destination_which_is_not_a_branch() throws Exception {
+    //a qualified ref is taken as is, so a tag must not be updated by an operation which picks into a branch
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/tags/v1.0", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).contains("not a branch");
+    then(resolveRef(myRemote, "refs/tags/v1.0")).isNull();
+  }
+
+
   public void accepts_short_destination_branch_name() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "master", CherryPickOptions.create());
 
@@ -380,6 +393,48 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     then(resolveRef(myRemote, "refs/heads/master"))
       .overridingErrorMessage("the other writer's revision must survive")
       .isEqualTo(TOPIC2_1);
+  }
+
+
+  public void rejects_the_pick_when_the_destination_branch_is_rewound() throws Exception {
+    //the branch is moved back to an ancestor: the cherry-pick result is still a fast-forward from there, so a push
+    //without a lease would publish a result computed against a revision the branch no longer points to
+    myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
+                                                  ops -> new PushInterceptingRepoOperations(ops)
+                                                    .beforePush(() -> setRef(myRemote, "refs/heads/master", MASTER_PARENT)));
+
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).contains("concurrently");
+    then(result.getNewBranchRevision()).isNull();
+    then(resolveRef(myRemote, "refs/heads/master"))
+      .overridingErrorMessage("the rewound branch must not be fast-forwarded to the cherry-pick result")
+      .isEqualTo(MASTER_PARENT);
+  }
+
+
+  public void separates_the_source_revision_line_from_a_one_line_message() throws Exception {
+    //the subject looks like a trailer, but the 'cherry picked from' line is still a paragraph of its own
+    String source = copyWithMessage(myRemote, TOPIC_1, "Fix: a one-line message\n", "refs/heads/one-liner");
+
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, source, "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    then(fullMessage(myRemote, result.getNewBranchRevision()))
+      .isEqualTo("Fix: a one-line message\n\n(cherry picked from commit " + source + ")\n");
+  }
+
+
+  public void appends_the_source_revision_line_to_an_existing_trailer_block() throws Exception {
+    String source = copyWithMessage(myRemote, TOPIC_1, "A subject\n\nSigned-off-by: Bob <bob@acme.com>\n",
+                                    "refs/heads/signed-off");
+
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, source, "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    then(fullMessage(myRemote, result.getNewBranchRevision()))
+      .isEqualTo("A subject\n\nSigned-off-by: Bob <bob@acme.com>\n(cherry picked from commit " + source + ")\n");
   }
 
 
@@ -503,6 +558,37 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
         revisions.add(picked.getCreatedRevision());
     }
     return revisions;
+  }
+
+  /**
+   * Copies the specified commit with another message and makes the copy reachable, which is the only way to get a
+   * commit with a specific message into the fixture repository.
+   *
+   * @return revision of the copy
+   */
+  @NotNull
+  private static String copyWithMessage(@NotNull File bareRepo,
+                                        @NotNull String revision,
+                                        @NotNull String message,
+                                        @NotNull String ref) throws Exception {
+    try (Repository r = new RepositoryBuilder().setBare().setGitDir(bareRepo).build();
+         RevWalk rw = new RevWalk(r);
+         ObjectInserter inserter = r.newObjectInserter()) {
+      RevCommit original = rw.parseCommit(ObjectId.fromString(revision));
+      CommitBuilder cb = new CommitBuilder();
+      cb.setTreeId(original.getTree());
+      cb.setParentIds(original.getParents());
+      cb.setAuthor(original.getAuthorIdent());
+      cb.setCommitter(original.getCommitterIdent());
+      cb.setMessage(message);
+      ObjectId copy = inserter.insert(cb);
+      inserter.flush();
+      RefUpdate update = r.updateRef(GitUtils.expandRef(ref));
+      update.setNewObjectId(copy);
+      update.setForceUpdate(true);
+      then(update.forceUpdate()).isIn(RefUpdate.Result.NEW, RefUpdate.Result.FORCED, RefUpdate.Result.FAST_FORWARD);
+      return copy.name();
+    }
   }
 
   private static void setRef(@NotNull File bareRepo, @NotNull String ref, @NotNull String revision) throws Exception {
