@@ -28,6 +28,11 @@ public class EscapeEchoArgumentWin implements EscapeEchoArgument {
           sb.append("%");
           sb.append(c);
           break;
+        case '\r':
+        case '\n':
+          // dropped CRLF: a line break here would start a second, attacker-controlled
+          // batch command in the generated .bat (TW-102697)
+          break;
         default:
           sb.append(c);
           break;
