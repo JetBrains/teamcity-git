@@ -304,6 +304,20 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
+  public void rejects_a_batch_with_a_revision_which_is_not_there() throws Exception {
+    String masterBefore = resolveRef(myRemote, "refs/heads/master");
+
+    //the whole set is loaded before the destination branch is touched: an operation which cannot be performed
+    //anyway must not publish a part of it
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Arrays.asList(TOPIC_1, ObjectId.zeroId().name()),
+                                                            "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getPickedCommits()).isEmpty();
+    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(masterBefore);
+  }
+
+
   public void rejects_an_empty_request() throws Exception {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, Collections.<String>emptyList(), "refs/heads/master",
                                                             CherryPickOptions.create());

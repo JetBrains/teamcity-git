@@ -5,8 +5,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.CommitBuilder;
 import org.eclipse.jgit.lib.ObjectId;
@@ -105,6 +108,10 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       //a qualified ref is taken as is, and a tag or a note is not something this operation may update
       throw new CherryPickRejectedException("The '" + dstBranch + "' destination is not a branch");
     }
+    //the revisions to pick are loaded before anything is done to the destination branch: an operation which cannot
+    //be performed anyway should not fetch it, and the loader brings the whole set in one go
+    loadSourceCommits(context, gitRoot, db, srcRevisions);
+
     Map<String, Ref> remoteRefs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
     Ref remoteDstRef = remoteRefs.get(dstRef);
     if (remoteDstRef == null || remoteDstRef.getObjectId() == null)
@@ -121,7 +128,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
 
       for (int i = 0; i < srcRevisions.size(); i++) {
         String srcRevision = srcRevisions.get(i);
-        RevCommit original = walk.parseCommit(loadSourceCommit(context, gitRoot, db, srcRevision));
+        RevCommit original = walk.parseCommit(ObjectId.fromString(srcRevision));
 
         boolean alreadyReachable = walk.isMergedInto(original, current);
         walk.reset(); //isMergedInto leaves the walk in a state unsuitable for further traversals
@@ -281,29 +288,76 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   }
 
   /**
-   * Loads the commit to pick, fetching it if it is missing in the mirror.
+   * Brings every revision to pick into the mirror: the loader checks what is missing first, so a set which is
+   * already there costs nothing, and what is missing is fetched in one go rather than once per revision.
    *
-   * @throws CherryPickRejectedException if the repository has no such revision; a fetch which fails for a reason of
-   * its own reports a {@link VcsException}, because that is a failure of the operation and not its result
+   * @throws CherryPickRejectedException if a revision is malformed or the repository has no such revision; a fetch
+   * which fails for a reason of its own reports a {@link VcsException}, because that is a failure of the operation
+   * and not its result
+   */
+  private void loadSourceCommits(@NotNull OperationContext context,
+                                 @NotNull GitVcsRoot gitRoot,
+                                 @NotNull Repository db,
+                                 @NotNull List<String> srcRevisions) throws CherryPickRejectedException, VcsException, IOException {
+    List<RefCommit> toLoad = new ArrayList<RefCommit>(srcRevisions.size());
+    for (String revision : srcRevisions) {
+      if (!ObjectId.isId(revision)) {
+        //an abbreviated or a malformed revision is not something the repository can be asked about, and the
+        //contract reports a revision which cannot be picked as a result rather than as a failure of the operation
+        throw new CherryPickRejectedException("Cannot cherry-pick revision " + revision + ": it is not a full revision");
+      }
+      //the revisions to pick are commits, not branch tips; the ref only tells the loader where to look for them
+      //first, and the VCS root's own branch is where they are expected to be
+      toLoad.add(sourceRevision(gitRoot.getRef(), revision));
+    }
+
+    try {
+      myCommitLoader.loadCommits(context, gitRoot.getRepositoryFetchURL().get(), toLoad, remoteRefNames(gitRoot));
+    } catch (RevisionNotFoundException e) {
+      throw new CherryPickRejectedException("Cannot cherry-pick: " + e.getMessage());
+    }
+
+    for (String revision : srcRevisions) {
+      if (myCommitLoader.findCommit(db, revision) == null)
+        throw new CherryPickRejectedException("Cannot cherry-pick revision " + revision + ": it is not in the repository");
+    }
+  }
+
+  @NotNull
+  private static RefCommit sourceRevision(@NotNull String ref, @NotNull String revision) {
+    return new RefCommit() {
+      @NotNull
+      @Override
+      public String getRef() {
+        return GitUtils.expandRef(ref);
+      }
+
+      @NotNull
+      @Override
+      public String getCommit() {
+        return revision;
+      }
+
+      @Override
+      public boolean isRefTip() {
+        return false;
+      }
+    };
+  }
+
+  /**
+   * @return names of the remote refs, read only if the loader has to fetch something
    */
   @NotNull
-  private RevCommit loadSourceCommit(@NotNull OperationContext context,
-                                     @NotNull GitVcsRoot gitRoot,
-                                     @NotNull Repository db,
-                                     @NotNull String revision) throws CherryPickRejectedException, VcsException, IOException {
-    if (!ObjectId.isId(revision)) {
-      //an abbreviated or a malformed revision is not something the repository can be asked about, and the contract
-      //reports a revision which cannot be picked as a result rather than as a failure of the operation
-      throw new CherryPickRejectedException("Cannot cherry-pick revision " + revision + ": it is not a full revision");
-    }
-    RevCommit commit = myCommitLoader.findCommit(db, revision);
-    if (commit != null)
-      return commit;
-    try {
-      return myCommitLoader.loadCommit(context, gitRoot, revision);
-    } catch (RevisionNotFoundException e) {
-      throw new CherryPickRejectedException("Cannot cherry-pick revision " + revision + ": " + e.getMessage());
-    }
+  private Supplier<Set<String>> remoteRefNames(@NotNull GitVcsRoot gitRoot) {
+    return () -> {
+      try {
+        return myVcs.getRemoteRefs(gitRoot.getOriginalRoot()).keySet().stream()
+                    .filter(r -> r.startsWith("refs/")).collect(Collectors.toSet());
+      } catch (VcsException e) {
+        throw new RuntimeException("Failed to read remote refs of " + gitRoot, e);
+      }
+    };
   }
 
   /**
