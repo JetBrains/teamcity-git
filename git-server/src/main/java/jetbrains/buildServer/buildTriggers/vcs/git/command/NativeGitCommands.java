@@ -46,6 +46,12 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   private static final String ALL_REF_SPEC = "+refs/*:refs/*";
   private static final String EXCLUDE_TAGS_REF_SPEC = "^refs/tags/*";
 
+  /**
+   * A push protects the ref it updates with a lease, so the remote side rejects it when the ref no longer points to
+   * the revision the update was based on. Disable to go back to a plain push, which accepts such an update silently.
+   */
+  private static final String PUSH_WITH_LEASE = "teamcity.git.push.forceWithLease";
+
   private final ServerPluginConfig myConfig;
   private final GitDetector myGitDetector;
   private final VcsRootSshKeyManager mySshKeyManager;
@@ -452,16 +458,18 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
         //push as well when the ref no longer points to the revision the update was based on, which a plain push
         //accepts silently if the ref was deleted or rewound meanwhile. The zero id is the expected value for a
         //branch being created and means 'the ref must not exist'
-        gitFacade.push()
-                 .setForceWithLease(fullRef, lastCommit)
-                 .setRemote(gitRoot.getRepositoryPushURL().toString())
-                 .setRefspec(fullRef)
-                 .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
-                 .setTimeout(myConfig.getPushTimeoutSeconds())
-                 .setRetryAttempts(myConfig.getConnectionRetryAttempts())
-                 .setRepoUrl(gitRoot.getRepositoryPushURL().get())
-                 .trace(myConfig.getGitTraceEnv())
-                 .call();
+        final jetbrains.buildServer.buildTriggers.vcs.git.command.PushCommand pushCmd = gitFacade.push();
+        if (TeamCityProperties.getBooleanOrTrue(PUSH_WITH_LEASE)) {
+          pushCmd.setForceWithLease(fullRef, lastCommit);
+        }
+        pushCmd.setRemote(gitRoot.getRepositoryPushURL().toString())
+               .setRefspec(fullRef)
+               .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+               .setTimeout(myConfig.getPushTimeoutSeconds())
+               .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+               .setRepoUrl(gitRoot.getRepositoryPushURL().get())
+               .trace(myConfig.getGitTraceEnv())
+               .call();
         return CommitResult.createSuccessResult(commit);
       }, gitFacade);
     } catch (VcsException e) {

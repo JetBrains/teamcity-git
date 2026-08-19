@@ -25,6 +25,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -46,6 +47,8 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   private static final String TOPIC_2 = "6ffbeea7e607c069bdfeea5ea10d7b139c06ecca";
 
   private GitVcsSupport myGit;
+  //the tests ask it which git implementation the suite runs with
+  private GitRepoOperations myRepoOperations;
   private BranchCreationSupport myBranchCreationSupport;
   private CherryPickSupport myCherryPickSupport;
   private VcsRoot myRoot;
@@ -77,6 +80,7 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
                                                                  myKnownHostsManager);
     if (intercept != null)
       repoOperations = intercept.apply(repoOperations);
+    myRepoOperations = repoOperations;
     myBranchCreationSupport = new GitBranchCreationSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), repoOperations);
     myCherryPickSupport = new GitCherryPickSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(),
                                                    repoOperations);
@@ -169,6 +173,23 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
       then(e.getMessage()).contains("refs/tags/v1.0");
     }
     then(resolveRef(myRemote, "refs/tags/v1.0")).isNull();
+  }
+
+
+  public void switching_the_lease_off_goes_back_to_a_plain_push() throws Exception {
+    if (!myRepoOperations.isNativeGitOperationsEnabled(myRemote.getAbsolutePath())) {
+      //the JGit transport sends the expected revision with the update itself, so the toggle changes nothing there
+      throw new SkipException("the toggle only affects the native git push");
+    }
+    setInternalProperty("teamcity.git.push.forceWithLease", "false");
+    createSupports(ops -> new PushInterceptingRepoOperations(ops)
+      .beforePush(() -> setRef(myRemote, "refs/heads/release-1.0", MASTER_PARENT)));
+
+    BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
+
+    //this is the behaviour the toggle brings back: a plain push fast-forwards the branch somebody else created
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
+    then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER);
   }
 
 
