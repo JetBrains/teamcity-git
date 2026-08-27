@@ -69,17 +69,20 @@ public final class WellKnownHostingsUtil {
     return null;
   }
 
+  private static final String VSTS_HOST_SUFFIX = ".visualstudio.com";
+
   @Nullable
   public static VcsHostingRepo getVSTSRepo(@NotNull URIish uri) {
     String host = uri.getHost();
     if (host == null)
       return null;
 
-    final int idx = host.indexOf(".visualstudio.com");
-    if (idx <= 0)
+    if (!host.endsWith(VSTS_HOST_SUFFIX))
       return null;
 
-    String owner = host.substring(0, idx);
+    String owner = host.substring(0, host.length() - VSTS_HOST_SUFFIX.length());
+    if (owner.isEmpty())
+      return null;
 
     String path = uri.getPath();
     if (path == null)
