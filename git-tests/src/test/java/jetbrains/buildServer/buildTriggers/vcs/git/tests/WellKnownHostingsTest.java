@@ -5,6 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsHostingRepo;
 import jetbrains.buildServer.buildTriggers.vcs.git.WellKnownHostingsUtil;
+import jetbrains.buildServer.util.TestFor;
 import org.eclipse.jgit.transport.URIish;
 import org.testng.annotations.Test;
 
@@ -109,5 +110,19 @@ public class WellKnownHostingsTest extends BaseTestCase {
     assertEquals("https://spav5.visualstudio.com/MyProject/_git/MyFirstProject", repo.repositoryUrl());
     assertEquals("spav5", repo.owner());
     assertEquals("MyFirstProject", repo.repoName());
+  }
+
+  @TestFor(issues = "TW-102966")
+  public void test_vsts_rejects_attacker_controlled_suffix_host() throws URISyntaxException {
+    String url = "https://spav5.visualstudio.com.attacker.example/_git/MyFirstProject";
+    VcsHostingRepo repo = WellKnownHostingsUtil.getVSTSRepo(new URIish(url));
+    assertNull(repo);
+  }
+
+  @TestFor(issues = "TW-102966")
+  public void test_vsts_rejects_host_without_owner() throws URISyntaxException {
+    String url = "https://visualstudio.com/_git/MyFirstProject";
+    VcsHostingRepo repo = WellKnownHostingsUtil.getVSTSRepo(new URIish(url));
+    assertNull(repo);
   }
 }
