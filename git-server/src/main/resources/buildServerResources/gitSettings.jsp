@@ -554,7 +554,7 @@
   $j('#url').keyup(function() {Git.applyAuthConstraints();});
   $j('#push_url').keyup(function() {Git.applyAuthConstraints();});
   if ($('issuedTokenId')) {
-    $('issuedTokenId').title = "tokenId: " + calculateTokenIdFragment("${vcsPropertiesBean.tokenId}");
+    $('issuedTokenId').title = "tokenId: " + calculateTokenIdFragment("<bs:forJs>${vcsPropertiesBean.tokenId}</bs:forJs>");
   }
 
   var authTypesForPrint = {
