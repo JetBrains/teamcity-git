@@ -254,4 +254,26 @@ public class VcsPropertiesProcessorTest extends TestCase {
 
     then(invalidProps).isEmpty();
   }
+
+  @TestFor(issues = "TW-102832")
+  @Test
+  public void tokenId_with_invalid_format_is_rejected_regardless_of_auth_method() {
+    Collection<InvalidProperty> invalids = myProcessor.process(map(
+      Constants.FETCH_URL, "git://some.org/repository",
+      Constants.BRANCH_NAME, "refs/heads/master",
+      Constants.AUTH_METHOD, "ANONYMOUS",
+      Constants.TOKEN_ID, "</script><img onerror=alert(1)>"));
+    then(invalids).extracting("propertyName").contains(Constants.TOKEN_ID);
+  }
+
+  @TestFor(issues = "TW-102832")
+  @Test
+  public void tokenId_with_valid_format_is_allowed_for_non_access_token_auth() {
+    Collection<InvalidProperty> invalids = myProcessor.process(map(
+      Constants.FETCH_URL, "git://some.org/repository",
+      Constants.BRANCH_NAME, "refs/heads/master",
+      Constants.AUTH_METHOD, "ANONYMOUS",
+      Constants.TOKEN_ID, "tc_token_id:connectionId:tokenValue"));
+    then(invalids).isEmpty();
+  }
 }

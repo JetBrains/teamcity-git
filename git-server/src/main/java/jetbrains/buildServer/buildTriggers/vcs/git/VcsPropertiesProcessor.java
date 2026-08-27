@@ -5,6 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.buildTriggers.vcs.AbstractVcsPropertiesProcessor;
 import jetbrains.buildServer.serverSide.InvalidProperty;
+import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.transport.URIish;
@@ -106,11 +107,15 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
         break;
 
       case ACCESS_TOKEN:
-        final String tokenId = properties.get(Constants.TOKEN_ID);
-        if (StringUtil.isEmptyOrSpaces(tokenId)) {
+        if (StringUtil.isEmptyOrSpaces(properties.get(Constants.TOKEN_ID))) {
           rc.add(new InvalidProperty(Constants.TOKEN_ID, "The access token must be specified."));
         }
         break;
+    }
+
+    final String tokenId = properties.get(Constants.TOKEN_ID);
+    if (!StringUtil.isEmptyOrSpaces(tokenId) && OAuthTokensStorage.parseFullTokenId(tokenId) == null) {
+      rc.add(new InvalidProperty(Constants.TOKEN_ID, "Invalid access token id format."));
     }
 
     return rc;
