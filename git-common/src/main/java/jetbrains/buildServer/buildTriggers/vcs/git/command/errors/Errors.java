@@ -11,7 +11,10 @@ import org.jetbrains.annotations.Nullable;
 public class Errors {
 
   private static final Pattern OUTDATED_INDEX_PATTERN = Pattern.compile(".*Entry '.+' not uptodate\\. Cannot merge\\..*", Pattern.DOTALL);
-  private static final Pattern FATAL_MESSAGE_PATTERN = Pattern.compile("fatal: (.*)", Pattern.DOTALL);
+  // no DOTALL here: the group must capture the "fatal:" line only. With DOTALL it greedily captures everything
+  // after the first "fatal:" (the rest of the git stderr and the whole ssh trace), and BaseAuthCommandImpl
+  // then repeats all of it after "Full error: ".
+  private static final Pattern FATAL_MESSAGE_PATTERN = Pattern.compile("fatal: (.*)");
   private static final Pattern REMOTE_MESSAGE_PATTERN = Pattern.compile("remote: (.*)");
 
   public static boolean isCorruptedIndexError(@NotNull VcsException e) {
