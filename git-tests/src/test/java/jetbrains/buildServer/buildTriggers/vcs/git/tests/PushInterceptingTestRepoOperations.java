@@ -13,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
  * races with happens between reading the destination branch and updating it, and that window is not reachable
  * from the outside otherwise.
  */
-public class PushInterceptingRepoOperations implements GitRepoOperations {
+public class PushInterceptingTestRepoOperations implements GitRepoOperations {
 
   public interface Action {
     void run() throws Exception;
@@ -23,7 +23,7 @@ public class PushInterceptingRepoOperations implements GitRepoOperations {
   @Nullable private Action myBeforePush;
   @Nullable private String myFailureAfterPush;
 
-  public PushInterceptingRepoOperations(@NotNull GitRepoOperations delegate) {
+  public PushInterceptingTestRepoOperations(@NotNull GitRepoOperations delegate) {
     myDelegate = delegate;
   }
 
@@ -31,7 +31,7 @@ public class PushInterceptingRepoOperations implements GitRepoOperations {
    * Runs the action right before the push reaches the remote repository.
    */
   @NotNull
-  public PushInterceptingRepoOperations beforePush(@NotNull Action action) {
+  public PushInterceptingTestRepoOperations beforePush(@NotNull Action action) {
     myBeforePush = action;
     return this;
   }
@@ -40,7 +40,7 @@ public class PushInterceptingRepoOperations implements GitRepoOperations {
    * Reports the push as failed although it has been performed, the way a lost answer looks to the caller.
    */
   @NotNull
-  public PushInterceptingRepoOperations failAfterPush(@NotNull String message) {
+  public PushInterceptingTestRepoOperations failAfterPush(@NotNull String message) {
     myFailureAfterPush = message;
     return this;
   }

@@ -394,7 +394,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   public void rejects_the_pick_when_the_branch_is_updated_between_the_fetch_and_the_push() throws Exception {
     //another writer advances the destination branch in the window the operation cannot see
     myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
-                                                  ops -> new PushInterceptingRepoOperations(ops)
+                                                  ops -> new PushInterceptingTestRepoOperations(ops)
                                                     .beforePush(() -> setRef(myRemote, "refs/heads/master", TOPIC2_1)));
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
@@ -414,7 +414,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     //the branch is moved back to an ancestor: the cherry-pick result is still a fast-forward from there, so a push
     //without a lease would publish a result computed against a revision the branch no longer points to
     myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
-                                                  ops -> new PushInterceptingRepoOperations(ops)
+                                                  ops -> new PushInterceptingTestRepoOperations(ops)
                                                     .beforePush(() -> setRef(myRemote, "refs/heads/master", MASTER_PARENT)));
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
@@ -425,6 +425,19 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     then(resolveRef(myRemote, "refs/heads/master"))
       .overridingErrorMessage("the rewound branch must not be fast-forwarded to the cherry-pick result")
       .isEqualTo(MASTER_PARENT);
+  }
+
+
+  public void names_the_destination_branch_the_way_the_caller_did_when_it_is_updated_concurrently() throws Exception {
+    //the caller passed a short name, so the rejection must not surprise it with the qualified ref
+    myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
+                                                  ops -> new PushInterceptingTestRepoOperations(ops)
+                                                    .beforePush(() -> setRef(myRemote, "refs/heads/master", TOPIC2_1)));
+
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "master", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getMessage()).contains("'master'").doesNotContain("refs/heads/master");
   }
 
 
@@ -455,7 +468,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   public void reports_the_result_as_published_when_the_push_answer_is_lost() throws Exception {
     //the remote accepts the update, but the caller sees a failure instead of the answer
     myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
-                                                  ops -> new PushInterceptingRepoOperations(ops)
+                                                  ops -> new PushInterceptingTestRepoOperations(ops)
                                                     .failAfterPush("Connection reset by peer"));
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
@@ -472,7 +485,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   public void fails_when_the_push_fails_and_the_branch_is_where_it_was() throws Exception {
     //the branch has not moved, so the failure is the push's own and must not be reported as a cherry-pick result
     myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
-                                                  ops -> new PushInterceptingRepoOperations(ops) {
+                                                  ops -> new PushInterceptingTestRepoOperations(ops) {
                                                     @NotNull
                                                     @Override
                                                     public jetbrains.buildServer.buildTriggers.vcs.git.PushCommand pushCommand(@NotNull String repoUrl) {

@@ -46,12 +46,6 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   private static final String ALL_REF_SPEC = "+refs/*:refs/*";
   private static final String EXCLUDE_TAGS_REF_SPEC = "^refs/tags/*";
 
-  /**
-   * A push protects the ref it updates with a lease, so the remote side rejects it when the ref no longer points to
-   * the revision the update was based on. Disable to go back to a plain push, which accepts such an update silently.
-   */
-  private static final String PUSH_WITH_LEASE = "teamcity.git.push.forceWithLease";
-
   private final ServerPluginConfig myConfig;
   private final GitDetector myGitDetector;
   private final VcsRootSshKeyManager mySshKeyManager;
@@ -439,15 +433,21 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
+    final boolean pushWithLease = myConfig.isPushWithLeaseEnabled();
     final boolean creatingBranch = ObjectId.zeroId().name().equals(lastCommit);
     //what the mirror has to be restored to if the push fails, null when the ref has to be removed from it
-    final String localRevisionBeforePush = creatingBranch ? localRevision(db, fullRef, gitRoot) : lastCommit;
-    if (creatingBranch) {
+    final String localRevisionBeforePush;
+    if (creatingBranch && pushWithLease) {
       //the local ref is only a mirror of the remote one and can still be there for a branch which was deleted
       //remotely, so it must not block the creation. The precondition that matters is the remote one, and the lease
       //below enforces it
+      localRevisionBeforePush = localRevision(db, fullRef, gitRoot);
       gitFacade.updateRef().setRef(fullRef).setRevision(commit).call();
     } else {
+      //without the lease nothing enforces the precondition on the remote side, so the check against the mirror stays
+      //the way it always was, for a branch being created as well. The old value is verified here, so the ref is known
+      //to be absent when it is the zero one
+      localRevisionBeforePush = creatingBranch ? null : lastCommit;
       gitFacade.updateRef().setRef(fullRef).setRevision(commit).setOldValue(lastCommit).call();
     }
 
@@ -459,7 +459,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
         //accepts silently if the ref was deleted or rewound meanwhile. The zero id is the expected value for a
         //branch being created and means 'the ref must not exist'
         final jetbrains.buildServer.buildTriggers.vcs.git.command.PushCommand pushCmd = gitFacade.push();
-        if (TeamCityProperties.getBooleanOrTrue(PUSH_WITH_LEASE)) {
+        if (pushWithLease) {
           pushCmd.setForceWithLease(fullRef, lastCommit);
         }
         pushCmd.setRemote(gitRoot.getRepositoryPushURL().toString())

@@ -151,7 +151,7 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   public void does_not_move_a_branch_created_between_the_check_and_the_push() throws Exception {
     //somebody creates the branch at an ancestor of the requested revision in the window the operation cannot see:
     //a push without a lease would fast-forward it and report the branch as created
-    createSupports(ops -> new PushInterceptingRepoOperations(ops)
+    createSupports(ops -> new PushInterceptingTestRepoOperations(ops)
       .beforePush(() -> setRef(myRemote, "refs/heads/release-1.0", MASTER_PARENT)));
 
     BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
@@ -182,7 +182,7 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
       throw new SkipException("the toggle only affects the native git push");
     }
     setInternalProperty("teamcity.git.push.forceWithLease", "false");
-    createSupports(ops -> new PushInterceptingRepoOperations(ops)
+    createSupports(ops -> new PushInterceptingTestRepoOperations(ops)
       .beforePush(() -> setRef(myRemote, "refs/heads/release-1.0", MASTER_PARENT)));
 
     BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
@@ -190,6 +190,27 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
     //this is the behaviour the toggle brings back: a plain push fast-forwards the branch somebody else created
     then(result.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
     then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER);
+  }
+
+
+  public void switching_the_lease_off_brings_back_the_mirror_check() throws Exception {
+    if (!myRepoOperations.isNativeGitOperationsEnabled(myRemote.getAbsolutePath())) {
+      //the JGit push updates nothing in the mirror, so there is no local check to bring back
+      throw new SkipException("the toggle only affects the native git push");
+    }
+    setInternalProperty("teamcity.git.push.forceWithLease", "false");
+    myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
+    deleteRef(myRemote, "refs/heads/release-1.0");
+
+    //without the lease nothing enforces the precondition on the remote side, so the stale ref in the mirror is the
+    //only check left, and it rejects the creation the way it always did before the lease
+    try {
+      myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER_PARENT);
+      fail("VcsException is expected: the mirror still has the branch and there is no lease to rely on instead");
+    } catch (VcsException e) {
+      //expected
+    }
+    then(resolveRef(myRemote, "refs/heads/release-1.0")).isNull();
   }
 
 

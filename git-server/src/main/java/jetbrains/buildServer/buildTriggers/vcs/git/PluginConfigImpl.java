@@ -230,6 +230,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   @Override
+  public boolean isPushWithLeaseEnabled() {
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.push.forceWithLease");
+  }
+
+  @Override
   public boolean isGitMaintenanceAutoEnabled() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.server.git.maintenance.auto.enable");
   }

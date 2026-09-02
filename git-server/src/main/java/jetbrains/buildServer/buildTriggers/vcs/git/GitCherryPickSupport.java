@@ -4,7 +4,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
@@ -112,12 +111,10 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
     //be performed anyway should not fetch it, and the loader brings the whole set in one go
     loadSourceCommits(context, gitRoot, db, srcRevisions);
 
-    Map<String, Ref> remoteRefs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
-    Ref remoteDstRef = remoteRefs.get(dstRef);
-    if (remoteDstRef == null || remoteDstRef.getObjectId() == null)
+    String observedRevision = getRemoteRevision(gitRoot, dstRef);
+    if (observedRevision == null)
       throw new CherryPickRejectedException("The '" + dstBranch + "' destination branch doesn't exist");
 
-    String observedRevision = remoteDstRef.getObjectId().name();
     fetchDestinationBranch(gitRoot, db, dstBranch, dstRef, observedRevision);
 
     try (RevWalk walk = new RevWalk(db); ObjectInserter inserter = db.newObjectInserter()) {
@@ -163,7 +160,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       if (!publish)
         return CherryPickResult.createPickable(picked);
 
-      push(gitRoot, db, dstRef, current, branchTip);
+      push(gitRoot, db, dstBranch, dstRef, current, branchTip);
       LOG.info("Cherry-pick of " + srcRevisions + " into " + dstBranch + " successfully finished, new revision " + current.name());
       return CherryPickResult.createPicked(current.name(), picked);
     }
@@ -249,8 +246,13 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
     return result;
   }
 
+  /**
+   * @param dstBranch destination branch the way the caller named it, for the messages
+   * @param dstRef the same branch as a qualified ref
+   */
   private void push(@NotNull GitVcsRoot gitRoot,
                     @NotNull Repository db,
+                    @NotNull String dstBranch,
                     @NotNull String dstRef,
                     @NotNull RevCommit newTip,
                     @NotNull RevCommit expectedOldTip) throws VcsException, CherryPickRejectedException {
@@ -277,7 +279,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       }
       if (!expectedOldTip.name().equals(published)) {
         LOG.info("Cherry-pick result was not published, " + dstRef + " was updated concurrently, root " + gitRoot, e);
-        throw updatedConcurrently(dstRef);
+        throw updatedConcurrently(dstBranch);
       }
       //the branch is where it was and the push failed for a reason of its own, authentication or the network for
       //instance: that is not a rejected cherry-pick but a failure of the operation
