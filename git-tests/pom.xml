@@ -401,6 +401,7 @@
                     <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
                     <suiteXmlFile>src/test/resources/auth-git-tests.xml</suiteXmlFile>
                   </suiteXmlFiles>
+                  <argLine>${surefire.jvm.params}</argLine>
                   <skipTests>false</skipTests>
                 </configuration>
               </execution>
