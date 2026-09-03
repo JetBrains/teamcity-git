@@ -5,12 +5,18 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.EmptyVcsRootSshKeyManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitPatchTestCase;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -39,6 +45,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilde
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
+import static org.assertj.core.api.BDDAssertions.then;
 
 @Test
 public class GitPatchTest extends BaseGitPatchTestCase {
@@ -135,6 +142,62 @@ public class GitPatchTest extends BaseGitPatchTestCase {
     setInternalProperty("teamcity.git.sshProxyHost", "sshProxyHost");
     setInternalProperty("teamcity.git.sshProxyPort", "83");
     checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
+  }
+
+
+  @Test
+  public void should_not_allow_vcs_root_to_override_reserved_patch_parameters() throws Exception {
+    //The patch process gets a single properties map (built by GitPatchBuilderDispatcher#buildPatchProcessInput) which
+    //combines the VCS root properties and the 'reserved' patch parameters (internal properties file, from/to revision,
+    //checkout rules, patch file, etc.). VCS root properties must never override these reserved parameters. This is
+    //especially important for reserved parameters that may be null (e.g. the fromRevision of a clean patch or the
+    //trust store provider): they are removed from the map before being conditionally set, so a root property can't
+    //sneak in a value.
+
+    //the value a VCS root tries to sneak into every reserved patch parameter, it must never appear in the map
+    String overridden = "OVERRIDDEN_BY_VCS_ROOT";
+    List<String> reservedParameters = Arrays.asList(
+      Constants.FETCHER_INTERNAL_PROPERTIES_FILE,
+      Constants.PATCHER_FROM_REVISION,
+      Constants.PATCHER_TO_REVISION,
+      Constants.PATCHER_CHECKOUT_RULES,
+      Constants.PATCHER_CACHES_DIR,
+      Constants.PATCHER_PATCH_FILE,
+      Constants.PATCHER_UPLOADED_KEY,
+      Constants.VCS_DEBUG_ENABLED,
+      Constants.GIT_TRUST_STORE_PROVIDER);
+
+    GitVcsSupport support = getSupport();
+    VcsRootImpl root = getRoot("patch-tests", false, myMainRepositoryDir);
+    //an attempt to override every reserved patch parameter via VCS root properties
+    for (String reserved : reservedParameters) {
+      root.addProperty(reserved, overridden);
+    }
+
+    OperationContext context = support.createContext(root, "test");
+    try {
+      //build a clean patch (fromRevision is null): the reserved parameters set on the root must be ignored
+      GitPatchBuilderDispatcher dispatcher = new GitPatchBuilderDispatcher(
+        myConfigBuilder.build(), new EmptyVcsRootSshKeyManager(), context, new PatchBuilderImpl(new ByteArrayOutputStream()),
+        null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341", CheckoutRules.DEFAULT, null, false,
+        (url, authSettings) -> { throw new UnsupportedOperationException("ssh session factory is not needed for this test"); });
+
+      File patchFile = myTempFiles.createTempFile();
+      File internalProperties = myTempFiles.createTempFile();
+      Map<String, String> input = dispatcher.buildPatchProcessInput(patchFile, internalProperties);
+
+      //none of the reserved parameters may keep the value injected by the VCS root
+      for (String reserved : reservedParameters) {
+        then(input.get(reserved)).as("reserved patch parameter '%s' must not be overridden by the VCS root", reserved).isNotEqualTo(overridden);
+      }
+      //the internal properties file must point to the real file prepared by the server, not to the value from the VCS root
+      then(input.get(Constants.FETCHER_INTERNAL_PROPERTIES_FILE)).isEqualTo(internalProperties.getCanonicalPath());
+      //regular (non-reserved) VCS root properties must still be passed to the patch process
+      then(input.get(Constants.FETCH_URL)).isNotNull();
+      then(input.get(Constants.BRANCH_NAME)).isNotNull();
+    } finally {
+      context.close();
+    }
   }
 
 
