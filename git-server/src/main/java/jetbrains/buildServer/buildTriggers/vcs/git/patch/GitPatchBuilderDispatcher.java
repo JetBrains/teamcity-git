@@ -2,6 +2,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.ByteArrayOutputStream;
@@ -133,8 +134,17 @@ public final class GitPatchBuilderDispatcher {
   }
 
   private byte[] getInput(@NotNull File patchFile, @NotNull File internalProperties) throws IOException {
+    return VcsUtil.propertiesToStringSecure(buildPatchProcessInput(patchFile, internalProperties)).getBytes("UTF-8");
+  }
+
+  @VisibleForTesting
+  @NotNull
+  public Map<String, String> buildPatchProcessInput(@NotNull File patchFile, @NotNull File internalProperties) throws IOException {
     Map<String, String> props = new HashMap<String, String>();
+    props.putAll(myGitRoot.getProperties());
+
     props.put(Constants.FETCHER_INTERNAL_PROPERTIES_FILE, internalProperties.getCanonicalPath());
+    props.remove(Constants.PATCHER_FROM_REVISION);
     if (myFromRevision != null)
       props.put(Constants.PATCHER_FROM_REVISION, myFromRevision);
     props.put(Constants.PATCHER_TO_REVISION, myToRevision);
@@ -143,11 +153,11 @@ public final class GitPatchBuilderDispatcher {
     props.put(Constants.PATCHER_PATCH_FILE, patchFile.getCanonicalPath());
     props.put(Constants.PATCHER_UPLOADED_KEY, getUploadedKey());
     props.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
+    props.remove(Constants.GIT_TRUST_STORE_PROVIDER);
     if (myTrustedCertificatesDir != null) {
       props.put(Constants.GIT_TRUST_STORE_PROVIDER, myTrustedCertificatesDir);
     }
-    props.putAll(myGitRoot.getProperties());
-    return VcsUtil.propertiesToStringSecure(props).getBytes("UTF-8");
+    return props;
   }
 
 
