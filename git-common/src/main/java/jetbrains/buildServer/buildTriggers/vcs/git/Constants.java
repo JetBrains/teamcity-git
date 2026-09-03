@@ -126,6 +126,7 @@ public interface Constants {
   String PATCHER_CACHES_DIR = "patcher.cachesDir";
   String PATCHER_PATCH_FILE = "patcher.patchFile";
   String PATCHER_UPLOADED_KEY = "patcher.uploadedKey";
+  String PATCHER_VERBOSE_TREE_WALK_LOG = "patcher.verboseTreeWalkLog";
   String CHECKOUT_POLICY = "useAlternates";
   String CUSTOM_GIT_CONFIG = "customGitConfig";
 
