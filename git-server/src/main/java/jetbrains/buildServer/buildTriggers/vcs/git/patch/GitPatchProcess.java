@@ -23,6 +23,8 @@ import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.PATCHER_VERBOSE_TREE_WALK_LOG;
+
 public class GitPatchProcess {
 
   public static void main(String... args) throws Exception {
@@ -145,7 +147,7 @@ public class GitPatchProcess {
     }
 
     private boolean readVerboseTreeLog(@NotNull Map<String, String> props) {
-      return Boolean.valueOf(props.remove("patcher.verboseTreeWalkLog"));
+      return Boolean.parseBoolean(props.remove(PATCHER_VERBOSE_TREE_WALK_LOG));
     }
 
     private String readFromRevision(@NotNull Map<String, String> props) {
