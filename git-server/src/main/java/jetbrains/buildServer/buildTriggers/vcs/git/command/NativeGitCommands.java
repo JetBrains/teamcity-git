@@ -25,6 +25,7 @@ import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.commons.codec.CharEncoding;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -432,30 +433,72 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
-    gitFacade.updateRef().setRef(fullRef).setRevision(commit).setOldValue(lastCommit).call();
+    final boolean pushWithLease = myConfig.isPushWithLeaseEnabled();
+    final boolean creatingBranch = ObjectId.zeroId().name().equals(lastCommit);
+    //what the mirror has to be restored to if the push fails, null when the ref has to be removed from it
+    final String localRevisionBeforePush;
+    if (creatingBranch && pushWithLease) {
+      //the local ref is only a mirror of the remote one and can still be there for a branch which was deleted
+      //remotely, so it must not block the creation. The precondition that matters is the remote one, and the lease
+      //below enforces it
+      localRevisionBeforePush = localRevision(db, fullRef, gitRoot);
+      gitFacade.updateRef().setRef(fullRef).setRevision(commit).call();
+    } else {
+      //without the lease nothing enforces the precondition on the remote side, so the check against the mirror stays
+      //the way it always was, for a branch being created as well. The old value is verified here, so the ref is known
+      //to be absent when it is the zero one
+      localRevisionBeforePush = creatingBranch ? null : lastCommit;
+      gitFacade.updateRef().setRef(fullRef).setRevision(commit).setOldValue(lastCommit).call();
+    }
 
     final String debugInfo = LogUtil.describe(gitRoot);
     try {
       return executeCommand(ctx, "push", debugInfo, () -> {
-        gitFacade.push()
-                 .setRemote(gitRoot.getRepositoryPushURL().toString())
-                 .setRefspec(fullRef)
-                 .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
-                 .setTimeout(myConfig.getPushTimeoutSeconds())
-                 .setRetryAttempts(myConfig.getConnectionRetryAttempts())
-                 .setRepoUrl(gitRoot.getRepositoryPushURL().get())
-                 .trace(myConfig.getGitTraceEnv())
-                 .call();
+        //the update-ref above is a compare-and-swap in the mirror only; the lease makes the remote side reject the
+        //push as well when the ref no longer points to the revision the update was based on, which a plain push
+        //accepts silently if the ref was deleted or rewound meanwhile. The zero id is the expected value for a
+        //branch being created and means 'the ref must not exist'
+        final jetbrains.buildServer.buildTriggers.vcs.git.command.PushCommand pushCmd = gitFacade.push();
+        if (pushWithLease) {
+          pushCmd.setForceWithLease(fullRef, lastCommit);
+        }
+        pushCmd.setRemote(gitRoot.getRepositoryPushURL().toString())
+               .setRefspec(fullRef)
+               .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+               .setTimeout(myConfig.getPushTimeoutSeconds())
+               .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+               .setRepoUrl(gitRoot.getRepositoryPushURL().get())
+               .trace(myConfig.getGitTraceEnv())
+               .call();
         return CommitResult.createSuccessResult(commit);
       }, gitFacade);
     } catch (VcsException e) {
       // restore local ref
       try {
-        gitFacade.updateRef().setRef(fullRef).setRevision(lastCommit).setOldValue(commit).call();
+        if (localRevisionBeforePush == null) {
+          //the ref was not in the mirror before this push put the new revision there
+          gitFacade.updateRef().setRef(fullRef).delete().setOldValue(commit).call();
+        } else {
+          gitFacade.updateRef().setRef(fullRef).setRevision(localRevisionBeforePush).setOldValue(commit).call();
+        }
       } catch (VcsException v) {
-        Loggers.VCS.warn("Failed to restore initial revision " + lastCommit + " of " + fullRef + " after unssuccessful push of revision " + commit + " for " + debugInfo, v);
+        Loggers.VCS.warn("Failed to restore initial revision " + localRevisionBeforePush + " of " + fullRef +
+                         " after unssuccessful push of revision " + commit + " for " + debugInfo, v);
       }
       throw e;
+    }
+  }
+
+  /**
+   * @return revision the ref points to in the mirror, null if there is no such ref
+   */
+  @Nullable
+  private static String localRevision(@NotNull Repository db, @NotNull String fullRef, @NotNull GitVcsRoot gitRoot) throws VcsException {
+    try {
+      final Ref localRef = db.exactRef(fullRef);
+      return localRef == null || localRef.getObjectId() == null ? null : localRef.getObjectId().name();
+    } catch (IOException e) {
+      throw new VcsException("Cannot read " + fullRef + " in " + LogUtil.describe(gitRoot), e);
     }
   }
 

@@ -730,6 +730,10 @@ public class GitServerUtil {
     return fullRefName.startsWith(org.eclipse.jgit.lib.Constants.R_TAGS);
   }
 
+  public static boolean isBranch(@NotNull String fullRefName) {
+    return fullRefName.startsWith(org.eclipse.jgit.lib.Constants.R_HEADS);
+  }
+
   public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt, int maxAttempts) {
     boolean attemptsLeft = attempt < maxAttempts;
 

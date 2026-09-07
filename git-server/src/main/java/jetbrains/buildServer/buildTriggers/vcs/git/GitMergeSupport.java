@@ -315,19 +315,17 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     if (base.equals(parentCommit))
       return original;
 
-    ResolveMerger merger = (ResolveMerger) MergeStrategy.RECURSIVE.newMerger(db, true);
-    merger.setBase(parentCommit);
-    merger.merge(original, base);
+    CommitReplay.Result replayed = CommitReplay.replay(db, original, base, parentCommit);
 
-    if (merger.getResultTreeId() == null)
-      throw new MergeFailedException(merger.getUnmergedPaths());
+    if (replayed.isConflicted())
+      throw new MergeFailedException(replayed.getConflicts());
 
 
-    if (base.getTree().getId().equals(merger.getResultTreeId()))
+    if (base.getTree().getId().equals(replayed.getTreeId()))
       return base;
 
     final CommitBuilder cb = new CommitBuilder();
-    cb.setTreeId(merger.getResultTreeId());
+    cb.setTreeId(replayed.getTreeId());
     cb.setParentId(base);
     cb.setAuthor(GitServerUtil.getAuthorIdent(original));
     cb.setCommitter(PersonIdentFactory.getTagger(gitRoot, db));

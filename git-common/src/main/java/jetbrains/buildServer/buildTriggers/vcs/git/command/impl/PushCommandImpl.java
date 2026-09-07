@@ -12,6 +12,7 @@ public class PushCommandImpl extends BaseAuthCommandImpl<PushCommand> implements
 
   private final Set<String> myRefSpecs = new HashSet<>();
   private String myRemoteUrl;
+  private String myForceWithLease;
 
   public PushCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -30,6 +31,13 @@ public class PushCommandImpl extends BaseAuthCommandImpl<PushCommand> implements
     return this;
   }
 
+  @NotNull
+  @Override
+  public PushCommand setForceWithLease(@NotNull String ref, @NotNull String expectedRevision) {
+    myForceWithLease = ref + ":" + expectedRevision;
+    return this;
+  }
+
   @Override
   public void call() throws VcsException {
     final GitCommandLine cmd = getCmd();
@@ -37,6 +45,9 @@ public class PushCommandImpl extends BaseAuthCommandImpl<PushCommand> implements
     cmd.addParameter("push");
     if (Loggers.VCS.isDebugEnabled()) {
       cmd.addParameter("-v");
+    }
+    if (myForceWithLease != null) {
+      cmd.addParameter("--force-with-lease=" + myForceWithLease);
     }
     cmd.addParameter(getRemote());
     myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));

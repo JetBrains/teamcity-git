@@ -99,6 +99,11 @@ public class PluginConfigBuilder {
       }
 
       @Override
+      public boolean isPushWithLeaseEnabled() {
+        return myDelegate.isPushWithLeaseEnabled();
+      }
+
+      @Override
       public boolean refreshCommitGraphIfCorrupted() {
         return true;
       }

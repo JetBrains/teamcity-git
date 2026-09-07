@@ -175,6 +175,13 @@ public interface ServerPluginConfig extends PluginConfig {
 
   boolean isNoShowForcedUpdates();
 
+  /**
+   * Whether a push protects the ref it updates with a lease, so that the remote side rejects the update when the ref
+   * no longer points to the revision it was based on. When off, the push is a plain one, which accepts such an
+   * update silently if the ref was deleted or rewound meanwhile.
+   */
+  boolean isPushWithLeaseEnabled();
+
   @NotNull
   Map<String, String> getGitTraceEnv();
 
