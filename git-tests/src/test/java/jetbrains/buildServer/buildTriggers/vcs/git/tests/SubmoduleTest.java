@@ -5,7 +5,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
@@ -14,6 +16,7 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -28,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
+import java.util.Collections;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -161,6 +165,82 @@ public class SubmoduleTest {
       }
     } finally {
       rm.close();
+    }
+  }
+
+  @TestFor(issues = "TW-103519")
+  @Test
+  public void testSubmoduleLocalFileUrlIsRejected() throws Exception {
+    File masterRep = dataFile("repo.git");
+    Repository dataRepo = new RepositoryBuilder().setGitDir(masterRep).build();
+    RevCommit anyCommit;
+    RevWalk revWalk = new RevWalk(dataRepo);
+    try {
+      anyCommit = revWalk.parseCommit(
+        ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)));
+    } finally {
+      revWalk.dispose();
+    }
+
+    File dbDir = myTempFiles.createTempDir();
+    Repository db = new RepositoryBuilder().setBare().setGitDir(dbDir).build();
+    db.create(true);
+    db.getConfig().setString("teamcity", null, "remote", "https://main.example.com/repo.git");
+    db.getConfig().save();
+
+    try {
+      OperationContext context = myGitSupport.createContext(vcsRoot().withFetchUrl("https://main.example.com/repo.git").build(), "testing");
+      SubmoduleResolverImpl resolver = new SubmoduleResolverImpl(context, myCommitLoader, db, anyCommit, "");
+
+      InternalPropertiesHandler internalProperties = new InternalPropertiesHandler();
+      try {
+        internalProperties.setInternalProperty("teamcity.git.allowFileUrl", "false");
+        try {
+          resolver.resolveSubmoduleUrl("file:///tmp/x.git");
+          fail("Expected VcsException for a local file submodule URL");
+        } catch (VcsException e) {
+        }
+
+        internalProperties.setInternalProperty("teamcity.git.allowFileUrl", "true");
+        assertNotNull(resolver.resolveSubmoduleUrl("file:///tmp/x.git"));
+      } finally {
+        internalProperties.tearDown();
+      }
+
+      assertNotNull(resolver.resolveSubmoduleUrl("../submodule.git"));
+    } finally {
+      db.close();
+      dataRepo.close();
+    }
+  }
+
+  @TestFor(issues = "TW-103519")
+  @Test
+  public void testFetchSubmoduleRejectsLocalFileUrl() throws Exception {
+    File localTargetDir = myTempFiles.createTempDir();
+    Repository localTarget = new RepositoryBuilder().setBare().setGitDir(localTargetDir).build();
+    localTarget.create(true);
+
+    File mirrorDir = myTempFiles.createTempDir();
+    Repository mirror = new RepositoryBuilder().setBare().setGitDir(mirrorDir).build();
+    mirror.create(true);
+
+    InternalPropertiesHandler internalProperties = new InternalPropertiesHandler();
+    try {
+      internalProperties.setInternalProperty("teamcity.git.allowFileUrl", "false");
+
+      OperationContext context = myGitSupport.createContext(vcsRoot().withFetchUrl("https://main.example.com/repo.git").build(), "testing");
+      URIish localUri = new URIish(localTargetDir.toURI().toString());
+
+      try {
+        context.fetchSubmodule(mirror, localUri, Collections.singletonList(new RefSpec("+refs/*:refs/*")), context.getGitRoot().getAuthSettings());
+        fail("Expected VcsException for a local file submodule fetch URL");
+      } catch (VcsException e) {
+      }
+    } finally {
+      internalProperties.tearDown();
+      mirror.close();
+      localTarget.close();
     }
   }
 
