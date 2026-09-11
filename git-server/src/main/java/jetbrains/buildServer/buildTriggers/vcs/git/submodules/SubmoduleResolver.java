@@ -40,7 +40,7 @@ public interface SubmoduleResolver {
 
   void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException;
 
-  URIish resolveSubmoduleUrl(@NotNull String submoduleUrl) throws URISyntaxException;
+  URIish resolveSubmoduleUrl(@NotNull String submoduleUrl) throws URISyntaxException, VcsException;
 
   boolean containsSubmodule(String path);
 
