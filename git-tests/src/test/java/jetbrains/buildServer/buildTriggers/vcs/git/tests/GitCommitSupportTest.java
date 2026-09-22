@@ -5,6 +5,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -19,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.FuncThrow;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.TestFor;
@@ -26,10 +32,12 @@ import jetbrains.buildServer.vcs.*;
 import org.assertj.core.groups.Tuple;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.testng.annotations.BeforeMethod;
@@ -117,6 +125,42 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     ref = showRef(mirror, "refs/heads/master");
 
     assertTrue(ref.startsWith(createdRevision));
+  }
+
+  public void test_commit_after_rolling_local_clone_after_gc() throws Exception {
+
+    setInternalProperty("teamcity.git.nativeOperationsEnabled", "true");
+    final File remote = getRemoteRepositoryDir("merge");
+
+    String prevMaster = resolveRef(remote, "refs/heads/master");
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    final String newMaster;
+    try {
+      patchBuilder.createFile("file", new ByteArrayInputStream("content".getBytes()));
+      newMaster = patchBuilder.commit(new CommitSettingsImpl("user", "Commit before gc")).getCreatedRevision();
+    } finally {
+      patchBuilder.dispose();
+    }
+    assertNotNull(newMaster);
+
+    //imitate GC finished and replaced the local clone, so master in the local clone points to old commit
+    GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
+    builder.build();
+    final RepositoryManager repositoryManager = builder.getRepositoryManager();
+    final File gitLocalMirror = repositoryManager.getMirrorDir(getRemoteRepositoryDir("merge").getAbsolutePath());
+    Path masterFile = Paths.get(gitLocalMirror.getPath().toString(), "refs", "heads", "master");
+    assertTrue(Files.exists(masterFile));
+    Files.write(masterFile, prevMaster.getBytes(StandardCharsets.UTF_8));
+
+    patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    try {
+      patchBuilder.createFile("file2", new ByteArrayInputStream("content2".getBytes()));
+      String revision = patchBuilder.commit(new CommitSettingsImpl("user", "Commit after gc")).getCreatedRevision();
+      assertNotNull(revision);
+    } finally {
+      patchBuilder.dispose();
+    }
   }
 
 
