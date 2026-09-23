@@ -437,7 +437,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final boolean creatingBranch = ObjectId.zeroId().name().equals(lastCommit);
     //what the mirror has to be restored to if the push fails, null when the ref has to be removed from it
     final String localRevisionBeforePush;
-    if (creatingBranch && pushWithLease) {
+    if (pushWithLease) {
       //the local ref is only a mirror of the remote one and can still be there for a branch which was deleted
       //remotely, so it must not block the creation. The precondition that matters is the remote one, and the lease
       //below enforces it
