@@ -146,9 +146,15 @@ public interface Constants {
 
   /**
    * @since 2026.1
-   * @see jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig#isAllowFileUrl
+   * @see jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector#verifyUrl
    */
   String ALLOW_FILE_URL = "teamcity.git.allowFileUrl";
+
+  /**
+   * @since 2026.1
+   * @see jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector#verifyUrl
+   */
+  String ADDITIONAL_ALLOWED_URL_TRANSPORTS = "teamcity.git.additionalAllowedUrlTransports";
 
   /**
    * If set, native ssh will fallback to default config (~/.ssh/config and /etc/ssh/ssh_config) if the specified key is invalid

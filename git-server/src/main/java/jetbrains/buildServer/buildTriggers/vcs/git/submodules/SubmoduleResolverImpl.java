@@ -11,7 +11,6 @@ import java.util.Arrays;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.CorruptObjectException;
@@ -132,11 +131,16 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
 
   public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException, VcsException {
     String resolved = SubmoduleUrlResolver.resolveSubmoduleUrl(myContext.getPluginConfig(), myContext.getConfig(getRepository()), url);
-    if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(resolved)) {
+    GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(resolved);
+    if (restriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
       throw new VcsException(String.format(
         "Submodule '%s' is using local file URL '%s', which is forbidden for security reasons. " +
         "Please configure submodule URLs to use network protocols like SSH or HTTPS.",
         url, resolved));
+    } else if (restriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
+      throw new VcsException(String.format(
+        "Submodule '%s': URL transport not allowed: %s. %s",
+        url, resolved, GitRemoteUrlInspector.getAllowedTransportsHint()));
     }
     return new URIish(resolved);
   }

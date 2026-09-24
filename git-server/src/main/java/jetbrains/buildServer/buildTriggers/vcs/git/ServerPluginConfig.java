@@ -8,8 +8,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import jetbrains.buildServer.DevelopmentMode;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
@@ -201,20 +199,6 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean isGitMaintenanceAutoEnabled();
 
   boolean refreshCommitGraphIfCorrupted();
-
-  /**
-   * Decides whether access to file-based git repositories should be allowed.
-   * Not allowed can mean that no new VCS roots with such URLs can be created.
-   * It can also mean that accessing such repositories might throw an exception.
-   * In development mode this is always allowed.
-   *
-   * @return true if file-based git repositories are allowed.
-   * @see Constants#ALLOW_FILE_URL
-   * @since 2026.1
-   */
-  static boolean isAllowFileUrl() {
-    return DevelopmentMode.isEnabled || TeamCityProperties.getBoolean(Constants.ALLOW_FILE_URL);
-  }
 
   default boolean shouldExecutePruneBeforeEveryFetch() { return false; }
 }

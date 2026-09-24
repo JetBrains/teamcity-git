@@ -255,6 +255,39 @@ public class VcsPropertiesProcessorTest extends TestCase {
     then(invalidProps).isEmpty();
   }
 
+  @TestFor(issues = "TW-104064")
+  @Test
+  public void testDisallowedTransportFetchUrlIsBlocked() {
+    final Map<String, String> props = ImmutableMap.of(
+      "branch", "refs/heads/main",
+      "url", "ext::sh /tmp/x.sh"
+    );
+
+    final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
+
+    then(invalidProps).hasSize(1);
+    InvalidProperty invalidProperty = invalidProps.iterator().next();
+    then(invalidProperty.getPropertyName()).isEqualTo("url");
+    then(invalidProperty.getInvalidReason()).contains("Allowed:").contains(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS);
+  }
+
+  @TestFor(issues = "TW-104064")
+  @Test
+  public void testDisallowedTransportPushUrlIsBlocked() {
+    final Map<String, String> props = ImmutableMap.of(
+      "branch", "refs/heads/main",
+      "url", "https://my.git.test/testrepo.git",
+      "push_url", "ext::sh /tmp/x.sh"
+    );
+
+    final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
+
+    then(invalidProps).hasSize(1);
+    InvalidProperty invalidProperty = invalidProps.iterator().next();
+    then(invalidProperty.getPropertyName()).isEqualTo("push_url");
+    then(invalidProperty.getInvalidReason()).contains("Allowed:").contains(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS);
+  }
+
   @TestFor(issues = "TW-102832")
   @Test
   public void tokenId_with_invalid_format_is_rejected_regardless_of_auth_method() {

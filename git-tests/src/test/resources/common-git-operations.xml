@@ -26,6 +26,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.LatestAcceptedRevisionAndSubmodulesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitRemoteUrlInspectorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.health.GitLocalFileUrlHealthReportTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.health.GitUrlTransportHealthReportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetchSettingsFactoryImplTest"/>
     </classes>
   </test>

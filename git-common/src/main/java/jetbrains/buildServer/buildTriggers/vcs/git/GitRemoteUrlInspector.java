@@ -1,5 +1,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import jetbrains.buildServer.DevelopmentMode;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,12 +21,96 @@ import org.jetbrains.annotations.Nullable;
 public final class GitRemoteUrlInspector {
   private GitRemoteUrlInspector() {}
 
+  private static final Pattern REMOTE_HELPER_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)::");
+  private static final Pattern SCHEME_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)://");
+  private static final Set<String> DEFAULT_ALLOWED_TRANSPORTS =
+    Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList("http", "https", "ssh", "git")));
+
   public enum LocalReason {
     FILE_SCHEME,
     UNIX_ABSOLUTE,
     UNIX_RELATIVE,
     WINDOWS_DRIVE,
     WINDOWS_UNC
+  }
+
+  public enum UrlRestriction {
+    LOCAL_FILE_ACCESS,
+    DISALLOWED_TRANSPORT
+  }
+
+  /**
+   * Combines the local-file-access check (subject to {@code Constants#ALLOW_FILE_URL}) with the
+   * disallowed-transport check. Use this at every checkpoint that must reject unsafe URLs;
+   * use {@link #isLocalFileAccess} directly only where the ALLOW_FILE_URL override must be ignored.
+   */
+  @Nullable
+  public static UrlRestriction verifyUrl(@Nullable String rawUrl) {
+    if (rawUrl == null) return null;
+    String url = rawUrl.trim();
+
+    if (classify(url) != null) {
+      return isFileUrlAllowed() ? null : UrlRestriction.LOCAL_FILE_ACCESS;
+    }
+    if (!isAllowedTransport(url)) {
+      return UrlRestriction.DISALLOWED_TRANSPORT;
+    }
+    return null;
+  }
+
+  /**
+   * Returns the set of transport names currently allowed by {@link #verifyUrl}: the default
+   * {@code {http, https, ssh, git}} set plus any names listed in the
+   * {@link Constants#ADDITIONAL_ALLOWED_URL_TRANSPORTS} internal property, re-evaluated on every call.
+   */
+  @NotNull
+  public static Set<String> getEffectiveAllowedTransports() {
+    Set<String> allowed = new LinkedHashSet<>(DEFAULT_ALLOWED_TRANSPORTS);
+    for (String transport : StringUtil.split(TeamCityProperties.getProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS), true, ',')) {
+      allowed.add(transport.trim().toLowerCase());
+    }
+    return allowed;
+  }
+
+  /**
+   * A user-facing hint describing which transports are currently allowed and how to allow more,
+   * for appending to a {@link UrlRestriction#DISALLOWED_TRANSPORT} rejection message.
+   */
+  @NotNull
+  public static String getAllowedTransportsHint() {
+    return "Allowed: " + StringUtil.join(", ", getEffectiveAllowedTransports()) +
+           ". To allow another, add it to the '" + Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS + "' internal property.";
+  }
+
+  private static boolean isAllowedTransport(@NotNull String url) {
+    String name = extractTransportName(url);
+    return name == null || getEffectiveAllowedTransports().contains(name);
+  }
+
+  /**
+   * Returns the transport name (scheme or remote-helper name) a raw URL declares, or {@code null} if
+   * the URL doesn't use explicit {@code scheme://} or {@code name::} syntax. For display purposes,
+   * e.g. reporting which transport a {@link UrlRestriction#DISALLOWED_TRANSPORT} URL used.
+   */
+  @Nullable
+  public static String getTransportName(@Nullable String rawUrl) {
+    if (rawUrl == null) return null;
+    return extractTransportName(rawUrl.trim());
+  }
+
+  @Nullable
+  private static String extractTransportName(@NotNull String url) {
+    Matcher m = SCHEME_PREFIX.matcher(url);
+    if (m.find()) return m.group(1).toLowerCase();
+
+    m = REMOTE_HELPER_PREFIX.matcher(url);
+    if (m.find()) return m.group(1).toLowerCase();
+
+    return null; // scp-like ([user@]host:path) or ambiguous bare word: not this check's concern
+  }
+
+  private static boolean isFileUrlAllowed() {
+    return DevelopmentMode.isEnabled || TeamCityProperties.getBoolean(Constants.ALLOW_FILE_URL);
   }
 
   /**

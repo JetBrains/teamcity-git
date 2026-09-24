@@ -214,6 +214,43 @@ public class SubmoduleTest {
     }
   }
 
+  @TestFor(issues = "TW-104064")
+  @Test
+  public void testSubmoduleDisallowedTransportUrlIsRejected() throws Exception {
+    File masterRep = dataFile("repo.git");
+    Repository dataRepo = new RepositoryBuilder().setGitDir(masterRep).build();
+    RevCommit anyCommit;
+    RevWalk revWalk = new RevWalk(dataRepo);
+    try {
+      anyCommit = revWalk.parseCommit(
+        ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)));
+    } finally {
+      revWalk.dispose();
+    }
+
+    File dbDir = myTempFiles.createTempDir();
+    Repository db = new RepositoryBuilder().setBare().setGitDir(dbDir).build();
+    db.create(true);
+    db.getConfig().setString("teamcity", null, "remote", "https://main.example.com/repo.git");
+    db.getConfig().save();
+
+    try {
+      OperationContext context = myGitSupport.createContext(vcsRoot().withFetchUrl("https://main.example.com/repo.git").build(), "testing");
+      SubmoduleResolverImpl resolver = new SubmoduleResolverImpl(context, myCommitLoader, db, anyCommit, "");
+
+      try {
+        resolver.resolveSubmoduleUrl("ext::sh /tmp/x.sh");
+        fail("Expected VcsException for a disallowed-transport submodule URL");
+      } catch (VcsException e) {
+        assertTrue(e.getMessage().contains("Allowed:") && e.getMessage().contains("teamcity.git.additionalAllowedUrlTransports"),
+                   "Expected the allowlist hint in the rejection message, but got: " + e.getMessage());
+      }
+    } finally {
+      db.close();
+      dataRepo.close();
+    }
+  }
+
   @TestFor(issues = "TW-103519")
   @Test
   public void testFetchSubmoduleRejectsLocalFileUrl() throws Exception {
@@ -241,6 +278,34 @@ public class SubmoduleTest {
       internalProperties.tearDown();
       mirror.close();
       localTarget.close();
+    }
+  }
+
+  @TestFor(issues = "TW-104064")
+  @Test
+  public void testFetchSubmoduleRejectsDisallowedTransportUrl() throws Exception {
+    File mirrorDir = myTempFiles.createTempDir();
+    Repository mirror = new RepositoryBuilder().setBare().setGitDir(mirrorDir).build();
+    mirror.create(true);
+
+    try {
+      OperationContext context = myGitSupport.createContext(vcsRoot().withFetchUrl("https://main.example.com/repo.git").build(), "testing");
+      URIish disallowedUri = new URIish("ext::sh /tmp/x.sh");
+
+      try {
+        context.fetchSubmodule(mirror, disallowedUri, Collections.singletonList(new RefSpec("+refs/*:refs/*")), context.getGitRoot().getAuthSettings());
+        fail("Expected VcsException for a disallowed-transport submodule fetch URL");
+      } catch (VcsException e) {
+        // Both native git (protocol.ext.allow=never by default) and JGit (no "ext" transport
+        // implementation) already reject this URL on their own, so a bare catch would pass
+        // here even without our own checkpoint. Assert on our own message text instead, so
+        // this only goes green once OperationContext.fetchSubmodule rejects the URL itself,
+        // before delegating to either transport.
+        assertTrue(e.getMessage().contains("transport") && e.getMessage().contains("Allowed:") && e.getMessage().contains("teamcity.git.additionalAllowedUrlTransports"),
+                   "Expected rejection from our own transport checkpoint, but got: " + e.getMessage());
+      }
+    } finally {
+      mirror.close();
     }
   }
 

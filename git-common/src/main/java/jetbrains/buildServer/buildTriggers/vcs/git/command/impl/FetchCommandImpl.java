@@ -116,8 +116,10 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
     if (myRefSpecs.size() > 1 && GitVersion.fetchSupportsStdin(gitVersion)) {
       cmd.addParameter("--stdin");
+      cmd.addParameter("--");
       cmd.addParameter(getRemote());
     } else {
+      cmd.addParameter("--");
       cmd.addParameter(getRemote());
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
     }

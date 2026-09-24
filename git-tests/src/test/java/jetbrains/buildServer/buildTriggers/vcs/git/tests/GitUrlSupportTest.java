@@ -319,6 +319,16 @@ public class GitUrlSupportTest extends BaseTestCase {
     assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, "The git fetch URL must not be a local file URL");
   }
 
+  @TestFor(issues = "TW-104064")
+  @Test
+  public void shouldThrowForDisallowedTransportUrl() {
+    final VcsUrl url = new VcsUrl("ext::sh /tmp/x.sh");
+    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, e -> {
+      assertTrue("Expected the allowlist hint in the rejection message, but got: " + e.getMessage(),
+                 e.getMessage().contains("Allowed:") && e.getMessage().contains(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS));
+    });
+  }
+
   private void checkAuthMethod(MavenVcsUrl url, GitVcsRoot root) {
     if (url.getProviderSpecificPart().startsWith("ssh")) {
       Credentials cre = url.getCredentials();

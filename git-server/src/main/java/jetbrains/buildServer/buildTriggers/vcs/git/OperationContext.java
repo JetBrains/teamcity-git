@@ -122,11 +122,16 @@ public class OperationContext {
                              @NotNull URIish fetchURI,
                              @NotNull Collection<RefSpec> refSpecs,
                              @NotNull AuthSettings auth) throws IOException, VcsException {
-    if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(fetchURI.toPrivateString())) {
+    GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(fetchURI.toPrivateString());
+    if (restriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
       throw new VcsException(String.format(
         "Submodule fetch URL '%s' is a local file access URL, which is forbidden for security reasons. " +
         "Please configure submodule URLs to use network protocols like SSH or HTTPS.",
         fetchURI.toPrivateString()));
+    } else if (restriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
+      throw new VcsException(String.format(
+        "Submodule fetch URL transport not allowed: %s. %s",
+        fetchURI.toPrivateString(), GitRemoteUrlInspector.getAllowedTransportsHint()));
     }
     if (alreadyFetched(fetchURI, refSpecs))
       return;

@@ -106,6 +106,64 @@ public class FetchCommandImplTest extends BaseTestCase {
     }
   }
 
+  @TestFor(issues = "TW-104064")
+  public void should_add_separator_before_remote_url_non_stdin() throws Exception {
+    final List<String> capturedParams = new java.util.ArrayList<>();
+    AgentGitCommandLine cmd = new AgentGitCommandLine(null, getFakeGen(), new StubContext("git", new GitVersion(2, 30, 0))) {
+      @Override
+      public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
+        capturedParams.addAll(getParametersList().getList());
+        throw new VcsException("stop before running a real process");
+      }
+    };
+
+    FetchCommand fetch = new FetchCommandImpl(cmd)
+      .setRemote("https://example.com/repo.git")
+      .setRefspec("+refs/heads/*:refs/remotes/origin/*")
+      .setAuthSettings(getEmptyAuthSettings());
+
+    try {
+      fetch.call();
+      fail("Expected VcsException");
+    } catch (VcsException e) {
+      // expected: thrown by the stub run() before a real process would have been started
+    }
+
+    int remoteIdx = capturedParams.indexOf("https://example.com/repo.git");
+    assertTrue("Remote URL parameter not found in: " + capturedParams, remoteIdx > 0);
+    assertEquals("--", capturedParams.get(remoteIdx - 1));
+  }
+
+  @TestFor(issues = "TW-104064")
+  public void should_add_separator_before_remote_url_stdin() throws Exception {
+    final List<String> capturedParams = new java.util.ArrayList<>();
+    AgentGitCommandLine cmd = new AgentGitCommandLine(null, getFakeGen(), new StubContext("git", new GitVersion(2, 30, 0))) {
+      @Override
+      public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
+        capturedParams.addAll(getParametersList().getList());
+        throw new VcsException("stop before running a real process");
+      }
+    };
+
+    FetchCommand fetch = new FetchCommandImpl(cmd)
+      .setRemote("https://example.com/repo.git")
+      .setRefspec("+refs/heads/a:refs/remotes/origin/a")
+      .setRefspec("+refs/heads/b:refs/remotes/origin/b")
+      .setAuthSettings(getEmptyAuthSettings());
+
+    try {
+      fetch.call();
+      fail("Expected VcsException");
+    } catch (VcsException e) {
+      // expected: thrown by the stub run() before a real process would have been started
+    }
+
+    assertTrue("Expected --stdin in: " + capturedParams, capturedParams.contains("--stdin"));
+    int remoteIdx = capturedParams.indexOf("https://example.com/repo.git");
+    assertTrue("Remote URL parameter not found in: " + capturedParams, remoteIdx > 0);
+    assertEquals("--", capturedParams.get(remoteIdx - 1));
+  }
+
   @NotNull
   private AuthSettings getEmptyAuthSettings() {
     return new AuthSettingsImpl(new HashMap<String, String>(), new URIishHelperImpl());

@@ -49,6 +49,7 @@ public class PushCommandImpl extends BaseAuthCommandImpl<PushCommand> implements
     if (myForceWithLease != null) {
       cmd.addParameter("--force-with-lease=" + myForceWithLease);
     }
+    cmd.addParameter("--");
     cmd.addParameter(getRemote());
     myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
 

@@ -59,8 +59,11 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
           rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
         }
 
-        if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(url)) {
+        GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(url);
+        if (restriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
           rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must not be a local file URL"));
+        } else if (restriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
+          rc.add(new InvalidProperty(Constants.FETCH_URL, "Transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint()));
         }
       }
     }
@@ -82,8 +85,11 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
           rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
         }
 
-        if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(pushUrl)) {
+        GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(pushUrl);
+        if (restriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
           rc.add(new InvalidProperty(Constants.PUSH_URL, "The URL must not be a local file URL"));
+        } else if (restriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
+          rc.add(new InvalidProperty(Constants.PUSH_URL, "Transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint()));
         }
       }
     }
