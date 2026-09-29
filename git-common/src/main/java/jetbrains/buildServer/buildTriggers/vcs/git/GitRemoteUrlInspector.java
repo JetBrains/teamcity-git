@@ -23,7 +23,9 @@ public final class GitRemoteUrlInspector {
 
   private static final Pattern REMOTE_HELPER_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)::");
   private static final Pattern SCHEME_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)://");
-  private static final Pattern SCP_LIKE_URL = Pattern.compile("^([A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9_][A-Za-z0-9_.-]*:(?!:).+$");
+  // [user@]host:path or [user@][bracketed-host]:path (e.g. IPv6). Matches git's own scp-like rule: no '/'
+  // before the separating ':' - host/user characters are otherwise unrestricted, same as real git.
+  private static final Pattern SCP_LIKE_URL = Pattern.compile("^(?:[^/:@]+@)?(?:\\[[^/\\]]+]|[^/:]+):(?!:).+$");
   private static final Set<String> DEFAULT_ALLOWED_TRANSPORTS =
     Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList("http", "https", "ssh", "git")));
 
@@ -70,7 +72,7 @@ public final class GitRemoteUrlInspector {
   public static Set<String> getEffectiveAllowedTransports() {
     Set<String> allowed = new LinkedHashSet<>(DEFAULT_ALLOWED_TRANSPORTS);
     for (String transport : StringUtil.split(TeamCityProperties.getProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS), true, ',')) {
-      allowed.add(transport.trim().toLowerCase());
+      allowed.add(transport.trim());
     }
     return allowed;
   }
@@ -81,6 +83,9 @@ public final class GitRemoteUrlInspector {
            ". To allow another, add it to the '" + Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS + "' internal property.";
   }
 
+  // Historical native-ssh aliases git still recognizes
+  private static final Set<String> SSH_SCHEME_ALIASES = new LinkedHashSet<>(Arrays.asList("git+ssh", "ssh+git"));
+
   /**
    * Returns the transport name a raw URL declares (scheme, remote-helper name, or {@code "ssh"} for
    * scp-like syntax), or {@code null} if the URL matches none of the recognized shapes.
@@ -89,14 +94,18 @@ public final class GitRemoteUrlInspector {
   public static String getTransportName(@Nullable String rawUrl) {
     if (rawUrl == null) return null;
     String url = rawUrl.trim();
+    if (url.startsWith("-")) return null; // never a legitimate transport marker
 
     Matcher m = SCHEME_PREFIX.matcher(url); // scheme://
-    if (m.find()) return m.group(1).toLowerCase();
+    if (m.find()) {
+      String scheme = m.group(1);
+      return SSH_SCHEME_ALIASES.contains(scheme) ? "ssh" : scheme;
+    }
 
     m = REMOTE_HELPER_PREFIX.matcher(url); // name::
-    if (m.find()) return m.group(1).toLowerCase();
+    if (m.find()) return m.group(1);
 
-    if (SCP_LIKE_URL.matcher(url).matches()) return "ssh"; // [user@]host:path
+    if (SCP_LIKE_URL.matcher(url).matches()) return "ssh"; // [user@]host:path or [user@][host]:path
 
     return null;
   }
@@ -181,7 +190,8 @@ public final class GitRemoteUrlInspector {
     char secondChar = url.charAt(1);
     if (!isAsciiLetter(firstChar) || secondChar != ':') return false;
 
-    return url.length() < 3 || url.charAt(2) != ':'; // "X::..." is a remote helper, not a drive letter
+    // "X::..." is a remote helper and "X://..." a scheme, not a drive letter
+    return url.length() < 3 || url.charAt(2) != ':' && !url.startsWith("//", 2);
   }
 
   private static boolean isAsciiLetter(char c) {

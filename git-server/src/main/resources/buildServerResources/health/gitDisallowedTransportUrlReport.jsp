@@ -6,7 +6,6 @@
 <jsp:useBean id="healthStatusReportUrl" type="java.lang.String" scope="request"/>
 
 <c:set var="vcsRoot" value="${healthStatusItem.additionalData['vcsRoot']}"/>
-<c:set var="url" value="${healthStatusItem.additionalData['url']}"/>
 <c:set var="urlLabel" value="${healthStatusItem.additionalData['urlLabel']}"/>
 <c:set var="transport" value="${healthStatusItem.additionalData['transport']}"/>
 <c:set var="buildType" value="${healthStatusItem.additionalData['buildType']}"/>
@@ -17,6 +16,5 @@
   <c:if test="${not empty buildType}">
     in the scope of <admin:editBuildTypeLinkFull buildType="${buildType}"/>,
   </c:if>
-  which is not allowed for security reasons.<br/>
-  URL: <code><c:out value="${url}"/></code>
+  which is not allowed for security reasons.
 </div>

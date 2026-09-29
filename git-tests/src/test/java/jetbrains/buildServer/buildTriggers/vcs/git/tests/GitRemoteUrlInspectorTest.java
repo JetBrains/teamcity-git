@@ -65,7 +65,11 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
       // one-letter remote helper, not a Windows drive letter
       {"s::evil", null},
       {"x::sh -c id", null},
-      {"C::evil", null}
+      {"C::evil", null},
+
+      // one-letter scheme, not a Windows drive letter
+      {"x://repo", null},
+      {"C://repo", null}
     };
   }
 
@@ -101,16 +105,40 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
       {"x::sh -c id", DISALLOWED_TRANSPORT},
       {"C::evil", DISALLOWED_TRANSPORT},
 
+      // one-letter scheme, not a Windows drive letter
+      {"x://repo", DISALLOWED_TRANSPORT},
+      {"C://repo", DISALLOWED_TRANSPORT},
+
+      // transport matching is case-sensitive
+      {"SSH://host/repo", DISALLOWED_TRANSPORT},
+      {"HTTP://example.com/repo", DISALLOWED_TRANSPORT},
+      {"Git://example.com/repo", DISALLOWED_TRANSPORT},
+
       // allowed network schemes
       {"http://example.com/owner/repo.git", null},
       {"https://example.com/owner/repo.git", null},
       {"ssh://git@example.com/owner/repo.git", null},
       {"git://example.com/repo", null},
 
+      // git+ssh / ssh+git are native-ssh aliases
+      {"git+ssh://host/repo", null},
+      {"ssh+git://host/repo", null},
+
       // scp-like syntax
       {"user@host:path", null},
       {"host:path", null},
       {"git@10.128.93.163:/srv/git/privaterepo.git", null},
+      {"foo+bar@host:repo", null},
+
+      // scp-like syntax with a bracketed (e.g. IPv6) host
+      {"[::1]:repo", null},
+      {"user@[2001:db8::1]:repo", null},
+      {"ssh://[::1]/repo", null},
+
+      // a '/' inside brackets is not a valid IPv6-style host - real git treats this as a local path
+      // (confirmed via GIT_TRACE=1: it runs git-upload-pack locally, no ssh), so it must not be
+      // recognized as scp-like ssh either
+      {"[foo/bar]:repo", MALFORMED_URL},
 
       // ambiguous bare word with no colon/slash
       {"myhost", null},
@@ -136,7 +164,12 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
       {"user@host:path"},
       {"host:path"},
       {"git@10.128.93.163:/srv/git/privaterepo.git"},
-      {"user@host:~/repo.git"}
+      {"user@host:~/repo.git"},
+      {"foo+bar@host:repo"},
+      {"[::1]:repo"},
+      {"user@[2001:db8::1]:repo"},
+      {"git+ssh://host/repo"},
+      {"ssh+git://host/repo"}
     };
   }
 
@@ -179,6 +212,36 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("ext::sh /tmp/x.sh"))
       .as("The override is trusted uniformly, including for known-dangerous transports")
+      .isNull();
+  }
+
+  @Test
+  public void should_match_override_property_case_sensitively() {
+    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "MyHelper");
+
+    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("MyHelper::something"))
+      .as("Exact case from the override property must be allowed")
+      .isNull();
+    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("myhelper::something"))
+      .as("A different case is not the same helper name and must stay rejected")
+      .isEqualTo(GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT);
+  }
+
+  @Test
+  public void should_check_one_letter_scheme_against_allowlist_when_file_urls_are_allowed() {
+    setInternalProperty(Constants.ALLOW_FILE_URL, "true");
+
+    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("x://repo"))
+      .as("A one-letter scheme is a transport, so allowing file URLs must not let it bypass the allowlist")
+      .isEqualTo(GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT);
+  }
+
+  @Test
+  public void should_allow_one_letter_scheme_added_via_override_property() {
+    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "x");
+
+    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("x://repo"))
+      .as("Expected 'x' to be allowed once added to the override property")
       .isNull();
   }
 }

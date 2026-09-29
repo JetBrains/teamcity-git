@@ -22,25 +22,22 @@ import static org.assertj.core.api.BDDAssertions.then;
  * Verifies a rejected fetch or push URL ({@link GitRemoteUrlInspector.UrlRestriction}) is caught at every
  * {@link GitVcsSupport}/{@link GitCommitSupport}/{@link GitMergeSupport} entry point.
  */
-public class RejectedFetchUrlTest extends BaseRemoteRepositoryTest {
+public class RejectedRemoteUrlTest extends BaseRemoteRepositoryTest {
   private static final String VALID_URL = "https://example.com/repo.git";
 
   private GitVcsSupport myGit;
-  private String myPreviousPropertyValue;
 
   @BeforeClass
   public void setUp() throws Exception {
     super.setUp();
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     myGit = GitSupportBuilder.gitSupport().withServerPaths(paths).build();
-    myPreviousPropertyValue = System.getProperty(Constants.ALLOW_FILE_URL);
-    System.setProperty(Constants.ALLOW_FILE_URL, "false");
+    setInternalProperty(Constants.ALLOW_FILE_URL, "false");
   }
 
   @AfterClass
   public void tearDown() {
     super.tearDown();
-    System.setProperty(Constants.ALLOW_FILE_URL, myPreviousPropertyValue);
   }
 
   @DataProvider(name = "rejectedUrls")

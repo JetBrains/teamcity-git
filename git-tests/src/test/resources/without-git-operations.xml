@@ -6,7 +6,7 @@
     <classes>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AuthSettingsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsPropertiesProcessorTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RejectedFetchUrlTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RejectedRemoteUrlTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUtilsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitServerUtilTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ServerPluginConfigTest"/>
