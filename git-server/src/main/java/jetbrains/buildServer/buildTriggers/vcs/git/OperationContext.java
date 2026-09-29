@@ -130,6 +130,8 @@ public class OperationContext {
                                                "Please configure submodule URLs to use network protocols like SSH or HTTPS.", fetchURI.toPrivateString()));
         case DISALLOWED_TRANSPORT:
           throw new VcsException(String.format("Submodule fetch URL transport not allowed: %s. %s", fetchURI.toPrivateString(), GitRemoteUrlInspector.getAllowedTransportsHint()));
+        case MALFORMED_URL:
+          throw new VcsException(String.format("Submodule fetch URL '%s' is malformed and cannot be used.", fetchURI.toPrivateString()));
         default:
           throw new VcsException(String.format("Submodule fetch URL '%s' is not allowed for security reasons.", fetchURI.toPrivateString()));
       }

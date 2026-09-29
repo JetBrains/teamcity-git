@@ -1,7 +1,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.health;
 
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.health.GitDangerousTransportPermittedHealthReport;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitServerTestCase;
@@ -9,6 +10,7 @@ import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusScope;
 import jetbrains.buildServer.serverSide.healthStatus.impl.ScopeBuilder;
 import jetbrains.buildServer.serverSide.healthStatus.reports.StubHealthStatusItemConsumer;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static org.assertj.core.api.BDDAssertions.then;
@@ -24,69 +26,52 @@ public class GitDangerousTransportPermittedHealthReportTest extends BaseGitServe
   }
 
   @SuppressWarnings("unchecked")
-  private static Collection<String> transportsOf(HealthStatusItem item) {
-    return (Collection<String>) item.getAdditionalData().get("transports");
+  private static Map<String, String> transportsOf(HealthStatusItem item) {
+    return (Map<String, String>) item.getAdditionalData().get("transports");
   }
 
-  @Test
-  public void no_dangerous_transport_permitted_item_by_default() {
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(true).build();
+  private List<HealthStatusItem> reportWithOverride(String overrideValue, boolean globalItemsInScope) {
+    if (overrideValue != null) setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, overrideValue);
+
+    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(globalItemsInScope).build();
     StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
     newReport().report(scope, consumer);
-
-    then(consumer.getConsumedItemsGlobal()).as("No global item expected when no dangerous transport is permitted").isEmpty();
+    return consumer.getConsumedItemsGlobal();
   }
 
-  @Test
-  public void reports_dangerous_transport_permitted_item_when_ext_is_allow_listed() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "ext");
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(true).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    List<HealthStatusItem> globalItems = consumer.getConsumedItemsGlobal();
-    then(globalItems).as("Expected exactly one global item").hasSize(1);
-    then(transportsOf(globalItems.get(0))).contains("ext");
+  @DataProvider(name = "noItemCases")
+  public Object[][] noItemCases() {
+    return new Object[][]{
+      {"default allowlist, no override", null, true},
+      {"override only lists a non-dangerous transport", "hg", true},
+      {"'ext' permitted but global items are not in scope", "ext", false}
+    };
   }
 
-  @Test
-  public void reports_single_item_mentioning_both_ext_and_fd_when_both_are_allow_listed() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "ext,fd");
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(true).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    List<HealthStatusItem> globalItems = consumer.getConsumedItemsGlobal();
-    then(globalItems).as("Expected exactly one global item even with two dangerous transports permitted").hasSize(1);
-    then(transportsOf(globalItems.get(0))).contains("ext", "fd");
+  @Test(dataProvider = "noItemCases")
+  public void reports_no_item(String caseLabel, String overrideValue, boolean globalItemsInScope) {
+    then(reportWithOverride(overrideValue, globalItemsInScope)).as(caseLabel).isEmpty();
   }
 
-  @Test
-  public void no_dangerous_transport_permitted_item_for_non_dangerous_override() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "hg");
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(true).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    then(consumer.getConsumedItemsGlobal()).as("'hg' is not a known-dangerous transport").isEmpty();
+  @DataProvider(name = "dangerousOverrideCases")
+  public Object[][] dangerousOverrideCases() {
+    return new Object[][]{
+      {"ext", Arrays.asList("ext")},
+      {"ext,fd", Arrays.asList("ext", "fd")}
+    };
   }
 
-  @Test
-  public void no_dangerous_transport_permitted_item_when_global_items_not_in_scope() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "ext");
+  @Test(dataProvider = "dangerousOverrideCases")
+  public void reports_one_global_item_naming_every_permitted_dangerous_transport(String overrideValue, List<String> expectedTransports) {
+    List<HealthStatusItem> items = reportWithOverride(overrideValue, true);
 
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).build(); // no setGlobalItems(true)
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
+    then(items).as("Expected exactly one global item for override '" + overrideValue + "'").hasSize(1);
+    Map<String, String> transports = transportsOf(items.get(0));
+    then(transports.keySet()).containsExactlyInAnyOrderElementsOf(expectedTransports);
 
-    newReport().report(scope, consumer);
-
-    then(consumer.getConsumedItemsGlobal()).as("No global item expected when globalItems() is false").isEmpty();
+    then(transports.get("ext")).as("ext executes a command").containsIgnoringCase("command");
+    if (transports.containsKey("fd")) {
+      then(transports.get("fd")).as("fd does not execute a command, unlike ext").doesNotContainIgnoringCase("command");
+    }
   }
 }

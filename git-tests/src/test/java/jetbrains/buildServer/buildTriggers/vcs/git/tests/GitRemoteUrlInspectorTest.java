@@ -7,15 +7,18 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector.LocalReason.*;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector.UrlRestriction.MALFORMED_URL;
 
 public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
-  @DataProvider(name = "unsafeUrls")
-  public Object[][] unsafeUrls() {
+  @DataProvider(name = "localAccessCases")
+  public Object[][] localAccessCases() {
     return new Object[][]{
       // file: scheme
       {"file:/repo", FILE_SCHEME},
@@ -43,99 +46,88 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
       // Bare path with separator (treated as local relative)
       {"path/to/repo", UNIX_RELATIVE},
-      {"path\\to\\repo", UNIX_RELATIVE}
+      {"path\\to\\repo", UNIX_RELATIVE},
+
+      // Network schemes - not local
+      {"ssh://git@example.com/owner/repo.git", null},
+      {"https://example.com/owner/repo.git", null},
+      {"git://example.com/repo", null},
+
+      // scp-like syntax - not local
+      {"git@example.com:owner/repo.git", null},
+      {"user@host:~/repo.git", null},
+      {"host:org/repo.git", null},
+
+      // No separators (conservatively not marked as local)
+      {"repo.git", null},
+      {"origin", null},
+
+      // one-letter remote helper, not a Windows drive letter
+      {"s::evil", null},
+      {"x::sh -c id", null},
+      {"C::evil", null}
     };
   }
 
-  @Test(dataProvider = "unsafeUrls")
-  public void should_detect_unsafe_local_urls(@NotNull String url, @NotNull GitRemoteUrlInspector.LocalReason expectedReason) {
+  @Test(dataProvider = "localAccessCases")
+  public void should_classify_local_access(@NotNull String url, @Nullable GitRemoteUrlInspector.LocalReason expectedReason) {
     Assertions.assertThat(GitRemoteUrlInspector.isLocalFileAccess(url))
-      .as("Expected local access for: " + url)
-      .isTrue();
+      .as("Expected local access = " + (expectedReason != null) + " for: " + url)
+      .isEqualTo(expectedReason != null);
     Assertions.assertThat(GitRemoteUrlInspector.classify(url))
       .as("Expected reason for: " + url)
       .isEqualTo(expectedReason);
   }
 
-  @DataProvider(name = "safeUrls")
-  public Object[][] safeUrls() {
-    return new Object[][]{
-      // Network schemes
-      {"ssh://git@example.com/owner/repo.git"},
-      {"https://example.com/owner/repo.git"},
-      {"git://example.com/repo"},
-
-      // scp-like syntax
-      {"git@example.com:owner/repo.git"},
-      {"user@host:~/repo.git"},
-      {"host:org/repo.git"},
-
-      // No separators (conservatively not marked as local)
-      {"repo.git"},
-      {"origin"}
-    };
-  }
-
-  @Test(dataProvider = "safeUrls")
-  public void should_not_flag_safe_remote_urls_as_local(String url) {
-    Assertions.assertThat(GitRemoteUrlInspector.isLocalFileAccess(url))
-      .as("Did not expect local access for: " + url)
-      .isFalse();
-    Assertions.assertThat(GitRemoteUrlInspector.classify(url))
-      .as("Expected null reason for: " + url)
-      .isNull();
-  }
-
-  @DataProvider(name = "disallowedTransportUrls")
-  public Object[][] disallowedTransportUrls() {
+  @DataProvider(name = "urlRestrictionCases")
+  public Object[][] urlRestrictionCases() {
     return new Object[][]{
       // ext:: / fd:: remote-helper syntax
-      {"ext::sh /tmp/x.sh"},
-      {"fd::something"},
-      {"EXT::sh /tmp/x.sh"},
+      {"ext::sh /tmp/x.sh", DISALLOWED_TRANSPORT},
+      {"fd::something", DISALLOWED_TRANSPORT},
+      {"EXT::sh /tmp/x.sh", DISALLOWED_TRANSPORT},
 
       // ext:// / fd:// scheme syntax
-      {"ext://touch /tmp/x"},
-      {"fd://something"},
+      {"ext://touch /tmp/x", DISALLOWED_TRANSPORT},
+      {"fd://something", DISALLOWED_TRANSPORT},
 
       // any other remote helper / scheme not in the default allowed set is rejected too
-      {"hg::https://example.com/repo"},
-      {"s3://bucket/repo"},
-      {"foo://anything"}
-    };
-  }
+      {"hg::https://example.com/repo", DISALLOWED_TRANSPORT},
+      {"s3://bucket/repo", DISALLOWED_TRANSPORT},
+      {"foo://anything", DISALLOWED_TRANSPORT},
 
-  @Test(dataProvider = "disallowedTransportUrls")
-  public void should_reject_disallowed_transports(String url) {
-    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl(url))
-      .as("Expected DISALLOWED_TRANSPORT for: " + url)
-      .isEqualTo(GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT);
-  }
+      // one-letter remote helper, not a Windows drive letter
+      {"s::evil", DISALLOWED_TRANSPORT},
+      {"x::sh -c id", DISALLOWED_TRANSPORT},
+      {"C::evil", DISALLOWED_TRANSPORT},
 
-  @DataProvider(name = "allowedUrlsForVerifyUrl")
-  public Object[][] allowedUrlsForVerifyUrl() {
-    return new Object[][]{
       // allowed network schemes
-      {"http://example.com/owner/repo.git"},
-      {"https://example.com/owner/repo.git"},
-      {"ssh://git@example.com/owner/repo.git"},
-      {"git://example.com/repo"},
+      {"http://example.com/owner/repo.git", null},
+      {"https://example.com/owner/repo.git", null},
+      {"ssh://git@example.com/owner/repo.git", null},
+      {"git://example.com/repo", null},
 
       // scp-like syntax
-      {"user@host:path"},
-      {"host:path"},
-      {"git@10.128.93.163:/srv/git/privaterepo.git"},
+      {"user@host:path", null},
+      {"host:path", null},
+      {"git@10.128.93.163:/srv/git/privaterepo.git", null},
 
       // ambiguous bare word with no colon/slash
-      {"myhost"}
+      {"myhost", null},
+
+      // CLI-flag-shaped values must never get a free pass as "presumably scp-like" or "bare word"
+      {"-oProxyCommand=id", MALFORMED_URL},
+      {"--upload-pack=id", MALFORMED_URL},
+      {"-oProxyCommand=x:evil", MALFORMED_URL},
+      {"-oProxyCommand=x@host:path", MALFORMED_URL}
     };
   }
 
-  @Test(dataProvider = "allowedUrlsForVerifyUrl")
-  public void should_not_flag_allowed_urls(String url) {
+  @Test(dataProvider = "urlRestrictionCases")
+  public void should_classify_url_restriction(String url, GitRemoteUrlInspector.UrlRestriction expectedRestriction) {
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl(url))
-      .as("Expected null restriction for: " + url)
-      .isNull();
+      .as("Expected " + expectedRestriction + " for: " + url)
+      .isEqualTo(expectedRestriction);
   }
 
   @DataProvider(name = "scpLikeUrls")
@@ -153,23 +145,6 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
     Assertions.assertThat(GitRemoteUrlInspector.getTransportName(url))
       .as("scp-like syntax is an implicit ssh transport: " + url)
       .isEqualTo("ssh");
-  }
-
-  @DataProvider(name = "cliFlagShapedUrls")
-  public Object[][] cliFlagShapedUrls() {
-    return new Object[][]{
-      {"-oProxyCommand=id"},
-      {"--upload-pack=id"},
-      {"-oProxyCommand=x:evil"},
-      {"-oProxyCommand=x@host:path"}
-    };
-  }
-
-  @Test(dataProvider = "cliFlagShapedUrls")
-  public void should_reject_cli_flag_shaped_urls_even_without_a_recognized_scheme(String url) {
-    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl(url))
-      .as("A '-'-led value must never be treated as a bare host alias or scp-like host: " + url)
-      .isEqualTo(GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT);
   }
 
   @Test

@@ -13,11 +13,7 @@
 
 <div>
   The VCS root <admin:vcsRootName vcsRoot="${vcsRoot}" editingScope="" cameFromUrl="${healthStatusReportUrl}"/> uses
-  <c:choose>
-    <c:when test="${not empty transport}">a non-standard '<c:out value="${transport}"/>' transport</c:when>
-    <c:otherwise>an unrecognized URL format</c:otherwise>
-  </c:choose>
-  in its ${urlLabel} URL,
+  a non-standard '<c:out value="${transport}"/>' transport in its ${urlLabel} URL,
   <c:if test="${not empty buildType}">
     in the scope of <admin:editBuildTypeLinkFull buildType="${buildType}"/>,
   </c:if>

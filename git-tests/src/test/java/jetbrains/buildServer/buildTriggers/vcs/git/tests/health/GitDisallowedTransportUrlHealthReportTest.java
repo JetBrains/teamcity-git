@@ -38,8 +38,8 @@ public class GitDisallowedTransportUrlHealthReportTest extends BaseGitServerTest
   }
 
   @NotNull
-  private SVcsRoot createGitRoot(@NotNull ProjectEx project, @NotNull Map<String, String> props) {
-    return project.createVcsRoot(Constants.VCS_NAME, "git_root", props);
+  private SVcsRoot createGitRoot(@NotNull ProjectEx project, @NotNull String name, @NotNull Map<String, String> props) {
+    return project.createVcsRoot(Constants.VCS_NAME, name, props);
   }
 
   private static Map<String, String> props(String fetch, String push) {
@@ -53,42 +53,37 @@ public class GitDisallowedTransportUrlHealthReportTest extends BaseGitServerTest
     return new GitDisallowedTransportUrlHealthReport();
   }
 
-  @Test
-  public void reports_disallowed_transport_fetch_url() {
-    ProjectEx p = myProject;
-    SVcsRoot root = createGitRoot(p, props(DISALLOWED_URL, ALLOWED_URL));
+  private HealthStatusItem itemFor(List<HealthStatusItem> items, SVcsRoot root) {
+    return items.stream().filter(i -> i.getAdditionalData().get("vcsRoot") == root).findFirst()
+                .orElseThrow(() -> new AssertionError("No item found for root " + root.getName()));
+  }
 
-    HealthStatusScope scope = new ScopeBuilder().addProject(p).addVcsRoot(root).build();
+  @Test
+  public void reports_disallowed_urls_but_not_allowed_ones() {
+    ProjectEx p = myProject;
+    SVcsRoot fetchOnlyDisallowed = createGitRoot(p, "root1", props(DISALLOWED_URL, ALLOWED_URL));
+    SVcsRoot bothDisallowed = createGitRoot(p, "root2", props(DISALLOWED_URL, "fd::something"));
+    SVcsRoot allAllowed = createGitRoot(p, "root3", props(ALLOWED_URL, ALLOWED_URL));
+
+    HealthStatusScope scope = new ScopeBuilder().addProject(p)
+      .addVcsRoot(fetchOnlyDisallowed).addVcsRoot(bothDisallowed).addVcsRoot(allAllowed)
+      .build();
     StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
 
     newReport().report(scope, consumer);
 
     List<HealthStatusItem> items = consumer.getConsumedItems();
-    then(items).as("Expected exactly one item for the disallowed fetch URL").hasSize(1);
+    then(items).as("1 (fetch-only) + 2 (both) + 0 (all allowed)").hasSize(3);
 
-    HealthStatusItem item = items.get(0);
-    then(item.getAdditionalData().get("vcsRoot")).isSameAs(root);
-    then(item.getAdditionalData().get("url")).isEqualTo(DISALLOWED_URL);
-  }
-
-
-  @Test
-  public void reports_both_fetch_and_push_disallowed_transport_urls() {
-    ProjectEx p = myProject;
-    SVcsRoot root = createGitRoot(p, props(DISALLOWED_URL, "fd::something"));
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(p).addVcsRoot(root).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    then(consumer.getConsumedItems()).as("Expected 2 items (fetch + push)").hasSize(2);
+    then(itemFor(items, fetchOnlyDisallowed).getAdditionalData().get("url")).isEqualTo(DISALLOWED_URL);
+    then(items.stream().filter(i -> i.getAdditionalData().get("vcsRoot") == bothDisallowed).count()).isEqualTo(2);
+    then(items).extracting(i -> i.getAdditionalData().get("vcsRoot")).doesNotContain(allAllowed);
   }
 
   @Test
   public void allowing_the_transport_via_override_property_clears_the_item() {
     ProjectEx p = myProject;
-    SVcsRoot root = createGitRoot(p, props(DISALLOWED_URL, null));
+    SVcsRoot root = createGitRoot(p, "root1", props(DISALLOWED_URL, null));
 
     HealthStatusScope scope = new ScopeBuilder().addProject(p).addVcsRoot(root).build();
     StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
@@ -104,28 +99,15 @@ public class GitDisallowedTransportUrlHealthReportTest extends BaseGitServerTest
   }
 
   @Test
-  public void reports_no_items_for_allowed_transport_url() {
-    ProjectEx p = myProject;
-    SVcsRoot root = createGitRoot(p, props(ALLOWED_URL, ALLOWED_URL));
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(p).addVcsRoot(root).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    then(consumer.getConsumedItems()).as("No items expected for an allowed-transport URL").isEmpty();
-  }
-
-  @Test
   public void resolves_reference_per_build_type_scope() {
     ProjectEx p = myProject;
     BuildTypeImpl bt1 = myFixture.createBuildType(p, "bt1", "ant");
     BuildTypeImpl bt2 = myFixture.createBuildType(p, "bt2", "ant");
 
     bt1.addParameter(new SimpleParameter("ref", DISALLOWED_URL));
-    bt2.addParameter(new SimpleParameter("ref", ALLOWED_URL)); // resolves to allowed => should not report for bt2
+    bt2.addParameter(new SimpleParameter("ref", ALLOWED_URL));
 
-    SVcsRoot root = createGitRoot(p, props("%ref%", null));
+    SVcsRoot root = createGitRoot(p, "root1", props("%ref%", null));
     bt1.addVcsRoot(root);
     bt2.addVcsRoot(root);
 

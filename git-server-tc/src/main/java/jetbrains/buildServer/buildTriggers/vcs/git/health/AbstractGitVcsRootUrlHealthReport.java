@@ -14,11 +14,7 @@ import jetbrains.buildServer.vcs.SVcsRoot;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Shared shape for a Health report that flags individual Git VCS root fetch/push URLs: walk every git root
- * in scope via {@link GitVcsRootUrlResolver}, resolving parameter references per build type where needed,
- * and report one {@link HealthStatusItem} per (root, build type, url type) whose URL matches this report's
- * concern. Subclasses only supply the category and the URL predicate; {@link GitLocalFileUrlHealthReport}
- * and {@link GitDisallowedTransportUrlHealthReport} differ solely in those two things.
+ * Base for a Health report that flags individual Git VCS root fetch/push URLs by predicate.
  */
 abstract class AbstractGitVcsRootUrlHealthReport extends HealthStatusReport {
 

@@ -30,6 +30,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jmock.Mock;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -326,28 +327,27 @@ public class GitUrlSupportTest extends BaseTestCase {
     assertNull(myUrlSupport.convertToVcsRootProperties(url, createRootContext()));
   }
 
-  @TestFor(issues = "TW-104064")
-  @Test
-  public void shouldThrowForDisallowedTransportUrl() {
-    final VcsUrl url = new VcsUrl("ftp://example.com/repo");
-    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, e -> {
-      assertTrue("Expected the allowlist hint in the rejection message, but got: " + e.getMessage(),
-                 e.getMessage().contains("Allowed:") && e.getMessage().contains(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS));
-    });
+  @DataProvider(name = "urlsRejectedWithVcsException")
+  public Object[][] urlsRejectedWithVcsException() {
+    return new Object[][]{
+      // "ftp" is in MavenVcsUrl's NON_VCS_SCHEMATA exclusion set, so it bypasses the Maven-SCM-style
+      // provider dispatch and reaches the actual transport check.
+      {"ftp://example.com/repo", "Allowed:"},
+
+      // "ssh::..." parses to Maven scmName "ssh", exempt from the "decline for some other provider"
+      // check, so it must still be caught by the transport check itself (as a malformed URL, since
+      // MavenVcsUrl's own unwrapping mangles the value into ":sh -c id").
+      {"ssh::sh -c id", "malformed"}
+    };
   }
 
   @TestFor(issues = "TW-104064")
-  @Test
-  public void shouldRejectDisallowedTransportUrlEvenWhenMavenScmNameIsExemptAsGitOrSsh() {
-    // "ssh::..." parses as a Maven-SCM-style URL with provider schema "ssh" - exempt from the "decline
-    // for some other provider" check above (getMavenScmName treats "ssh" as still belonging to git) -
-    // so this must still be caught by the actual transport check below, not slip through as if
-    // "recognized as git's, therefore safe".
-    final VcsUrl url = new VcsUrl("ssh::sh -c id");
-    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, e -> {
-      assertTrue("Expected a rejection, but got: " + e.getMessage(),
-                 e.getMessage().toLowerCase().contains("not allowed") || e.getMessage().toLowerCase().contains("local file"));
-    });
+  @Test(dataProvider = "urlsRejectedWithVcsException")
+  public void shouldRejectUrlWithVcsException(String rawUrl, String expectedMessageFragment) {
+    final VcsUrl url = new VcsUrl(rawUrl);
+    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, e ->
+      assertTrue("Expected message to contain '" + expectedMessageFragment + "', but got: " + e.getMessage(),
+                 e.getMessage().contains(expectedMessageFragment)));
   }
 
   private void checkAuthMethod(MavenVcsUrl url, GitVcsRoot root) {

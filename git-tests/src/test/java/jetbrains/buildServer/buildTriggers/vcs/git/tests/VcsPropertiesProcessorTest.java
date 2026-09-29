@@ -210,37 +210,35 @@ public class VcsPropertiesProcessorTest extends TestCase {
     }
   }
 
-  @TestFor(issues = "TW-95933")
-  @Test
-  public void testLocalFileFetchUrlIsBlocked() {
+  @DataProvider
+  public Object[][] blockedUrls() {
+    return new Object[][]{
+      {Constants.FETCH_URL, "file:///tmp/testrepo.git", new String[]{"The URL must not be a local file URL"}},
+      {Constants.PUSH_URL, "file:///tmp/testrepo.git", new String[]{"The URL must not be a local file URL"}},
+      {Constants.FETCH_URL, "ext::sh /tmp/x.sh", new String[]{"Allowed:", Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS}},
+      {Constants.PUSH_URL, "ext::sh /tmp/x.sh", new String[]{"Allowed:", Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS}}
+    };
+  }
+
+  @TestFor(issues = {"TW-95933", "TW-104064"})
+  @Test(dataProvider = "blockedUrls")
+  public void urlIsBlocked(@NotNull String urlProperty, @NotNull String badUrl, @NotNull String[] expectedReasonFragments) {
     myInternalPropertiesHandler.setInternalProperty("teamcity.git.allowFileUrl", "false");
-    final Map<String, String> props = ImmutableMap.of(
-      "branch", "refs/heads/main",
-      "url", "file:///tmp/testrepo.git"
-    );
+
+    final Map<String, String> props = new HashMap<>();
+    props.put(Constants.BRANCH_NAME, "refs/heads/main");
+    props.put(Constants.FETCH_URL, Constants.FETCH_URL.equals(urlProperty) ? badUrl : "https://my.git.test/testrepo.git");
+    if (Constants.PUSH_URL.equals(urlProperty)) props.put(Constants.PUSH_URL, badUrl);
 
     final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
 
-    then(invalidProps).extracting("propertyName", "invalidReason")
-                      .containsExactly(tuple("url", "The URL must not be a local file URL"));
+    then(invalidProps).hasSize(1);
+    InvalidProperty invalidProperty = invalidProps.iterator().next();
+    then(invalidProperty.getPropertyName()).isEqualTo(urlProperty);
+    for (String fragment : expectedReasonFragments) {
+      then(invalidProperty.getInvalidReason()).contains(fragment);
+    }
   }
-
-  @TestFor(issues = "TW-95933")
-  @Test
-  public void testLocalFilePushUrlIsBlocked() {
-    myInternalPropertiesHandler.setInternalProperty("teamcity.git.allowFileUrl", "false");
-    final Map<String, String> props = ImmutableMap.of(
-      "branch", "refs/heads/main",
-      "url", "https://my.git.test/testrepo.git",
-      "push_url", "file:///tmp/testrepo.git"
-    );
-
-    final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
-
-    then(invalidProps).extracting("propertyName", "invalidReason")
-                      .containsExactly(tuple("push_url", "The URL must not be a local file URL"));
-  }
-
 
   @TestFor(issues = "TW-95933")
   @Test
@@ -253,39 +251,6 @@ public class VcsPropertiesProcessorTest extends TestCase {
     final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
 
     then(invalidProps).isEmpty();
-  }
-
-  @TestFor(issues = "TW-104064")
-  @Test
-  public void testDisallowedTransportFetchUrlIsBlocked() {
-    final Map<String, String> props = ImmutableMap.of(
-      "branch", "refs/heads/main",
-      "url", "ext::sh /tmp/x.sh"
-    );
-
-    final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
-
-    then(invalidProps).hasSize(1);
-    InvalidProperty invalidProperty = invalidProps.iterator().next();
-    then(invalidProperty.getPropertyName()).isEqualTo("url");
-    then(invalidProperty.getInvalidReason()).contains("Allowed:").contains(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS);
-  }
-
-  @TestFor(issues = "TW-104064")
-  @Test
-  public void testDisallowedTransportPushUrlIsBlocked() {
-    final Map<String, String> props = ImmutableMap.of(
-      "branch", "refs/heads/main",
-      "url", "https://my.git.test/testrepo.git",
-      "push_url", "ext::sh /tmp/x.sh"
-    );
-
-    final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
-
-    then(invalidProps).hasSize(1);
-    InvalidProperty invalidProperty = invalidProps.iterator().next();
-    then(invalidProperty.getPropertyName()).isEqualTo("push_url");
-    then(invalidProperty.getInvalidReason()).contains("Allowed:").contains(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS);
   }
 
   @TestFor(issues = "TW-102832")

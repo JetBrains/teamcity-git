@@ -12,10 +12,7 @@ import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Reports Git VCS roots whose fetch/push URL is rejected by the transport allowlist
- * ({@link GitRemoteUrlInspector}) - a per-root problem, one {@link ItemCategory#getSeverity() ERROR} item per
- * broken URL. See {@link GitDangerousTransportPermittedHealthReport} for the separate, global warning about
- * the allowlist override itself permitting a known-dangerous transport.
+ * Reports Git VCS roots whose fetch/push URL is {@code DISALLOWED_TRANSPORT} per {@link GitRemoteUrlInspector#verifyUrl}.
  */
 public class GitDisallowedTransportUrlHealthReport extends AbstractGitVcsRootUrlHealthReport {
 
@@ -59,8 +56,7 @@ public class GitDisallowedTransportUrlHealthReport extends AbstractGitVcsRootUrl
   @Override
   protected Map<String, Object> extraData(@NotNull String urlType, @NotNull String url) {
     final String urlLabel = Constants.FETCH_URL.equals(urlType) ? "fetch" : "push";
-    final String transport = GitRemoteUrlInspector.getTransportName(url);
-    return ImmutableMap.of(DATA_URL_LABEL, urlLabel, DATA_TRANSPORT, transport == null ? "" : transport);
+    return ImmutableMap.of(DATA_URL_LABEL, urlLabel, DATA_TRANSPORT, GitRemoteUrlInspector.getTransportName(url));
   }
 
   @Override

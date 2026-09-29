@@ -139,6 +139,8 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
                                                "Please configure submodule URLs to use network protocols like SSH or HTTPS.", url, resolved));
         case DISALLOWED_TRANSPORT:
           throw new VcsException(String.format("Submodule '%s': URL transport not allowed: %s. %s", url, resolved, GitRemoteUrlInspector.getAllowedTransportsHint()));
+        case MALFORMED_URL:
+          throw new VcsException(String.format("Submodule '%s': URL '%s' is malformed and cannot be used.", url, resolved));
         default:
           throw new VcsException(String.format("Submodule '%s': URL '%s' is not allowed for security reasons.", url, resolved));
       }

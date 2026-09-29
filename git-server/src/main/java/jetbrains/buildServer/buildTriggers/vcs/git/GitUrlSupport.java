@@ -93,6 +93,8 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
           throw new VcsException("The git fetch URL must not be a local file URL");
         case DISALLOWED_TRANSPORT:
           throw new VcsException("Fetch URL transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint());
+        case MALFORMED_URL:
+          throw new VcsException("The git fetch URL is malformed and cannot be used");
         default:
           throw new VcsException("The git fetch URL is not allowed for security reasons");
       }

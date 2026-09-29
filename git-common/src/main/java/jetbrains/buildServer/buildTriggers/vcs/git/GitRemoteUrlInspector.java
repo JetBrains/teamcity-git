@@ -37,7 +37,8 @@ public final class GitRemoteUrlInspector {
 
   public enum UrlRestriction {
     LOCAL_FILE_ACCESS,
-    DISALLOWED_TRANSPORT
+    DISALLOWED_TRANSPORT,
+    MALFORMED_URL
   }
 
   /**
@@ -53,8 +54,14 @@ public final class GitRemoteUrlInspector {
     if (isLocalFileAccess(rawUrl)) {
       return isFileUrlAllowed() ? null : UrlRestriction.LOCAL_FILE_ACCESS;
     }
-    if (!isAllowedTransport(url)) {
-      return UrlRestriction.DISALLOWED_TRANSPORT;
+
+    String name = getTransportName(url);
+    if (name != null) {
+      return getEffectiveAllowedTransports().contains(name) ? null : UrlRestriction.DISALLOWED_TRANSPORT;
+    }
+
+    if (url.indexOf(':') >= 0 || url.startsWith("-")) {
+      return UrlRestriction.MALFORMED_URL;
     }
     return null;
   }
@@ -74,14 +81,6 @@ public final class GitRemoteUrlInspector {
            ". To allow another, add it to the '" + Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS + "' internal property.";
   }
 
-  private static boolean isAllowedTransport(@NotNull String url) {
-    String name = getTransportName(url);
-    if (name != null) {
-      return getEffectiveAllowedTransports().contains(name);
-    }
-    return url.indexOf(':') < 0 && !url.startsWith("-");
-  }
-
   /**
    * Returns the transport name a raw URL declares (scheme, remote-helper name, or {@code "ssh"} for
    * scp-like syntax), or {@code null} if the URL matches none of the recognized shapes.
@@ -91,13 +90,13 @@ public final class GitRemoteUrlInspector {
     if (rawUrl == null) return null;
     String url = rawUrl.trim();
 
-    Matcher m = SCHEME_PREFIX.matcher(url);
+    Matcher m = SCHEME_PREFIX.matcher(url); // scheme://
     if (m.find()) return m.group(1).toLowerCase();
 
-    m = REMOTE_HELPER_PREFIX.matcher(url);
+    m = REMOTE_HELPER_PREFIX.matcher(url); // name::
     if (m.find()) return m.group(1).toLowerCase();
 
-    if (SCP_LIKE_URL.matcher(url).matches()) return "ssh";
+    if (SCP_LIKE_URL.matcher(url).matches()) return "ssh"; // [user@]host:path
 
     return null;
   }
@@ -180,8 +179,9 @@ public final class GitRemoteUrlInspector {
 
     char firstChar = url.charAt(0);
     char secondChar = url.charAt(1);
+    if (!isAsciiLetter(firstChar) || secondChar != ':') return false;
 
-    return isAsciiLetter(firstChar) && secondChar == ':';
+    return url.length() < 3 || url.charAt(2) != ':'; // "X::..." is a remote helper, not a drive letter
   }
 
   private static boolean isAsciiLetter(char c) {

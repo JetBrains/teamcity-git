@@ -43,6 +43,8 @@ public class SGitVcsRoot extends GitVcsRoot {
         throw new VcsException(String.format("VCS root '%s' is using local file %s URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), urlLabel, url));
       case DISALLOWED_TRANSPORT:
         throw new VcsException(String.format("VCS root '%s': %s URL transport not allowed: %s. %s", getName(), urlLabel, url, GitRemoteUrlInspector.getAllowedTransportsHint()));
+      case MALFORMED_URL:
+        throw new VcsException(String.format("VCS root '%s': %s URL '%s' is malformed and cannot be used.", getName(), urlLabel, url));
       default:
         throw new VcsException(String.format("VCS root '%s': %s URL '%s' is not allowed for security reasons.", getName(), urlLabel, url));
     }
