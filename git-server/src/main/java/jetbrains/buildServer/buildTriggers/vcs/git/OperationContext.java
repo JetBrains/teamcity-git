@@ -123,15 +123,16 @@ public class OperationContext {
                              @NotNull Collection<RefSpec> refSpecs,
                              @NotNull AuthSettings auth) throws IOException, VcsException {
     GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(fetchURI.toPrivateString());
-    if (restriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
-      throw new VcsException(String.format(
-        "Submodule fetch URL '%s' is a local file access URL, which is forbidden for security reasons. " +
-        "Please configure submodule URLs to use network protocols like SSH or HTTPS.",
-        fetchURI.toPrivateString()));
-    } else if (restriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
-      throw new VcsException(String.format(
-        "Submodule fetch URL transport not allowed: %s. %s",
-        fetchURI.toPrivateString(), GitRemoteUrlInspector.getAllowedTransportsHint()));
+    if (restriction != null) {
+      switch (restriction) {
+        case LOCAL_FILE_ACCESS:
+          throw new VcsException(String.format("Submodule fetch URL '%s' is a local file access URL, which is forbidden for security reasons. " +
+                                               "Please configure submodule URLs to use network protocols like SSH or HTTPS.", fetchURI.toPrivateString()));
+        case DISALLOWED_TRANSPORT:
+          throw new VcsException(String.format("Submodule fetch URL transport not allowed: %s. %s", fetchURI.toPrivateString(), GitRemoteUrlInspector.getAllowedTransportsHint()));
+        default:
+          throw new VcsException(String.format("Submodule fetch URL '%s' is not allowed for security reasons.", fetchURI.toPrivateString()));
+      }
     }
     if (alreadyFetched(fetchURI, refSpecs))
       return;

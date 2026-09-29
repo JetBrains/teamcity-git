@@ -132,15 +132,16 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException, VcsException {
     String resolved = SubmoduleUrlResolver.resolveSubmoduleUrl(myContext.getPluginConfig(), myContext.getConfig(getRepository()), url);
     GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(resolved);
-    if (restriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
-      throw new VcsException(String.format(
-        "Submodule '%s' is using local file URL '%s', which is forbidden for security reasons. " +
-        "Please configure submodule URLs to use network protocols like SSH or HTTPS.",
-        url, resolved));
-    } else if (restriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
-      throw new VcsException(String.format(
-        "Submodule '%s': URL transport not allowed: %s. %s",
-        url, resolved, GitRemoteUrlInspector.getAllowedTransportsHint()));
+    if (restriction != null) {
+      switch (restriction) {
+        case LOCAL_FILE_ACCESS:
+          throw new VcsException(String.format("Submodule '%s' is using local file URL '%s', which is forbidden for security reasons. " +
+                                               "Please configure submodule URLs to use network protocols like SSH or HTTPS.", url, resolved));
+        case DISALLOWED_TRANSPORT:
+          throw new VcsException(String.format("Submodule '%s': URL transport not allowed: %s. %s", url, resolved, GitRemoteUrlInspector.getAllowedTransportsHint()));
+        default:
+          throw new VcsException(String.format("Submodule '%s': URL '%s' is not allowed for security reasons.", url, resolved));
+      }
     }
     return new URIish(resolved);
   }

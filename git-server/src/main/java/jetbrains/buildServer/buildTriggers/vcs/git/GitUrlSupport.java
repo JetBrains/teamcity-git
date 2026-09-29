@@ -5,7 +5,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.log.Loggers;
@@ -78,23 +77,8 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     return e.getMessage().contains(GitVcsSupport.DEFAULT_BRANCH_REVISION_NOT_FOUND);
   }
 
-  private static final Pattern REMOTE_HELPER_URL_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)::");
-
   @Nullable
   public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url, @NotNull VcsOperationContext operationContext) throws VcsException {
-    // Checked on the raw pasted URL, before the Maven-SCM-style provider dispatch below: a
-    // "name::..." remote-helper URL is otherwise parsed as a connection string for some other,
-    // unrelated SCM provider named "name" (see MavenVcsUrl.extractProviderSchema) and silently
-    // declined (returns null) rather than rejected, so ext/fd would never reach the check below.
-    // Restricted to "name::" syntax specifically (not "name://"): a "scheme://" URL is ambiguous
-    // between a disallowed transport and a legitimate other-VCS URL (svn://, cvs://, ...), and the
-    // scmName dispatch below already declines those correctly; "name::" is Git's own remote-helper
-    // convention and not used by other VCS systems, so it is safe to reject unconditionally here.
-    if (REMOTE_HELPER_URL_PREFIX.matcher(url.getUrl().trim()).find()
-        && GitRemoteUrlInspector.verifyUrl(url.getUrl()) == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
-      throw new VcsException("Fetch URL transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint());
-    }
-
     String scmName = getMavenScmName(url);
     if (scmName != null && !"git".equalsIgnoreCase(scmName) && !"ssh".equalsIgnoreCase(scmName)) //some other scm provider
       return null;
@@ -102,8 +86,16 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     String fetchUrl = getFetchUrl(url);
     String lowerCaseFetchUrl = StringUtil.toLowerCase(fetchUrl);
 
-    if (GitRemoteUrlInspector.verifyUrl(fetchUrl) == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
-      throw new VcsException("The git fetch URL must not be a local file URL");
+    GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(fetchUrl);
+    if (restriction != null) {
+      switch (restriction) {
+        case LOCAL_FILE_ACCESS:
+          throw new VcsException("The git fetch URL must not be a local file URL");
+        case DISALLOWED_TRANSPORT:
+          throw new VcsException("Fetch URL transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint());
+        default:
+          throw new VcsException("The git fetch URL is not allowed for security reasons");
+      }
     }
 
     URIish uri = parseURIish(fetchUrl);

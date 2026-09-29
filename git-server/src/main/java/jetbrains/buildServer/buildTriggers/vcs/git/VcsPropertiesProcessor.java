@@ -60,10 +60,17 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
         }
 
         GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(url);
-        if (restriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
-          rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must not be a local file URL"));
-        } else if (restriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
-          rc.add(new InvalidProperty(Constants.FETCH_URL, "Transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint()));
+        if (restriction != null) {
+          switch (restriction) {
+            case LOCAL_FILE_ACCESS:
+              rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must not be a local file URL"));
+              break;
+            case DISALLOWED_TRANSPORT:
+              rc.add(new InvalidProperty(Constants.FETCH_URL, "Transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint()));
+              break;
+            default:
+              rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL is not allowed for security reasons"));
+          }
         }
       }
     }
@@ -86,10 +93,17 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
         }
 
         GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(pushUrl);
-        if (restriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
-          rc.add(new InvalidProperty(Constants.PUSH_URL, "The URL must not be a local file URL"));
-        } else if (restriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
-          rc.add(new InvalidProperty(Constants.PUSH_URL, "Transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint()));
+        if (restriction != null) {
+          switch (restriction) {
+            case LOCAL_FILE_ACCESS:
+              rc.add(new InvalidProperty(Constants.PUSH_URL, "The URL must not be a local file URL"));
+              break;
+            case DISALLOWED_TRANSPORT:
+              rc.add(new InvalidProperty(Constants.PUSH_URL, "Transport not allowed. " + GitRemoteUrlInspector.getAllowedTransportsHint()));
+              break;
+            default:
+              rc.add(new InvalidProperty(Constants.PUSH_URL, "The URL is not allowed for security reasons"));
+          }
         }
       }
     }

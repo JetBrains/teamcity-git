@@ -30,18 +30,21 @@ public class SGitVcsRoot extends GitVcsRoot {
   }
 
   private void checkUrlSafety() throws VcsException {
-    GitRemoteUrlInspector.UrlRestriction fetchUrlRestriction = GitRemoteUrlInspector.verifyUrl(myRawFetchUrl);
-    if (fetchUrlRestriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
-      throw new VcsException(String.format("VCS root '%s' is using local file fetch URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), myRawFetchUrl));
-    } else if (fetchUrlRestriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
-      throw new VcsException(String.format("VCS root '%s': fetch URL transport not allowed: %s. %s", getName(), myRawFetchUrl, GitRemoteUrlInspector.getAllowedTransportsHint()));
-    }
+    checkUrlSafety("fetch", myRawFetchUrl);
+    checkUrlSafety("push", myPushUrl);
+  }
 
-    GitRemoteUrlInspector.UrlRestriction pushUrlRestriction = GitRemoteUrlInspector.verifyUrl(myPushUrl);
-    if (pushUrlRestriction == GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS) {
-      throw new VcsException(String.format("VCS root '%s' is using local file push URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), myPushUrl));
-    } else if (pushUrlRestriction == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT) {
-      throw new VcsException(String.format("VCS root '%s': push URL transport not allowed: %s. %s", getName(), myPushUrl, GitRemoteUrlInspector.getAllowedTransportsHint()));
+  private void checkUrlSafety(@NotNull String urlLabel, @Nullable String url) throws VcsException {
+    GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(url);
+    if (restriction == null) return;
+
+    switch (restriction) {
+      case LOCAL_FILE_ACCESS:
+        throw new VcsException(String.format("VCS root '%s' is using local file %s URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), urlLabel, url));
+      case DISALLOWED_TRANSPORT:
+        throw new VcsException(String.format("VCS root '%s': %s URL transport not allowed: %s. %s", getName(), urlLabel, url, GitRemoteUrlInspector.getAllowedTransportsHint()));
+      default:
+        throw new VcsException(String.format("VCS root '%s': %s URL '%s' is not allowed for security reasons.", getName(), urlLabel, url));
     }
   }
 

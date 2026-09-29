@@ -124,6 +124,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
       // scp-like syntax
       {"user@host:path"},
       {"host:path"},
+      {"git@10.128.93.163:/srv/git/privaterepo.git"},
 
       // ambiguous bare word with no colon/slash
       {"myhost"}
@@ -135,6 +136,40 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl(url))
       .as("Expected null restriction for: " + url)
       .isNull();
+  }
+
+  @DataProvider(name = "scpLikeUrls")
+  public Object[][] scpLikeUrls() {
+    return new Object[][]{
+      {"user@host:path"},
+      {"host:path"},
+      {"git@10.128.93.163:/srv/git/privaterepo.git"},
+      {"user@host:~/repo.git"}
+    };
+  }
+
+  @Test(dataProvider = "scpLikeUrls")
+  public void should_identify_scp_like_syntax_as_ssh_transport(String url) {
+    Assertions.assertThat(GitRemoteUrlInspector.getTransportName(url))
+      .as("scp-like syntax is an implicit ssh transport: " + url)
+      .isEqualTo("ssh");
+  }
+
+  @DataProvider(name = "cliFlagShapedUrls")
+  public Object[][] cliFlagShapedUrls() {
+    return new Object[][]{
+      {"-oProxyCommand=id"},
+      {"--upload-pack=id"},
+      {"-oProxyCommand=x:evil"},
+      {"-oProxyCommand=x@host:path"}
+    };
+  }
+
+  @Test(dataProvider = "cliFlagShapedUrls")
+  public void should_reject_cli_flag_shaped_urls_even_without_a_recognized_scheme(String url) {
+    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl(url))
+      .as("A '-'-led value must never be treated as a bare host alias or scp-like host: " + url)
+      .isEqualTo(GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT);
   }
 
   @Test

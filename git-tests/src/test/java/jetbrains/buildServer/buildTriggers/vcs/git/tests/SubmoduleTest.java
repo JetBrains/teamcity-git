@@ -296,11 +296,7 @@ public class SubmoduleTest {
         context.fetchSubmodule(mirror, disallowedUri, Collections.singletonList(new RefSpec("+refs/*:refs/*")), context.getGitRoot().getAuthSettings());
         fail("Expected VcsException for a disallowed-transport submodule fetch URL");
       } catch (VcsException e) {
-        // Both native git (protocol.ext.allow=never by default) and JGit (no "ext" transport
-        // implementation) already reject this URL on their own, so a bare catch would pass
-        // here even without our own checkpoint. Assert on our own message text instead, so
-        // this only goes green once OperationContext.fetchSubmodule rejects the URL itself,
-        // before delegating to either transport.
+        // This protocol is rejected by git by default, so we need to assert our exception text
         assertTrue(e.getMessage().contains("transport") && e.getMessage().contains("Allowed:") && e.getMessage().contains("teamcity.git.additionalAllowedUrlTransports"),
                    "Expected rejection from our own transport checkpoint, but got: " + e.getMessage());
       }

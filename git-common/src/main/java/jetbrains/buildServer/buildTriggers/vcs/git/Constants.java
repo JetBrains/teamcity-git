@@ -151,7 +151,7 @@ public interface Constants {
   String ALLOW_FILE_URL = "teamcity.git.allowFileUrl";
 
   /**
-   * @since 2026.1
+   * @since 2026.2.2
    * @see jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector#verifyUrl
    */
   String ADDITIONAL_ALLOWED_URL_TRANSPORTS = "teamcity.git.additionalAllowedUrlTransports";

@@ -23,6 +23,7 @@ public final class GitRemoteUrlInspector {
 
   private static final Pattern REMOTE_HELPER_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)::");
   private static final Pattern SCHEME_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)://");
+  private static final Pattern SCP_LIKE_URL = Pattern.compile("^([A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9_][A-Za-z0-9_.-]*:(?!:).+$");
   private static final Set<String> DEFAULT_ALLOWED_TRANSPORTS =
     Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList("http", "https", "ssh", "git")));
 
@@ -49,7 +50,7 @@ public final class GitRemoteUrlInspector {
     if (rawUrl == null) return null;
     String url = rawUrl.trim();
 
-    if (classify(url) != null) {
+    if (isLocalFileAccess(rawUrl)) {
       return isFileUrlAllowed() ? null : UrlRestriction.LOCAL_FILE_ACCESS;
     }
     if (!isAllowedTransport(url)) {
@@ -58,11 +59,6 @@ public final class GitRemoteUrlInspector {
     return null;
   }
 
-  /**
-   * Returns the set of transport names currently allowed by {@link #verifyUrl}: the default
-   * {@code {http, https, ssh, git}} set plus any names listed in the
-   * {@link Constants#ADDITIONAL_ALLOWED_URL_TRANSPORTS} internal property, re-evaluated on every call.
-   */
   @NotNull
   public static Set<String> getEffectiveAllowedTransports() {
     Set<String> allowed = new LinkedHashSet<>(DEFAULT_ALLOWED_TRANSPORTS);
@@ -72,10 +68,6 @@ public final class GitRemoteUrlInspector {
     return allowed;
   }
 
-  /**
-   * A user-facing hint describing which transports are currently allowed and how to allow more,
-   * for appending to a {@link UrlRestriction#DISALLOWED_TRANSPORT} rejection message.
-   */
   @NotNull
   public static String getAllowedTransportsHint() {
     return "Allowed: " + StringUtil.join(", ", getEffectiveAllowedTransports()) +
@@ -83,30 +75,31 @@ public final class GitRemoteUrlInspector {
   }
 
   private static boolean isAllowedTransport(@NotNull String url) {
-    String name = extractTransportName(url);
-    return name == null || getEffectiveAllowedTransports().contains(name);
+    String name = getTransportName(url);
+    if (name != null) {
+      return getEffectiveAllowedTransports().contains(name);
+    }
+    return url.indexOf(':') < 0 && !url.startsWith("-");
   }
 
   /**
-   * Returns the transport name (scheme or remote-helper name) a raw URL declares, or {@code null} if
-   * the URL doesn't use explicit {@code scheme://} or {@code name::} syntax. For display purposes,
-   * e.g. reporting which transport a {@link UrlRestriction#DISALLOWED_TRANSPORT} URL used.
+   * Returns the transport name a raw URL declares (scheme, remote-helper name, or {@code "ssh"} for
+   * scp-like syntax), or {@code null} if the URL matches none of the recognized shapes.
    */
   @Nullable
   public static String getTransportName(@Nullable String rawUrl) {
     if (rawUrl == null) return null;
-    return extractTransportName(rawUrl.trim());
-  }
+    String url = rawUrl.trim();
 
-  @Nullable
-  private static String extractTransportName(@NotNull String url) {
     Matcher m = SCHEME_PREFIX.matcher(url);
     if (m.find()) return m.group(1).toLowerCase();
 
     m = REMOTE_HELPER_PREFIX.matcher(url);
     if (m.find()) return m.group(1).toLowerCase();
 
-    return null; // scp-like ([user@]host:path) or ambiguous bare word: not this check's concern
+    if (SCP_LIKE_URL.matcher(url).matches()) return "ssh";
+
+    return null;
   }
 
   private static boolean isFileUrlAllowed() {

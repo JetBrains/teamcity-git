@@ -1,11 +1,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.health;
 
 import com.google.common.collect.ImmutableMap;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.health.GitUrlTransportHealthReport;
+import jetbrains.buildServer.buildTriggers.vcs.git.health.GitDisallowedTransportUrlHealthReport;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitServerTestCase;
 import jetbrains.buildServer.serverSide.SBuildType;
 import jetbrains.buildServer.serverSide.SimpleParameter;
@@ -23,10 +22,10 @@ import org.testng.annotations.Test;
 import static org.assertj.core.api.BDDAssertions.then;
 
 /**
- * Tests for {@link GitUrlTransportHealthReport}
+ * Tests for {@link GitDisallowedTransportUrlHealthReport}
  */
 @Test
-public class GitUrlTransportHealthReportTest extends BaseGitServerTestCase {
+public class GitDisallowedTransportUrlHealthReportTest extends BaseGitServerTestCase {
 
   private static final String DISALLOWED_URL = "ext::sh /tmp/x.sh";
   private static final String ALLOWED_URL = "https://example.com/my.git";
@@ -50,14 +49,8 @@ public class GitUrlTransportHealthReportTest extends BaseGitServerTestCase {
     return b.build();
   }
 
-  private GitUrlTransportHealthReport newReport() {
-    return new GitUrlTransportHealthReport();
-  }
-
-  @SuppressWarnings("unchecked")
-  @NotNull
-  private static Collection<String> transportsOf(@NotNull HealthStatusItem item) {
-    return (Collection<String>) item.getAdditionalData().get("transports");
+  private GitDisallowedTransportUrlHealthReport newReport() {
+    return new GitDisallowedTransportUrlHealthReport();
   }
 
   @Test
@@ -78,20 +71,6 @@ public class GitUrlTransportHealthReportTest extends BaseGitServerTestCase {
     then(item.getAdditionalData().get("url")).isEqualTo(DISALLOWED_URL);
   }
 
-  @Test
-  public void item_identity_is_distinct_from_local_file_url_health_report() {
-    ProjectEx p = myProject;
-    SVcsRoot root = createGitRoot(p, props(DISALLOWED_URL, null));
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(p).addVcsRoot(root).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    HealthStatusItem item = consumer.getConsumedItems().get(0);
-    then(item.getIdentity()).doesNotContain("GitLocalFileUrlHealthReport");
-    then(item.getIdentity()).contains(GitUrlTransportHealthReport.TYPE);
-  }
 
   @Test
   public void reports_both_fetch_and_push_disallowed_transport_urls() {
@@ -164,67 +143,5 @@ public class GitUrlTransportHealthReportTest extends BaseGitServerTestCase {
     then(btObj).as("BT-scoped items must include buildType in data").isNotNull();
     SBuildType bt = (SBuildType) btObj;
     then(bt.getExternalId()).isEqualTo(bt1.getExternalId());
-  }
-
-  @Test
-  public void no_dangerous_transport_permitted_item_by_default() {
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(true).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    then(consumer.getConsumedItemsGlobal()).as("No global item expected when no dangerous transport is permitted").isEmpty();
-  }
-
-  @Test
-  public void reports_dangerous_transport_permitted_item_when_ext_is_allow_listed() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "ext");
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(true).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    List<HealthStatusItem> globalItems = consumer.getConsumedItemsGlobal();
-    then(globalItems).as("Expected exactly one global item").hasSize(1);
-    then(transportsOf(globalItems.get(0))).contains("ext");
-  }
-
-  @Test
-  public void reports_single_item_mentioning_both_ext_and_fd_when_both_are_allow_listed() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "ext,fd");
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(true).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    List<HealthStatusItem> globalItems = consumer.getConsumedItemsGlobal();
-    then(globalItems).as("Expected exactly one global item even with two dangerous transports permitted").hasSize(1);
-    then(transportsOf(globalItems.get(0))).contains("ext", "fd");
-  }
-
-  @Test
-  public void no_dangerous_transport_permitted_item_for_non_dangerous_override() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "hg");
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).setGlobalItems(true).build();
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    then(consumer.getConsumedItemsGlobal()).as("'hg' is not a known-dangerous transport").isEmpty();
-  }
-
-  @Test
-  public void no_dangerous_transport_permitted_item_when_global_items_not_in_scope() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "ext");
-
-    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).build(); // no setGlobalItems(true)
-    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
-
-    newReport().report(scope, consumer);
-
-    then(consumer.getConsumedItemsGlobal()).as("No global item expected when globalItems() is false").isEmpty();
   }
 }

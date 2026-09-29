@@ -12,18 +12,21 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Walks a Git VCS root's fetch/push URLs, resolving parameter references per build-type instance
- * when the root's URLs contain them, so a Health report can inspect the resolved URL values.
+ * Resolves a Git VCS root's fetch/push URLs to the concrete values a Health report should inspect. A root's
+ * raw property value is not necessarily what git will actually use: it can contain a parameter reference
+ * (for example {@code %env.REPO%}), which only resolves to a concrete URL per build configuration. So a plain
+ * root with no references is checked directly, while a root with references is checked once per build
+ * configuration that attaches it, via that configuration's resolved {@link VcsRootInstance}.
  */
-class GitVcsRootUrlWalker {
+class GitVcsRootUrlResolver {
 
-  private GitVcsRootUrlWalker() {}
+  private GitVcsRootUrlResolver() {}
 
   interface ResolvedGitUrlConsumer {
     void accept(@NotNull SVcsRoot root, @Nullable SBuildType buildType, @NotNull String urlType, @NotNull String url);
   }
 
-  static void walk(@NotNull SVcsRoot root, @NotNull HealthStatusScope scope, @NotNull ResolvedGitUrlConsumer consumer) {
+  static void forEachResolvedUrl(@NotNull SVcsRoot root, @NotNull HealthStatusScope scope, @NotNull ResolvedGitUrlConsumer consumer) {
     if (!containsParameterReferences(root)) {
       reportForSimpleVcsRoot(root, consumer);
     } else {

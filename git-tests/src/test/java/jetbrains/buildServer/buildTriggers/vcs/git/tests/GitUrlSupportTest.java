@@ -321,11 +321,32 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @TestFor(issues = "TW-104064")
   @Test
-  public void shouldThrowForDisallowedTransportUrl() {
+  public void shouldDeclineRemoteHelperUrlLikeAnyOtherNonGitProvider() throws MalformedURLException, VcsException {
     final VcsUrl url = new VcsUrl("ext::sh /tmp/x.sh");
+    assertNull(myUrlSupport.convertToVcsRootProperties(url, createRootContext()));
+  }
+
+  @TestFor(issues = "TW-104064")
+  @Test
+  public void shouldThrowForDisallowedTransportUrl() {
+    final VcsUrl url = new VcsUrl("ftp://example.com/repo");
     assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, e -> {
       assertTrue("Expected the allowlist hint in the rejection message, but got: " + e.getMessage(),
                  e.getMessage().contains("Allowed:") && e.getMessage().contains(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS));
+    });
+  }
+
+  @TestFor(issues = "TW-104064")
+  @Test
+  public void shouldRejectDisallowedTransportUrlEvenWhenMavenScmNameIsExemptAsGitOrSsh() {
+    // "ssh::..." parses as a Maven-SCM-style URL with provider schema "ssh" - exempt from the "decline
+    // for some other provider" check above (getMavenScmName treats "ssh" as still belonging to git) -
+    // so this must still be caught by the actual transport check below, not slip through as if
+    // "recognized as git's, therefore safe".
+    final VcsUrl url = new VcsUrl("ssh::sh -c id");
+    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, e -> {
+      assertTrue("Expected a rejection, but got: " + e.getMessage(),
+                 e.getMessage().toLowerCase().contains("not allowed") || e.getMessage().toLowerCase().contains("local file"));
     });
   }
 
