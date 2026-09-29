@@ -45,7 +45,7 @@ public final class GitRemoteUrlInspector {
 
   /**
    * Combines the local-file-access check (subject to {@code Constants#ALLOW_FILE_URL}) with the
-   * disallowed-transport check. Use this at every checkpoint that must reject unsafe URLs;
+   * disallowed-transport and malformed-URL checks (subject to {@code Constants#REMOTE_URL_CHECKS_ENABLED}). Use this at every checkpoint that must reject unsafe URLs;
    * use {@link #isLocalFileAccess} directly only where the ALLOW_FILE_URL override must be ignored.
    */
   @Nullable
@@ -56,6 +56,7 @@ public final class GitRemoteUrlInspector {
     if (isLocalFileAccess(rawUrl)) {
       return isFileUrlAllowed() ? null : UrlRestriction.LOCAL_FILE_ACCESS;
     }
+    if (!isRemoteUrlChecksEnabled()) return null;
 
     String name = getTransportName(url);
     if (name != null) {
@@ -66,6 +67,16 @@ public final class GitRemoteUrlInspector {
       return UrlRestriction.MALFORMED_URL;
     }
     return null;
+  }
+
+  /**
+   * Checks whether the URL declares a transport outside {@link #getEffectiveAllowedTransports()}, ignoring
+   * {@code Constants#REMOTE_URL_CHECKS_ENABLED}. Local file URLs are never reported, see {@link #isLocalFileAccess}.
+   */
+  public static boolean isDisallowedTransport(@Nullable String rawUrl) {
+    if (rawUrl == null || isLocalFileAccess(rawUrl)) return false;
+    String name = getTransportName(rawUrl);
+    return name != null && !getEffectiveAllowedTransports().contains(name);
   }
 
   @NotNull
@@ -108,6 +119,10 @@ public final class GitRemoteUrlInspector {
     if (SCP_LIKE_URL.matcher(url).matches()) return "ssh"; // [user@]host:path or [user@][host]:path
 
     return null;
+  }
+
+  private static boolean isRemoteUrlChecksEnabled() {
+    return TeamCityProperties.getBooleanOrTrue(Constants.REMOTE_URL_CHECKS_ENABLED);
   }
 
   private static boolean isFileUrlAllowed() {

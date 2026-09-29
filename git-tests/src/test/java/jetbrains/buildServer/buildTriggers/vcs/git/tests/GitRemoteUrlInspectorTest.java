@@ -244,4 +244,32 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
       .as("Expected 'x' to be allowed once added to the override property")
       .isNull();
   }
+
+  @Test
+  public void should_skip_transport_and_malformed_checks_when_url_checks_are_disabled() {
+    setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
+
+    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("ext::sh /tmp/x.sh")).isNull();
+    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("-oProxyCommand=id")).isNull();
+  }
+
+  @Test
+  public void should_keep_local_file_check_when_url_checks_are_disabled() {
+    setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
+
+    Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("file:///tmp/repo.git"))
+      .as("The local file check has its own '" + Constants.ALLOW_FILE_URL + "' switch")
+      .isEqualTo(GitRemoteUrlInspector.UrlRestriction.LOCAL_FILE_ACCESS);
+  }
+
+  @Test
+  public void should_detect_disallowed_transport_regardless_of_url_checks_toggle() {
+    setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
+
+    Assertions.assertThat(GitRemoteUrlInspector.isDisallowedTransport("ext::sh /tmp/x.sh")).isTrue();
+    Assertions.assertThat(GitRemoteUrlInspector.isDisallowedTransport("https://example.com/repo.git")).isFalse();
+    Assertions.assertThat(GitRemoteUrlInspector.isDisallowedTransport("file:///tmp/repo.git"))
+      .as("Local file URLs are reported by the local file URL check, not as a disallowed transport")
+      .isFalse();
+  }
 }

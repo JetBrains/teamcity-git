@@ -74,4 +74,11 @@ public class GitDangerousTransportPermittedHealthReportTest extends BaseGitServe
       then(transports.get("fd")).as("fd does not execute a command, unlike ext").doesNotContainIgnoringCase("command");
     }
   }
+
+  @Test
+  public void reports_dangerous_transport_even_when_url_checks_are_disabled() {
+    setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
+
+    then(reportWithOverride("ext", true)).hasSize(1);
+  }
 }

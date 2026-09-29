@@ -151,10 +151,20 @@ public interface Constants {
   String ALLOW_FILE_URL = "teamcity.git.allowFileUrl";
 
   /**
+   * List of additional git helpers to be allowed by remote URL check
+   *
    * @since 2026.2.2
    * @see jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector#verifyUrl
    */
   String ADDITIONAL_ALLOWED_URL_TRANSPORTS = "teamcity.git.additionalAllowedUrlTransports";
+
+  /**
+   * Set to {@code false} to turn off the URL transport allowlist and the malformed URL check.
+   *
+   * @since 2026.2.2
+   * @see jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector#verifyUrl
+   */
+  String REMOTE_URL_CHECKS_ENABLED = "teamcity.git.remoteUrlChecks.enabled";
 
   /**
    * If set, native ssh will fallback to default config (~/.ssh/config and /etc/ssh/ssh_config) if the specified key is invalid

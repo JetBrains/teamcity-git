@@ -12,7 +12,7 @@ import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Reports Git VCS roots whose fetch/push URL is {@code DISALLOWED_TRANSPORT} per {@link GitRemoteUrlInspector#verifyUrl}.
+ * Reports Git VCS roots whose fetch/push URL uses a transport rejected by {@link GitRemoteUrlInspector#isDisallowedTransport}.
  */
 public class GitDisallowedTransportUrlHealthReport extends AbstractGitVcsRootUrlHealthReport {
 
@@ -49,7 +49,7 @@ public class GitDisallowedTransportUrlHealthReport extends AbstractGitVcsRootUrl
 
   @Override
   protected boolean matches(@NotNull String url) {
-    return GitRemoteUrlInspector.verifyUrl(url) == GitRemoteUrlInspector.UrlRestriction.DISALLOWED_TRANSPORT;
+    return GitRemoteUrlInspector.isDisallowedTransport(url);
   }
 
   @NotNull

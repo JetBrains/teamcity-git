@@ -126,4 +126,17 @@ public class GitDisallowedTransportUrlHealthReportTest extends BaseGitServerTest
     SBuildType bt = (SBuildType) btObj;
     then(bt.getExternalId()).isEqualTo(bt1.getExternalId());
   }
+
+  @Test
+  public void reports_disallowed_url_even_when_url_checks_are_disabled() {
+    setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
+    SVcsRoot root = createGitRoot(myProject, "root1", props(DISALLOWED_URL, null));
+
+    HealthStatusScope scope = new ScopeBuilder().addProject(myProject).addVcsRoot(root).build();
+    StubHealthStatusItemConsumer consumer = new StubHealthStatusItemConsumer();
+
+    newReport().report(scope, consumer);
+
+    then(consumer.getConsumedItems()).hasSize(1);
+  }
 }
