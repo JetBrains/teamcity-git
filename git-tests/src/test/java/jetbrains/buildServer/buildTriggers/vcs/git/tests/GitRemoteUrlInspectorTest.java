@@ -90,6 +90,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
       {"ext::sh /tmp/x.sh", DISALLOWED_TRANSPORT},
       {"fd::something", DISALLOWED_TRANSPORT},
       {"EXT::sh /tmp/x.sh", DISALLOWED_TRANSPORT},
+      {"1ext::sh /tmp/x.sh", DISALLOWED_TRANSPORT},
 
       // ext:// / fd:// scheme syntax
       {"ext://touch /tmp/x", DISALLOWED_TRANSPORT},

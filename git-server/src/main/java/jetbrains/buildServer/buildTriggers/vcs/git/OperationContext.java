@@ -10,6 +10,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleUrlResolver;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -122,20 +123,7 @@ public class OperationContext {
                              @NotNull URIish fetchURI,
                              @NotNull Collection<RefSpec> refSpecs,
                              @NotNull AuthSettings auth) throws IOException, VcsException {
-    GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(fetchURI.toPrivateString());
-    if (restriction != null) {
-      switch (restriction) {
-        case LOCAL_FILE_ACCESS:
-          throw new VcsException(String.format("Submodule fetch URL '%s' is a local file access URL, which is forbidden for security reasons. " +
-                                               "Please configure submodule URLs to use network protocols like SSH or HTTPS.", fetchURI.toPrivateString()));
-        case DISALLOWED_TRANSPORT:
-          throw new VcsException(String.format("Submodule fetch URL transport not allowed: %s. %s", fetchURI.toPrivateString(), GitRemoteUrlInspector.getAllowedTransportsHint()));
-        case MALFORMED_URL:
-          throw new VcsException(String.format("Submodule fetch URL '%s' is malformed and cannot be used.", fetchURI.toPrivateString()));
-        default:
-          throw new VcsException(String.format("Submodule fetch URL '%s' is not allowed for security reasons.", fetchURI.toPrivateString()));
-      }
-    }
+    SubmoduleUrlResolver.verifySubmoduleUrl("Submodule fetch", fetchURI.toPrivateString());
     if (alreadyFetched(fetchURI, refSpecs))
       return;
     try {

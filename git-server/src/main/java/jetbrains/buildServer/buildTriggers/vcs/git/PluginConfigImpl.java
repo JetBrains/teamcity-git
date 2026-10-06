@@ -122,7 +122,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            JSchConfigInitializer.JSCH_CONFIG_INT_PROPERTY_PREFIX,
                                                            SshPubkeyAcceptedAlgorithms.DOMAINS_WITH_ENFORCED_SHA_1_SIGNATURE,
                                                            Constants.ALLOW_FILE_URL,
-                                                           Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS);
+                                                           Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS,
+                                                           Constants.REMOTE_URL_CHECKS_ENABLED);
 
   public PluginConfigImpl() {
     myCachesDir = null;

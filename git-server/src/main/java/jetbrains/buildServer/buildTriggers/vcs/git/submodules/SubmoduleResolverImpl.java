@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
@@ -131,20 +130,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
 
   public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException, VcsException {
     String resolved = SubmoduleUrlResolver.resolveSubmoduleUrl(myContext.getPluginConfig(), myContext.getConfig(getRepository()), url);
-    GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(resolved);
-    if (restriction != null) {
-      switch (restriction) {
-        case LOCAL_FILE_ACCESS:
-          throw new VcsException(String.format("Submodule '%s' is using local file URL '%s', which is forbidden for security reasons. " +
-                                               "Please configure submodule URLs to use network protocols like SSH or HTTPS.", url, resolved));
-        case DISALLOWED_TRANSPORT:
-          throw new VcsException(String.format("Submodule '%s': URL transport not allowed: %s. %s", url, resolved, GitRemoteUrlInspector.getAllowedTransportsHint()));
-        case MALFORMED_URL:
-          throw new VcsException(String.format("Submodule '%s': URL '%s' is malformed and cannot be used.", url, resolved));
-        default:
-          throw new VcsException(String.format("Submodule '%s': URL '%s' is not allowed for security reasons.", url, resolved));
-      }
-    }
+    SubmoduleUrlResolver.verifySubmoduleUrl("Submodule '" + url + "'", resolved);
     return new URIish(resolved);
   }
 

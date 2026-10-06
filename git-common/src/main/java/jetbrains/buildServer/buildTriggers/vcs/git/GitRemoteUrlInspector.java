@@ -21,8 +21,8 @@ import org.jetbrains.annotations.Nullable;
 public final class GitRemoteUrlInspector {
   private GitRemoteUrlInspector() {}
 
-  private static final Pattern REMOTE_HELPER_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)::");
-  private static final Pattern SCHEME_PREFIX = Pattern.compile("^([A-Za-z][A-Za-z0-9+.-]*)://");
+  private static final Pattern REMOTE_HELPER_PREFIX = Pattern.compile("^([A-Za-z0-9][A-Za-z0-9+.-]*)::");
+  private static final Pattern SCHEME_PREFIX = Pattern.compile("^([A-Za-z0-9][A-Za-z0-9+.-]*)://");
   // [user@]host:path or [user@][bracketed-host]:path (e.g. IPv6). Matches git's own scp-like rule: no '/'
   // before the separating ':' - host/user characters are otherwise unrestricted, same as real git.
   private static final Pattern SCP_LIKE_URL = Pattern.compile("^(?:[^/:@]+@)?(?:\\[[^/\\]]+]|[^/:]+):(?!:).+$");
