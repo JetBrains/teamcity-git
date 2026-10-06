@@ -36,6 +36,8 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.RevisionsCache"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.ResetRevisionsCacheHandler"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitResetCacheHandler"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.CheckoutRulesCommitCache"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.ResetCheckoutRulesCommitCacheHandler"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitTrustStoreProviderImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitCustomizeVcsRootExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.FetchSettingsFactoryImpl"/>

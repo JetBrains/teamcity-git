@@ -17,6 +17,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -318,8 +319,13 @@ public class CommandLineTest extends BaseRemoteRepositoryTest {
   public void test_crop_too_big_output(@NotNull GitExec git) throws Throwable {
     setInternalProperty("teamcity.git.error.message.maxLength", "100");
     createSources(git);
-    GitCommandLine cmd = createRepositoryCmd(git);
 
+    File outputFile = FileUtil.createTempFile("proc", "output");
+    FileUtil.writeFile(outputFile, "failed command " + String.join("", Collections.nCopies(100, "error1 error2 error3 error4 error5\n")));
+
+
+
+    GitCommandLine cmd = createRepositoryCmd(git);
 
     cmd.addParameter("failed command " + String.join("", Collections.nCopies(100, "error1 error2 error3 error4 error5\n")));
 
