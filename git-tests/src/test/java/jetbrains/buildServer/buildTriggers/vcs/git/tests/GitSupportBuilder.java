@@ -216,6 +216,8 @@ public class GitSupportBuilder {
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myGitRepoOperations, myMapFullPath, myPluginConfig, new FetchSettingsFactoryImpl());
     GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
     ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
+    CheckoutRulesCommitCache checkoutRulesCommitCache = new CheckoutRulesCommitCache();
+    ResetCheckoutRulesCommitCacheHandler resetCheckoutRulesCommitCacheHandler = new ResetCheckoutRulesCommitCacheHandler(checkoutRulesCommitCache);
 
     TokenRefresher tokenRefresher = new TokenRefresher() {
 
@@ -247,7 +249,7 @@ public class GitSupportBuilder {
       public KeyStore getTrustStore() {
         return null;
       }
-    }, getParametersFactory(serverResponsibility, settingsPersister), new ChangesCollectorCache());
+    }, getParametersFactory(serverResponsibility, settingsPersister), new ChangesCollectorCache(), checkoutRulesCommitCache, resetCheckoutRulesCommitCacheHandler);
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;
