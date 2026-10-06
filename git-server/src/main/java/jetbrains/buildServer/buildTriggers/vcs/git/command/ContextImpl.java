@@ -228,6 +228,12 @@ public class ContextImpl implements Context {
     return myConfig.getCustomRecoverableMessages();
   }
 
+  @NotNull
+  @Override
+  public List<String> getFailureStderrSubstrings() {
+    return myConfig.getFailureStderrSubstrings();
+  }
+
   @Nullable
   @Override
   public String getInternalProperty(@NotNull String key) {

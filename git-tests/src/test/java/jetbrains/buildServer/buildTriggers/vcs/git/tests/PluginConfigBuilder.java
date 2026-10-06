@@ -93,6 +93,12 @@ public class PluginConfigBuilder {
         return myDelegate.getPrefixesToCollectOnlyHeads();
       }
 
+      @NotNull
+      @Override
+      public List<String> getFailureStderrSubstrings() {
+        return myDelegate.getFailureStderrSubstrings();
+      }
+
       @Override
       public boolean isGitMaintenanceAutoEnabled() {
         return true;

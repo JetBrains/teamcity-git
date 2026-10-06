@@ -2,6 +2,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import jetbrains.buildServer.vcs.VcsRoot;
 
 /**
@@ -211,4 +214,11 @@ public interface Constants {
    * @since 2026.2
    */
   String GIT_REFRESH_COMMIT_GRAPH_IF_CORRUPTED = "teamcity.git.commit.graph.refresh.enable";
+
+  String GIT_NO_COMMIT_GRAPH_WARN = "unable to find all commit-graph files";
+
+  // todo write comment
+  String GIT_STDERR_FAILURE_SUBSTRINGS_PARAM = "teamcity.git.failureStderrSubstrings";
+
+  List<String> GIT_FAILURE_WARNINGS = Collections.unmodifiableList(Arrays.asList("could not open directory", "adding embedded git repository", "update of config-file failed", "missing <new-oid>, treating as zero"));
 }

@@ -78,7 +78,7 @@ public class UpdateRefBatchCommandImpl extends BaseCommandImpl implements Update
     cmd.addParameter("--stdin");
     cmd.addParameter("-z");
     byte[] input = myInput.toByteArray();
-    CommandUtil.runCommand(cmd.stdErrExpected(false), input);
+    CommandUtil.runCommand(cmd, input);
   }
 
   private void cmd(String cmd) {

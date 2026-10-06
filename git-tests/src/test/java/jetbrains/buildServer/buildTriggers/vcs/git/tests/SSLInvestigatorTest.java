@@ -199,6 +199,8 @@ public class SSLInvestigatorTest extends BaseSimpleGitTestCase {
       will(returnValue(myTempDirectory));
       atLeast(1).of(context).getEnv();
       will(returnValue(Collections.emptyMap()));
+      allowing(context).getFailureStderrSubstrings();
+      will(returnValue(Collections.emptyList()));
     }});
     return myLoggingFactory.createFactory(ssh, context);
   }

@@ -52,7 +52,7 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
       initialBranch = myInitialBranch;
       cmd.addParameter("--initial-branch=" + initialBranch);
     }
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    CommandUtil.runCommand(cmd);
     return new InitCommandResult(initialBranch, false);
   }
 }

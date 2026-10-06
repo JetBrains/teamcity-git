@@ -39,6 +39,6 @@ public class SetConfigCommandImpl extends BaseCommandImpl implements SetConfigCo
     } else {
       cmd.addParameters("config", myPropertyName, myValue);
     }
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    CommandUtil.runCommand(cmd);
   }
 }

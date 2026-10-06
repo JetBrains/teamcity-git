@@ -3,6 +3,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
@@ -101,6 +102,9 @@ public interface AgentPluginConfig extends PluginConfig {
 
   @NotNull
   Map<String, Long> getCustomRecoverableMessages();
+
+  @NotNull
+  List<String> getFailureStderrSubstrings();
 
   int getShallowCloneDepth();
 

@@ -25,6 +25,7 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_FAILURE_WARNINGS;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitCommandRetryPolicy.INITIAL_DELAY_MS;
 
 /**
@@ -81,6 +82,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String GIT_AUTO_MAINTENANCE_ENABLE = "teamcity.internal.git.maintenance.auto.enable";
   public static final String GIT_PACK_REFS_CLEANUP_ENABLED = "teamcity.internal.git.packRefs.cleanup.enabled";
   public static final String GIT_REFRESH_COMMIT_GRAPH_IF_CORRUPTED = "teamcity.internal.git.commit.graph.refresh.enable";
+  public static final String GIT_STDERR_FAILURE_SUBSTRINGS_PARAM_AGENT = "teamcity.internal.git.failureStderrSubstrings";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class);
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
@@ -525,6 +527,17 @@ public class PluginConfigImpl implements AgentPluginConfig {
     }
 
     return Retry.aggregateCustomDelayMessages(CUSTOM_RECOVERABLE_MESSAGES_PREFIX_NON_INTERNAL, buildParameters);
+  }
+
+  //todo write test
+  @NotNull
+  @Override
+  public List<String> getFailureStderrSubstrings() {
+    ArrayList<String> stderrSubstrings =  StringUtil.split(myBuild.getSharedConfigParameters().getOrDefault(GIT_STDERR_FAILURE_SUBSTRINGS_PARAM_AGENT, ""), true, ';')
+                                               .stream().map(String::trim).filter(str -> !StringUtil.isEmptyOrSpaces(str)).collect(Collectors.toCollection(ArrayList::new));
+
+    stderrSubstrings.addAll(GIT_FAILURE_WARNINGS);
+    return stderrSubstrings;
   }
 
   @Override

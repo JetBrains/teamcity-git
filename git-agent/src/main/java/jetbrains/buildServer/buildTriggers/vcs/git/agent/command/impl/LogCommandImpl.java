@@ -49,7 +49,7 @@ public class LogCommandImpl extends BaseCommandImpl implements LogCommand {
         cmd.addParameter("--pretty=format:" + myFormat);
       cmd.addParameter(myStartPoint);
       cmd.addParameter("--");
-      return CommandUtil.runCommand(cmd.stdErrExpected(false)).getStdout().trim();
+      return CommandUtil.runCommand(cmd).getStdout().trim();
     } catch (VcsException e) {
       return null;
     }

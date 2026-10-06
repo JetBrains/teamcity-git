@@ -17,7 +17,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
-import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
@@ -187,6 +186,12 @@ public class StubContext implements Context {
   @Override
   public Map<String, Long> getCustomRecoverableMessages() {
     return myCustomRecoverableMessages;
+  }
+
+  @NotNull
+  @Override
+  public List<String> getFailureStderrSubstrings() {
+    return Collections.emptyList();
   }
 
   @Nullable

@@ -72,7 +72,7 @@ public class TagCommandImpl extends BaseCommandImpl implements TagCommand {
 
   @Override
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd().stdErrExpected(false);
+    GitCommandLine cmd = getCmd();
     cmd.addParameter("tag");
     if (myDelete) {
       cmd.addParameter("-d");
@@ -96,6 +96,6 @@ public class TagCommandImpl extends BaseCommandImpl implements TagCommand {
     if (myCommit != null) {
       cmd.addParameter(myCommit);
     }
-    CommandUtil.runCommand(cmd.stdErrExpected(false), 60);
+    CommandUtil.runCommand(cmd, 60);
   }
 }

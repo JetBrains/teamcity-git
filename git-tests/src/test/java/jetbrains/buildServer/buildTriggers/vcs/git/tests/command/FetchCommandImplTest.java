@@ -376,7 +376,6 @@ public class FetchCommandImplTest extends BaseTestCase {
     final GitCommandLine cmd = new GitCommandLine(new StubContext("git", version), getFakeGen());
     cmd.setExePath(gitPath);
     cmd.setWorkingDirectory(work);
-    cmd.stdErrExpected(false);
     final FetchCommand fetch = new FetchCommandImpl(cmd);
     fetch.setRemote(remoteCopy.getAbsolutePath());
     fetch.setAuthSettings(getEmptyAuthSettings());

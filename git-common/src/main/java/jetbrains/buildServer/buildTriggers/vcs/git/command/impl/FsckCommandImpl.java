@@ -28,7 +28,7 @@ public class FsckCommandImpl extends BaseCommandImpl implements FsckCommand {
       cmd.addParameter("--connectivity-only");
     }
 
-    ExecResult result = CommandUtil.runCommand(cmd.abnormalExitExpected(true).stdErrExpected(true));
+    ExecResult result = CommandUtil.runCommand(cmd.abnormalExitExpected(true));
     return result.getExitCode();
   }
 }

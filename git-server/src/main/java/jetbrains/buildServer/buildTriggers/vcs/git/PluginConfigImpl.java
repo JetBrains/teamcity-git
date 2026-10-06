@@ -54,6 +54,8 @@ import org.quartz.CronExpression;
 
 import static com.intellij.openapi.util.text.StringUtil.*;
 import static java.util.Arrays.asList;
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_FAILURE_WARNINGS;
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_STDERR_FAILURE_SUBSTRINGS_PARAM;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 /**
@@ -758,6 +760,18 @@ public class PluginConfigImpl implements ServerPluginConfig {
     if (StringUtil.isEmptyOrSpaces(property)) return Collections.emptyMap();
 
     return StringUtil.split(property, true, ';').stream().collect(Collectors.toMap(p -> p, p -> GitCommandRetryPolicy.INITIAL_DELAY_MS));
+  }
+
+
+  // todo write test
+  @NotNull
+  @Override
+  public List<String> getFailureStderrSubstrings() {
+    ArrayList<String> stderrSubstrings =  StringUtil.split( TeamCityProperties.getProperty(GIT_STDERR_FAILURE_SUBSTRINGS_PARAM, ""), true, ';')
+                                               .stream().map(String::trim).filter(str -> !StringUtil.isEmptyOrSpaces(str)).collect(Collectors.toCollection(ArrayList::new));
+
+    stderrSubstrings.addAll(GIT_FAILURE_WARNINGS);
+    return stderrSubstrings;
   }
 
   @Nullable

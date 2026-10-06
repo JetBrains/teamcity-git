@@ -64,7 +64,7 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
     addExcludes(cmd);
     cmd.withMaxOutputSize(8 * 1024 * 1024);
     try {
-      CommandUtil.runCommand(cmd.stdErrExpected(false));
+      CommandUtil.runCommand(cmd);
     } catch (VcsException e) {
       Loggers.VCS.warnAndDebugDetails("Failed to clean files", e);
       if (!SystemInfo.isWindows || CommandUtil.isCanceledError(e)) {

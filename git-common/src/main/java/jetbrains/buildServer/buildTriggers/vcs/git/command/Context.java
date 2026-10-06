@@ -80,6 +80,9 @@ public interface Context {
   @NotNull
   Map<String, Long> getCustomRecoverableMessages();
 
+  @NotNull
+  List<String> getFailureStderrSubstrings();
+
   /**
    * @return internal property or null if it is absent.
    * On agent tries to get a property from the agent properties. If it's absent, then tries to get it from build parameters

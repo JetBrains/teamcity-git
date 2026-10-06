@@ -5,8 +5,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
@@ -21,10 +23,10 @@ import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.CommandLineUtil.cropOutputMessage;
-import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_MAX_LENGTH_OF_VCS_ERROR_MESSAGE;
-import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND;
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.*;
 import static jetbrains.buildServer.util.FileUtil.normalizeSeparator;
 
 public class CommandUtil {
@@ -39,10 +41,11 @@ public class CommandUtil {
     } else if (res.getExitCode() != 0 || res.getException() != null) {
       commandFailed(cmdName, res);
     } else if (res.getStderr().length() > 0) {
-      if (cmd.isStdErrExpected()) {
-        logMessage("Stderr from git command " + cmdName + ":\n" + res.getStderr().trim(), cmd.getStdErrLogLevel());
-      } else {
+      String stderr = res.getStderr().trim();
+      if (cmd.getFailureStderrSubstrings().stream().anyMatch(s -> StringUtil.containsIgnoreCase(stderr, s))) {
         commandFailed(cmdName, res);
+      } else {
+        logMessage("Stderr from git command " + cmdName + ":\n" + stderr, cmd.getStdErrLogLevel());
       }
     }
   }
@@ -85,19 +88,20 @@ public class CommandUtil {
    * @param message message to log
    * @param level   level to use
    */
-  private static void logMessage(String message, String... level) {
-    final String theLevel = logLevel(level);
-    if (theLevel.equals("warn")) {
+  private static void logMessage(@NotNull String message, @Nullable String level) {
+    if ("warn".equals(level) || level == null) {
       LOG.warn(message);
-    } else if (theLevel.equals("debug")) {
+    } else if (level.equals("error")) {
+      LOG.error(message);
+    } else if (level.equals("debug")) {
       LOG.debug(message);
-    } else if (theLevel.equals("info")) {
+    } else if (level.equals("info")) {
       LOG.info(message);
     }
   }
 
-  private static String logLevel(String... level) {
-    return level.length > 0 ? level[0] : "warn";
+  private static String determineLogLevel(@Nullable String level) { // todo decide by command content
+    return  "warn";
   }
 
   public static ExecResult runCommand(@NotNull GitCommandLine cli) throws VcsException {
@@ -275,7 +279,7 @@ public class CommandUtil {
   }
 
   public static boolean isCommitGraphError(@NotNull VcsException e) {
-    return isMessageContains(e, "unable to find all commit-graph files");
+    return isMessageContains(e, GIT_NO_COMMIT_GRAPH_WARN);
   }
 
   @NotNull

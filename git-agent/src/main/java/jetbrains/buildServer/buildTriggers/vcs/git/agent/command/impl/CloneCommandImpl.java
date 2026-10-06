@@ -51,6 +51,6 @@ public class CloneCommandImpl extends BaseCommandImpl implements CloneCommand {
     if (StringUtil.isNotEmpty(myFolder)) {
       cmd.addParameter(myFolder);
     }
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    CommandUtil.runCommand(cmd);
   }
 }

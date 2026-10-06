@@ -53,6 +53,6 @@ public class UpdateRefCommandImpl extends BaseCommandImpl implements UpdateRefCo
       cmd.addParameter(myRevision);
     if (myOldValue != null)
       cmd.addParameter(myOldValue);
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    CommandUtil.runCommand(cmd);
   }
 }

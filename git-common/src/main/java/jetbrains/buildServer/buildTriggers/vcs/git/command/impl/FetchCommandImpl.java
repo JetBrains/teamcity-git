@@ -13,6 +13,8 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_NO_COMMIT_GRAPH_WARN;
+
 public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implements FetchCommand {
 
   private final Set<String> myRefSpecs = new HashSet<>();
@@ -122,6 +124,11 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
     }
 
+    if (myCommitGraphRefresher != null) {
+      List<String> failSubstrings = cmd.getFailureStderrSubstrings();
+      failSubstrings.add(GIT_NO_COMMIT_GRAPH_WARN);
+      cmd.resetFailureStderrSubstrings(failSubstrings);
+    }
     runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
   }
 
@@ -176,7 +183,13 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
         try {
           int result = myCommitGraphRefresher.call();
-          return result == 0;
+          if (result == 0) {
+            List<String> modifiedFailureSubstrings = myCmd.getFailureStderrSubstrings();
+            modifiedFailureSubstrings.remove(GIT_NO_COMMIT_GRAPH_WARN);
+            myCmd.resetFailureStderrSubstrings(modifiedFailureSubstrings);
+            return true;
+          }
+          return false;
         } catch (Exception ve) {
           return false;
         }

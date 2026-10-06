@@ -49,8 +49,8 @@ public class GitCommandLine extends GeneralCommandLine {
   @Nullable private Integer myMaxOutputSize = null;
 
   private boolean myAbnormalExitExpected = false;
-  private boolean myStdErrExpected = true;
-  private String myStdErrLogLevel = "warn";
+  private List<String> myFailureStderrSubstrings;
+  private String myStdErrLogLevel = null;
 
   public GitCommandLine(@NotNull Context ctx, @NotNull ScriptGen scriptGen) {
     myCtx = ctx;
@@ -59,6 +59,7 @@ public class GitCommandLine extends GeneralCommandLine {
     setPassParentEnvs(true);
     setEnvParams(myCtx.getEnv());
     myProxy = new ProxyHandler();
+    myFailureStderrSubstrings = myCtx.getFailureStderrSubstrings();
   }
 
   @NotNull
@@ -537,6 +538,7 @@ public class GitCommandLine extends GeneralCommandLine {
     return this;
   }
 
+  @Nullable
   public String getStdErrLogLevel() {
     return myStdErrLogLevel;
   }
@@ -547,13 +549,13 @@ public class GitCommandLine extends GeneralCommandLine {
     return this;
   }
 
-  public boolean isStdErrExpected() {
-    return myStdErrExpected;
+  public List<String> getFailureStderrSubstrings() {
+    return new ArrayList<>(myFailureStderrSubstrings);
   }
 
   @NotNull
-  public GitCommandLine stdErrExpected(boolean stdErrExpected) {
-    myStdErrExpected = stdErrExpected;
+  public GitCommandLine resetFailureStderrSubstrings(@NotNull List<String> stdErrSubstrings) {
+    myFailureStderrSubstrings = new ArrayList<>(stdErrSubstrings);
     return this;
   }
 

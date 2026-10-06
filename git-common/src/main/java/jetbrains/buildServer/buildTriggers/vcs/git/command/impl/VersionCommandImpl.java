@@ -16,7 +16,7 @@ public class VersionCommandImpl extends BaseCommandImpl implements VersionComman
 
   @NotNull
   public GitVersion call() throws VcsException {
-    GitCommandLine cmd = getCmd().repeatOnEmptyOutput(true).stdErrExpected(false);
+    GitCommandLine cmd = getCmd().repeatOnEmptyOutput(true);
     cmd.addParameter("version");
     return GitVersion.parse(CommandUtil.runCommand(cmd, 60).getStdout());
   }
