@@ -91,3 +91,12 @@ V V V
 [2] 22d8a6d243915cb9f878a0ef95a0999bb5f56715 'branch1-1'
 [1] ea5bd5a6e37ac1592fb1c4864bb38cbce95fa93a 'master-1'
 [0] b56875abce7e1488991223c29ed14cc26ec4b786 'inital'
+
+
+TW-100871/broken_ref_repo (working tree, rename _git1 to .git before use):
+* bc92f5fb5b7af4eff5c529faca5d28bd674a45ff@1791374520000 add feature <-feature
+| * 9bb22ce9af81edbda62b277dcdbd44c946b4cfaa@1791374460000 change on main <-main, HEAD
+|/
+* bd5108a6319398764d9c2bb9f94dbd01cf4f3a15@1791374400000 initial commit
+refs/heads/broken is a loose ref with the content "garbage": git commands that list refs
+print "warning: ignoring broken ref refs/heads/broken" and exit with 0.

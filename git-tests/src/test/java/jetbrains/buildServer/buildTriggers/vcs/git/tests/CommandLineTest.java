@@ -2,6 +2,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.Trinity;
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -12,8 +13,15 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DeleteBranchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.DeleteBranchCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.UpdateRefBatchCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.AddCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.AddCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
@@ -30,14 +38,19 @@ import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.CommandLineUtil.GIT_CLI_LONG_MESSAGES_SEPARATOR;
 import static jetbrains.buildServer.buildTriggers.vcs.git.CommandLineUtil.cropOutputMessage;
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_STDERR_FAILURE_SUBSTRINGS_PARAM;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
+import static org.assertj.core.api.BDDAssertions.then;
+import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import static org.testng.AssertJUnit.*;
 
 @Test(dataProviderClass = GitVersionProvider.class, dataProvider = "version")
 public class CommandLineTest extends BaseRemoteRepositoryTest {
+  private static final String COMMIT_GRAPH_TEST_REPO = "TW-100479/remote/commit_graph_test_repo";
+
   private AgentSupportBuilder myBuilder;
   private GitAgentVcsSupport myVcsSupport;
   private GitHttpServer myServer;
@@ -373,6 +386,124 @@ public class CommandLineTest extends BaseRemoteRepositoryTest {
     assertTrue(error.length() <= 100);
 
     assertFalse(error.contains("continue>"));
+  }
+
+  @TestFor(issues = "TW-100871")
+  public void add_embedded_repository_fails(@NotNull GitExec git) throws Exception {
+    File repo = copyWorkingTreeRepository(COMMIT_GRAPH_TEST_REPO, new File(myTempFiles.createTempDir(), "repo"));
+    copyWorkingTreeRepository(COMMIT_GRAPH_TEST_REPO, new File(repo, "embedded"));
+
+    AddCommand add = new AddCommandImpl(createCmd(git, repo)).setPaths(Collections.singletonList("embedded"));
+
+    // git exits with 0 here, so the failure comes from the warning on stderr
+    thenThrownBy(add::call)
+      .isInstanceOf(VcsException.class)
+      .hasMessageContaining("adding embedded git repository: embedded")
+      .hasMessageNotContaining("exit code:");
+  }
+
+  @TestFor(issues = "TW-100871")
+  public void add_all_with_unreadable_directory_fails(@NotNull GitExec git) throws Exception {
+    File repo = copyWorkingTreeRepository(COMMIT_GRAPH_TEST_REPO, new File(myTempFiles.createTempDir(), "repo"));
+    File unreadable = new File(repo, "unreadable");
+    assertTrue(unreadable.mkdir());
+    FileUtil.writeFileAndReportErrors(new File(unreadable, "untracked.txt"), "untracked");
+    if (!unreadable.setReadable(false) || unreadable.canRead()) {
+      throw new SkipException("Cannot make a directory unreadable on this platform or user");
+    }
+
+    try {
+      AddCommand add = new AddCommandImpl(createCmd(git, repo)).setAddAll(true);
+
+      // git exits with 0 and leaves the directory out of the index
+      thenThrownBy(add::call)
+        .isInstanceOf(VcsException.class)
+        .hasMessageContaining("could not open directory 'unreadable/'")
+        .hasMessageNotContaining("exit code:");
+    } finally {
+      unreadable.setReadable(true);
+    }
+  }
+
+  @TestFor(issues = "TW-100871")
+  public void delete_branch_with_locked_config_fails(@NotNull GitExec git) throws Exception {
+    File repo = copyWorkingTreeRepository(COMMIT_GRAPH_TEST_REPO, new File(myTempFiles.createTempDir(), "repo"));
+    AgentGitFacadeImpl facade = new AgentGitFacadeImpl(git.getPath(), repo);
+    facade.setConfig().setPropertyName("branch.feature-a.remote").setValue("origin").call();
+    File configLock = new File(repo, ".git/config.lock");
+    assertTrue(configLock.createNewFile());
+
+    DeleteBranchCommand deleteBranch = new DeleteBranchCommandImpl(createCmd(git, repo)).setName("feature-a");
+
+    thenThrownBy(deleteBranch::call)
+      .isInstanceOf(VcsException.class)
+      .hasMessageContaining("update of config-file failed")
+      .hasMessageNotContaining("exit code:");
+
+    // git deleted the branch but could not remove its config section
+    FileUtil.delete(configLock);
+    then(facade.showRef().call().getValidRefs()).containsKey("refs/heads/main").doesNotContainKey("refs/heads/feature-a");
+    then(FileUtil.readText(new File(repo, ".git/config"))).contains("[branch \"feature-a\"]");
+  }
+
+  @TestFor(issues = "TW-100871")
+  public void update_ref_batch_with_empty_new_value_fails(@NotNull GitExec git) throws Exception {
+    File repo = copyWorkingTreeRepository(COMMIT_GRAPH_TEST_REPO, new File(myTempFiles.createTempDir(), "repo"));
+    UpdateRefBatchCommand updateRef = new UpdateRefBatchCommandImpl(createCmd(git, repo)).update("refs/heads/feature-b", "", null);
+
+    thenThrownBy(updateRef::call)
+      .isInstanceOf(VcsException.class)
+      .hasMessageContaining("update refs/heads/feature-b: missing <new-oid>, treating as zero")
+      .hasMessageNotContaining("exit code:");
+
+    // git treated the empty value as a zero id and deleted the branch
+    then(new AgentGitFacadeImpl(git.getPath(), repo).showRef().call().getValidRefs()).containsKey("refs/heads/main").doesNotContainKey("refs/heads/feature-b");
+  }
+
+  /**
+   * TW-100871/broken_ref_repo:
+   * <pre>
+   * * bc92f5f add feature      &lt;- feature
+   * | * 9bb22ce change on main  &lt;- main, HEAD
+   * |/
+   * * bd5108a initial commit
+   * refs/heads/broken = "garbage"
+   * </pre>
+   * The "ignoring broken ref" warning is tolerated by default and fails the command once added to the internal property.
+   */
+  @TestFor(issues = "TW-100871")
+  public void list_branches_with_broken_ref_fails_only_with_custom_substring(@NotNull GitExec git) throws Exception {
+    File repo = copyWorkingTreeRepository("TW-100871/broken_ref_repo", new File(myTempFiles.createTempDir(), "repo"));
+    AgentGitFacadeImpl facade = new AgentGitFacadeImpl(git.getPath(), repo);
+
+    // git warns about the broken ref and exits with 0, the warning is not in the default list
+    Branches branches = facade.listBranches(false);
+    then(branches.isCurrentBranch("main")).isTrue();
+    then(branches.contains("feature")).isTrue();
+    then(branches.contains("broken")).isFalse();
+
+    // every command reads the property when its command line is created
+    setInternalProperty(GIT_STDERR_FAILURE_SUBSTRINGS_PARAM, "unrelated substring; Ignoring Broken Ref ");
+
+    thenThrownBy(() -> facade.listBranches(false))
+      .isInstanceOf(VcsException.class)
+      .hasMessageContaining("ignoring broken ref refs/heads/broken")
+      .hasMessageNotContaining("exit code:");
+  }
+
+  @NotNull
+  private static File copyWorkingTreeRepository(@NotNull String dataPath, @NotNull File destDir) throws IOException {
+    FileUtil.copyDir(dataFile(dataPath), destDir);
+    FileUtil.rename(new File(destDir, "_git1"), new File(destDir, ".git"));
+    return destDir;
+  }
+
+  @NotNull
+  private static GitCommandLine createCmd(@NotNull GitExec git, @NotNull File repo) {
+    GitCommandLine cmd = new GitCommandLine(new StubContext(git.getPath(), git.getVersion()), new AgentGitFacadeImpl(git.getPath()).getScriptGen());
+    cmd.setExePath(git.getPath());
+    cmd.setWorkingDirectory(repo);
+    return cmd;
   }
 
   public void test_message_crop(@NotNull GitExec git) {

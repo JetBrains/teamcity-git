@@ -100,10 +100,6 @@ public class CommandUtil {
     }
   }
 
-  private static String determineLogLevel(@Nullable String level) { // todo decide by command content
-    return  "warn";
-  }
-
   public static ExecResult runCommand(@NotNull GitCommandLine cli) throws VcsException {
     return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC);
   }

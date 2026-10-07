@@ -762,8 +762,6 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return StringUtil.split(property, true, ';').stream().collect(Collectors.toMap(p -> p, p -> GitCommandRetryPolicy.INITIAL_DELAY_MS));
   }
 
-
-  // todo write test
   @NotNull
   @Override
   public List<String> getFailureStderrSubstrings() {

@@ -529,7 +529,6 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return Retry.aggregateCustomDelayMessages(CUSTOM_RECOVERABLE_MESSAGES_PREFIX_NON_INTERNAL, buildParameters);
   }
 
-  //todo write test
   @NotNull
   @Override
   public List<String> getFailureStderrSubstrings() {

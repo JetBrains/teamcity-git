@@ -217,7 +217,13 @@ public interface Constants {
 
   String GIT_NO_COMMIT_GRAPH_WARN = "unable to find all commit-graph files";
 
-  // todo write comment
+  /**
+   * Server internal property with {@code ;}-separated stderr substrings that fail a native git command which exited with 0.
+   * Matching ignores case, and the substrings are added to {@link #GIT_FAILURE_WARNINGS}, which always apply.
+   * On the agent the same list is read from the {@code teamcity.internal.git.failureStderrSubstrings} build parameter.
+   * TW-100871
+   * @since 2026.2.2
+   */
   String GIT_STDERR_FAILURE_SUBSTRINGS_PARAM = "teamcity.git.failureStderrSubstrings";
 
   List<String> GIT_FAILURE_WARNINGS = Collections.unmodifiableList(Arrays.asList("could not open directory", "adding embedded git repository", "update of config-file failed", "missing <new-oid>, treating as zero"));
