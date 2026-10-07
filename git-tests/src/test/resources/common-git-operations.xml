@@ -27,6 +27,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitRemoteUrlInspectorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.health.GitLocalFileUrlHealthReportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetchSettingsFactoryImplTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CheckoutRulesCommitCacheTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ResetCheckoutRulesCommitCacheHandlerTest"/>
     </classes>
   </test>
 </suite>
