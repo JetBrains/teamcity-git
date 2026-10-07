@@ -24,12 +24,12 @@ public class CheckoutRulesCommitCache {
   static final CheckoutRulesCommitCache EMPTY = new CheckoutRulesCommitCache() {
     @Nullable
     @Override
-    Value get(@NotNull GitVcsRoot gitRoot, @NotNull CheckoutRules checkoutRules, @NotNull String revision) {
+    public Value get(@NotNull GitVcsRoot gitRoot, @NotNull CheckoutRules checkoutRules, @NotNull String revision) {
       return null;
     }
 
     @Override
-    void put(@NotNull GitVcsRoot gitRoot, @NotNull CheckoutRules checkoutRules, @NotNull String revision, @NotNull Value value) {
+    public void put(@NotNull GitVcsRoot gitRoot, @NotNull CheckoutRules checkoutRules, @NotNull String revision, @NotNull Value value) {
     }
   };
 
@@ -43,34 +43,38 @@ public class CheckoutRulesCommitCache {
   }
 
   @Nullable
-  Value get(@NotNull GitVcsRoot gitRoot, @NotNull CheckoutRules checkoutRules, @NotNull String revision) {
+  public Value get(@NotNull GitVcsRoot gitRoot, @NotNull CheckoutRules checkoutRules, @NotNull String revision) {
     CacheState state = getCurrentState();
-    if (!isEnabled(gitRoot, state)) return null;
-    return state.myCache.getIfPresent(new Key(gitRoot.getRepositoryDir().getName(), checkoutRules, revision));
+    if (!isEnabled(state)) return null;
+    return state.myCache.getIfPresent(new Key(gitRoot.getRepositoryDir().getName(),
+                                              gitRoot.getSubmodulesCheckoutPolicy(),
+                                              checkoutRules,
+                                              revision));
   }
 
-  void put(@NotNull GitVcsRoot gitRoot, @NotNull CheckoutRules checkoutRules, @NotNull String revision, @NotNull Value value) {
+  public void put(@NotNull GitVcsRoot gitRoot, @NotNull CheckoutRules checkoutRules, @NotNull String revision, @NotNull Value value) {
     CacheState state = getCurrentState();
-    if (!isEnabled(gitRoot, state)) return;
-    state.myCache.put(new Key(gitRoot.getRepositoryDir().getName(), checkoutRules, revision), value);
+    if (!isEnabled(state)) return;
+    state.myCache.put(new Key(gitRoot.getRepositoryDir().getName(),
+                              gitRoot.getSubmodulesCheckoutPolicy(),
+                              checkoutRules,
+                              revision), value);
   }
 
-  long getHitCount() {
+  public long getHitCount() {
     return getCurrentState().myCache.stats().hitCount();
   }
 
-  boolean isEmpty() {
+  public boolean isEmpty() {
     return getCurrentState().myCache.estimatedSize() == 0;
   }
 
-  void reset() {
+  public void reset() {
     myState.resetValue();
   }
 
-  private boolean isEnabled(@NotNull GitVcsRoot gitRoot, @NotNull CacheState state) {
-    // A submodule-aware tree depends on more than the main repository commit, and submodule resolution failures are ignored.
-    // Do not retain such potentially transient results.
-    boolean enabled = !gitRoot.isCheckoutSubmodules() && state.myConfiguration.myEnabled;
+  private boolean isEnabled(@NotNull CacheState state) {
+    boolean enabled = state.myConfiguration.myEnabled;
     if (!enabled) {
       state.myCache.invalidateAll();
     }
@@ -124,12 +128,12 @@ public class CheckoutRulesCommitCache {
     }
   }
 
-  static class Value {
+  public static class Value {
     private static final String[] NO_AFFECTED_PARENTS = new String[0];
 
     private final String[] myAffectedParents;
 
-    Value(@NotNull String[] affectedParents, int affectedParentsCount) {
+    public Value(@NotNull String[] affectedParents, int affectedParentsCount) {
       myAffectedParents = affectedParentsCount == 0 ? NO_AFFECTED_PARENTS :
                           affectedParentsCount == affectedParents.length ? affectedParents :
                           Arrays.copyOf(affectedParents, affectedParentsCount);
@@ -145,11 +149,16 @@ public class CheckoutRulesCommitCache {
 
   private static class Key {
     private final String myRepositoryDirName;
+    private final SubmodulesCheckoutPolicy mySubmodulesCheckoutPolicy;
     private final CheckoutRules myCheckoutRules;
     private final String myRevision;
 
-    private Key(@NotNull String repositoryDirName, @NotNull CheckoutRules checkoutRules, @NotNull String revision) {
+    private Key(@NotNull String repositoryDirName,
+                @NotNull SubmodulesCheckoutPolicy submodulesCheckoutPolicy,
+                @NotNull CheckoutRules checkoutRules,
+                @NotNull String revision) {
       myRepositoryDirName = repositoryDirName;
+      mySubmodulesCheckoutPolicy = submodulesCheckoutPolicy;
       myCheckoutRules = checkoutRules;
       myRevision = revision;
     }
@@ -160,13 +169,14 @@ public class CheckoutRulesCommitCache {
       if (!(o instanceof Key)) return false;
       Key key = (Key)o;
       return Objects.equals(myRepositoryDirName, key.myRepositoryDirName) &&
+             mySubmodulesCheckoutPolicy == key.mySubmodulesCheckoutPolicy &&
              Objects.equals(myCheckoutRules, key.myCheckoutRules) &&
              Objects.equals(myRevision, key.myRevision);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(myRepositoryDirName, myCheckoutRules, myRevision);
+      return Objects.hash(myRepositoryDirName, mySubmodulesCheckoutPolicy, myCheckoutRules, myRevision);
     }
   }
 }
