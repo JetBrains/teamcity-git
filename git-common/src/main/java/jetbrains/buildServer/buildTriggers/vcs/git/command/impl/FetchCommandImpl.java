@@ -9,6 +9,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -181,17 +182,19 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
           return false;
         }
 
+        List<String> modifiedFailureSubstrings = myCmd.getFailureStderrSubstrings();
+        modifiedFailureSubstrings.remove(GIT_NO_COMMIT_GRAPH_WARN);
+        myCmd.resetFailureStderrSubstrings(modifiedFailureSubstrings);
         try {
-          int result = myCommitGraphRefresher.call();
-          if (result == 0) {
-            List<String> modifiedFailureSubstrings = myCmd.getFailureStderrSubstrings();
-            modifiedFailureSubstrings.remove(GIT_NO_COMMIT_GRAPH_WARN);
-            myCmd.resetFailureStderrSubstrings(modifiedFailureSubstrings);
-            return true;
+          int exitCode = myCommitGraphRefresher.call();
+          if (exitCode != 0) {
+            Loggers.VCS.warn("Failed to refresh the corrupted commit-graph, exit code " + exitCode + ", fetch will be retried without it");
           }
-          return false;
-        } catch (Exception ve) {
-          return false;
+        } catch (Exception refreshError) {
+          if (refreshError instanceof VcsException && CommandUtil.isCanceledError((VcsException)refreshError)) {
+            return false;
+          }
+          Loggers.VCS.warnAndDebugDetails("Failed to refresh the corrupted commit-graph, fetch will be retried without it", refreshError);
         }
       }
 
