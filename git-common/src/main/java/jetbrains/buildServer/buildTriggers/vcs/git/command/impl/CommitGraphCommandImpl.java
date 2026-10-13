@@ -56,7 +56,7 @@ public class CommitGraphCommandImpl extends BaseCommandImpl implements CommitGra
       cmd.addParameter("--split=" + myStrategy);
     }
 
-    ExecResult result = CommandUtil.runCommand(cmd.abnormalExitExpected(true).stdErrExpected(true));
+    ExecResult result = CommandUtil.runCommand(cmd.abnormalExitExpected(true));
     return result.getExitCode();
   }
 }

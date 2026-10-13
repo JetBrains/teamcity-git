@@ -72,9 +72,6 @@ public class GitConfigCommandImpl extends BaseCommandImpl implements GitConfigCo
         cmd.addParameter(myValue);
       }
     }
-    return CommandUtil.runCommand(cmd
-                                    .abnormalExitExpected(abnormalExitExpected)
-                                    .stdErrExpected(false))
-                      .getStdout().trim();
+    return CommandUtil.runCommand(cmd.abnormalExitExpected(abnormalExitExpected)).getStdout().trim();
   }
 }
