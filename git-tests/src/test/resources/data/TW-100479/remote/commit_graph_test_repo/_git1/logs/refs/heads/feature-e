@@ -1,0 +1,7 @@
+0000000000000000000000000000000000000000 852406e0318c84d51fceedd5639ad2eb3eba0570 Sample Author <sample@example.com> 1782124722 +0200	branch: Created from HEAD
+852406e0318c84d51fceedd5639ad2eb3eba0570 8725dd03a52a285b671c7535579f449a4a6b9c5c Sample Author <sample@example.com> 1782124722 +0200	commit: tau: update upsilon (51)
+8725dd03a52a285b671c7535579f449a4a6b9c5c f22d0188785332bb2fe906ba1953eaaabc2074fa Sample Author <sample@example.com> 1782124722 +0200	commit: cursor: update lexer (52)
+f22d0188785332bb2fe906ba1953eaaabc2074fa e401c720b6a296b8f9a4d45b961de5c7f101b8e8 Sample Author <sample@example.com> 1782124722 +0200	commit: gamma: update lambda (53)
+e401c720b6a296b8f9a4d45b961de5c7f101b8e8 97bf6f1feda589af844b9a703d8e415ccc03d7ce Sample Author <sample@example.com> 1782124722 +0200	commit: psi: update buffer (54)
+97bf6f1feda589af844b9a703d8e415ccc03d7ce 49e1283a273f402ce9b923bd998c4f32f83f5cf4 Sample Author <sample@example.com> 1782124722 +0200	commit: parser: update parser (62)
+49e1283a273f402ce9b923bd998c4f32f83f5cf4 3761d175ae952e7861855047b644487b1b7e82f6 Sample Author <sample@example.com> 1782124722 +0200	merge feature-g: Merge made by the 'ort' strategy.
