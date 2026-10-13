@@ -36,6 +36,6 @@ public class AddCommandImpl extends BaseCommandImpl implements AddCommand {
     if (myAddAll)
       cmd.addParameter("-A");
     cmd.addParameters(myPaths);
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    CommandUtil.runCommand(cmd);
   }
 }

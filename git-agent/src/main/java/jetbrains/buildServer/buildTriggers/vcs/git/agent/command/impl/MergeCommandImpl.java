@@ -54,6 +54,6 @@ public class MergeCommandImpl extends BaseCommandImpl implements MergeCommand {
 
     cmd.addParameters(myMergeBranches);
 
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    CommandUtil.runCommand(cmd);
   }
 }

@@ -5,10 +5,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
@@ -17,10 +19,13 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
-import org.apache.logging.log4j.core.config.plugins.Plugin;
+import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_FAILURE_WARNINGS;
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_STDERR_FAILURE_SUBSTRINGS_PARAM;
 
 public class StubContext implements Context {
 
@@ -187,6 +192,16 @@ public class StubContext implements Context {
   @Override
   public Map<String, Long> getCustomRecoverableMessages() {
     return myCustomRecoverableMessages;
+  }
+
+  @NotNull
+  @Override
+  public List<String> getFailureStderrSubstrings() {
+    ArrayList<String> stderrSubstrings = StringUtil.split(TeamCityProperties.getProperty(GIT_STDERR_FAILURE_SUBSTRINGS_PARAM, ""), true, ';')
+                                                   .stream().map(String::trim).filter(str -> !StringUtil.isEmptyOrSpaces(str)).collect(Collectors.toCollection(ArrayList::new));
+
+    stderrSubstrings.addAll(GIT_FAILURE_WARNINGS);
+    return stderrSubstrings;
   }
 
   @Nullable

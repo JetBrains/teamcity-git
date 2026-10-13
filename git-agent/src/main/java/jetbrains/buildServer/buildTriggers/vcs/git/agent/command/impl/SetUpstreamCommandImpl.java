@@ -33,6 +33,6 @@ public class SetUpstreamCommandImpl extends BaseCommandImpl implements SetUpstre
     } else {
       cmd.addParameters("branch", "--set-upstream-to=" + myUpstreamBranch);
     }
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    CommandUtil.runCommand(cmd);
   }
 }

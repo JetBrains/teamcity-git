@@ -192,7 +192,7 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
     GitCommandLine cmd = createCommandLine();
     cmd.addParameter("branch");
     if (all) cmd.addParameter("-a");
-    return parseBranches(CommandUtil.runCommand(cmd.stdErrExpected(false)).getStdout());
+    return parseBranches(CommandUtil.runCommand(cmd).getStdout());
   }
 
   @NotNull

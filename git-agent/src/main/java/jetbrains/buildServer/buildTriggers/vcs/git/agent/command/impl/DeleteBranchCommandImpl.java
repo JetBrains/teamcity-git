@@ -28,6 +28,6 @@ public class DeleteBranchCommandImpl extends BaseCommandImpl implements DeleteBr
     cmd.addParameter("branch");
     cmd.addParameter("-D");
     cmd.addParameter(myName);
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    CommandUtil.runCommand(cmd);
   }
 }

@@ -188,6 +188,9 @@ public interface ServerPluginConfig extends PluginConfig {
   @NotNull
   Map<String, Long> getCustomRecoverableMessages();
 
+  @NotNull
+  List<String> getFailureStderrSubstrings();
+
   boolean downloadLfsObjectsForPatch();
 
   @NotNull
