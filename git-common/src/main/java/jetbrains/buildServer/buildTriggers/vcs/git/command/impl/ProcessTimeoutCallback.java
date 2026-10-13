@@ -11,6 +11,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
@@ -25,6 +29,11 @@ public class ProcessTimeoutCallback extends SimpleCommandLineProcessRunner.Proce
   private static final Set<ProcessTimeoutCallback> RUNNING_CALLBACKS =
     Collections.newSetFromMap(new ConcurrentHashMap<ProcessTimeoutCallback, Boolean>());
   private static final long TERMINATION_POLL_INTERVAL_NANOS = TimeUnit.MILLISECONDS.toNanos(50);
+  private static final ExecutorService TERMINATION_EXECUTOR = Executors.newCachedThreadPool(task -> {
+    Thread thread = new Thread(task, "Native Git process-tree termination");
+    thread.setDaemon(true);
+    return thread;
+  });
 
   public static final String GRACEFUL_TERMINATION_ENABLED = "teamcity.git.native.gracefulTermination.enabled";
   public static final String GRACEFUL_TERMINATION_TIMEOUT_SECONDS = "teamcity.git.native.gracefulTermination.timeout.seconds";
@@ -118,6 +127,7 @@ public class ProcessTimeoutCallback extends SimpleCommandLineProcessRunner.Proce
    * Gracefully terminates all native Git commands currently tracked by the plugin. The agent invokes
    * this before TeamCity interrupts checkout so the complete, live process trees are still discoverable.
    * All trees share one grace deadline; after it expires, every survivor is force-killed.
+   * Tree discovery and signal delivery run concurrently so their costs do not add up across trees.
    */
   public static int terminateRunningProcesses() {
     return terminateRunningProcesses(gracefulTerminationTimeoutSeconds());
@@ -141,34 +151,65 @@ public class ProcessTimeoutCallback extends SimpleCommandLineProcessRunner.Proce
                                            final int gracefulTerminationTimeoutSeconds) {
     final long deadlineNanos = System.nanoTime() +
       TimeUnit.SECONDS.toNanos(Math.max(0, gracefulTerminationTimeoutSeconds));
-    final List<ProcessTreeTermination> terminations = new ArrayList<>();
-
-    for (ProcessTimeoutCallback callback : callbacks) {
-      final ProcessTreeTermination termination = callback.startProcessTreeTerminationIfRunning();
-      if (termination != null) terminations.add(termination);
-    }
-
+    final AtomicBoolean interrupted = new AtomicBoolean(Thread.interrupted());
     try {
-      while (hasRunningProcesses(terminations)) {
-        final long remainingNanos = deadlineNanos - System.nanoTime();
+      final List<Future<ProcessTreeTermination>> starts = new ArrayList<>();
+      for (ProcessTimeoutCallback callback : callbacks) {
+        starts.add(TERMINATION_EXECUTOR.submit(callback::startProcessTreeTerminationIfRunning));
+      }
+
+      final List<ProcessTreeTermination> terminations = new ArrayList<>();
+      for (Future<ProcessTreeTermination> start : starts) {
+        final ProcessTreeTermination termination = awaitTerminationTask(start, interrupted);
+        if (termination != null) terminations.add(termination);
+      }
+
+      // Complete every tree snapshot and SIGTERM phase before allowing SIGKILL. Returning while
+      // discovery is still running would let TeamCity kill roots and orphan undiscovered children.
+      final List<Future<?>> finishes = new ArrayList<>();
+      for (ProcessTreeTermination termination : terminations) {
+        finishes.add(TERMINATION_EXECUTOR.submit(() -> waitAndForceKill(termination, deadlineNanos, interrupted)));
+      }
+      for (Future<?> finish : finishes) {
+        awaitTerminationTask(finish, interrupted);
+      }
+      return terminations.size();
+    } finally {
+      if (interrupted.get()) Thread.currentThread().interrupt();
+    }
+  }
+
+  private static void waitAndForceKill(@NotNull ProcessTreeTermination termination,
+                                       final long deadlineNanos,
+                                       @NotNull AtomicBoolean interrupted) {
+    try {
+      while (!interrupted.get()) {
+        long remainingNanos = deadlineNanos - System.nanoTime();
+        if (remainingNanos <= 0) break;
+        if (!termination.isAlive()) return;
+        remainingNanos = deadlineNanos - System.nanoTime();
         if (remainingNanos <= 0) break;
         TimeUnit.NANOSECONDS.sleep(Math.min(remainingNanos, TERMINATION_POLL_INTERVAL_NANOS));
       }
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+      interrupted.set(true);
     }
-
-    for (ProcessTreeTermination termination : terminations) {
-      if (termination.isAlive()) termination.forceKill();
-    }
-    return terminations.size();
+    if (termination.isAlive()) termination.forceKill();
   }
 
-  private static boolean hasRunningProcesses(@NotNull List<ProcessTreeTermination> terminations) {
-    for (ProcessTreeTermination termination : terminations) {
-      if (termination.isAlive()) return true;
+  @Nullable
+  private static <T> T awaitTerminationTask(@NotNull Future<T> task, @NotNull AtomicBoolean interrupted) {
+    while (true) {
+      try {
+        return task.get();
+      } catch (InterruptedException e) {
+        // Finish cleanup before TeamCity interrupts checkout, then restore the caller's flag.
+        interrupted.set(true);
+      } catch (ExecutionException e) {
+        LOG.warn("Native Git process-tree termination task failed", e.getCause());
+        return null;
+      }
     }
-    return false;
   }
 
   @Nullable

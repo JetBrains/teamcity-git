@@ -11,8 +11,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
@@ -141,7 +146,7 @@ public class ProcessTimeoutCallbackTest {
 
   @Test
   public void startsEveryRegisteredTreeBeforeTheSharedDeadline() {
-    List<String> events = new ArrayList<>();
+    List<String> events = Collections.synchronizedList(new ArrayList<>());
     StubProcess firstProcess = new StubProcess(true);
     StubProcess secondProcess = new StubProcess(true);
     RecordingProcessTreeKiller firstKiller = new RecordingProcessTreeKiller(false, "first", events);
@@ -161,6 +166,83 @@ public class ProcessTimeoutCallbackTest {
   }
 
   @Test
+  public void startsProcessTreeTerminationConcurrently() {
+    assertProcessTreeOperationsRunConcurrently(true);
+  }
+
+  @Test
+  public void forceKillsProcessTreesConcurrently() {
+    assertProcessTreeOperationsRunConcurrently(false);
+  }
+
+  @Test
+  public void completesCleanupAndRestoresInterruptWhenInterruptedDuringTreeDiscovery() throws Exception {
+    StubProcess process = new StubProcess(true);
+    CountDownLatch discoveryStarted = new CountDownLatch(1);
+    CountDownLatch allowDiscoveryToComplete = new CountDownLatch(1);
+    AtomicBoolean discoveryCompleted = new AtomicBoolean();
+    AtomicBoolean cleanupCompletedBeforeReturn = new AtomicBoolean();
+    AtomicBoolean interruptRestored = new AtomicBoolean();
+    AtomicInteger terminationCount = new AtomicInteger();
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+    ProcessTimeoutCallback callback = callback(true, 60, (ignoredProcess, ignoredPid) -> {
+      discoveryStarted.countDown();
+      try {
+        assertTrue(allowDiscoveryToComplete.await(5, TimeUnit.SECONDS), "tree discovery was never released");
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("tree discovery worker was interrupted before cleanup", e);
+      }
+      discoveryCompleted.set(true);
+      return new ProcessTimeoutCallback.ProcessTreeTermination() {
+        @Override
+        public boolean isAlive() {
+          return process.isAlive();
+        }
+
+        @Override
+        public void forceKill() {
+          process.destroyForcibly();
+        }
+      };
+    }, 123L);
+    callback.onProcessStarted(process);
+    Thread cancellation = new Thread(() -> {
+      try {
+        terminationCount.set(ProcessTimeoutCallback.terminateRunningProcesses(60));
+        cleanupCompletedBeforeReturn.set(discoveryCompleted.get() && process.forciblyDestroyed);
+        interruptRestored.set(Thread.currentThread().isInterrupted());
+      } catch (Throwable e) {
+        failure.set(e);
+      }
+    }, "git-termination-interruption-test");
+    cancellation.setDaemon(true);
+
+    try {
+      cancellation.start();
+      assertTrue(discoveryStarted.await(5, TimeUnit.SECONDS), "tree discovery did not start");
+      cancellation.interrupt();
+      allowDiscoveryToComplete.countDown();
+      cancellation.join(5000);
+
+      assertFalse(cancellation.isAlive(), "interrupted cancellation waited for another grace period");
+      assertNull(failure.get());
+      assertTrue(discoveryCompleted.get(), "cancellation returned before tree discovery completed");
+      assertTrue(cleanupCompletedBeforeReturn.get(), "cancellation returned before survivor cleanup completed");
+      assertEquals(1, terminationCount.get());
+      assertTrue(process.forciblyDestroyed, "interruption skipped survivor cleanup");
+      assertTrue(interruptRestored.get(), "cancellation did not restore its interrupt flag");
+    } finally {
+      allowDiscoveryToComplete.countDown();
+      if (cancellation.isAlive()) {
+        cancellation.interrupt();
+        cancellation.join(5000);
+      }
+      callback.onProcessFinished(process);
+    }
+  }
+
+  @Test
   public void gracefullyTerminatesRegisteredProcessOnlyOnce() {
     StubProcess process = new StubProcess(true);
     RecordingProcessTreeKiller processTreeKiller = new RecordingProcessTreeKiller(true);
@@ -171,6 +253,50 @@ public class ProcessTimeoutCallbackTest {
     assertEquals(1, ProcessTimeoutCallback.terminateRunningProcesses());
     assertEquals(0, ProcessTimeoutCallback.terminateRunningProcesses());
     assertEquals(1, processTreeKiller.invocationCount);
+  }
+
+  private static void assertProcessTreeOperationsRunConcurrently(boolean gracefulTermination) {
+    final int processCount = 3;
+    CountDownLatch operationsStarted = new CountDownLatch(processCount);
+    AtomicBoolean allOperationsConcurrent = new AtomicBoolean(true);
+    List<StubProcess> processes = new ArrayList<>();
+    for (int index = 0; index < processCount; index++) {
+      StubProcess process = new StubProcess(true);
+      processes.add(process);
+      ProcessTimeoutCallback callback = callback(true, 0, (ignoredProcess, ignoredPid) -> {
+        if (gracefulTermination) awaitOperationPeers(operationsStarted, allOperationsConcurrent);
+        return new ProcessTimeoutCallback.ProcessTreeTermination() {
+          @Override
+          public boolean isAlive() {
+            return process.isAlive();
+          }
+
+          @Override
+          public void forceKill() {
+            if (!gracefulTermination) awaitOperationPeers(operationsStarted, allOperationsConcurrent);
+            process.destroyForcibly();
+          }
+        };
+      }, (long) index);
+      callback.onProcessStarted(process);
+    }
+
+    assertEquals(processCount, ProcessTimeoutCallback.terminateRunningProcesses(0));
+    assertTrue(allOperationsConcurrent.get(),
+               (gracefulTermination ? "SIGTERM" : "SIGKILL") + " operations waited for earlier process trees");
+    for (StubProcess process : processes) {
+      assertTrue(process.forciblyDestroyed, "termination returned before survivor cleanup completed");
+    }
+  }
+
+  private static void awaitOperationPeers(CountDownLatch operationsStarted, AtomicBoolean allOperationsConcurrent) {
+    operationsStarted.countDown();
+    try {
+      if (!operationsStarted.await(5, TimeUnit.SECONDS)) allOperationsConcurrent.set(false);
+    } catch (InterruptedException e) {
+      allOperationsConcurrent.set(false);
+      Thread.currentThread().interrupt();
+    }
   }
 
   private static ProcessTimeoutCallback callback(boolean gracefulTerminationEnabled,
@@ -236,8 +362,8 @@ public class ProcessTimeoutCallbackTest {
   }
 
   private static class StubProcess extends Process {
-    private boolean alive;
-    private boolean forciblyDestroyed;
+    private volatile boolean alive;
+    private volatile boolean forciblyDestroyed;
 
     private StubProcess(boolean alive) {
       this.alive = alive;

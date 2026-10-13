@@ -38,8 +38,9 @@ public class ProcessTimeoutCallbackE2ETest {
                          Integer.toString(GRACE_TIMEOUT_SECONDS));
       System.setProperty(ProcessPid.ENABLED_PROP, "false");
 
-      processTrees.add(StubbornProcessTree.start());
-      processTrees.add(StubbornProcessTree.start());
+      for (int index = 0; index < 4; index++) {
+        processTrees.add(StubbornProcessTree.start());
+      }
       assertNull(ProcessPid.getPid(processTrees.get(0).rootProcess, "E2E root process"));
 
       for (StubbornProcessTree processTree : processTrees) {
