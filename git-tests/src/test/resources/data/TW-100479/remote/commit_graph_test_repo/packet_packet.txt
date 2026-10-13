@@ -1,0 +1,12 @@
+# delta module — generated content
+delta epsilon 13506 vertex 418
+pi pi 3061 shader 330
+token parser 28325 delta 142
+upsilon scalar 21587 cursor 937
+upsilon phi 15496 gamma 369
+alpha alpha 28292 delta 891
+buffer socket 11071 mu 151
+vector mutex 8491 psi 149
+# socket module — generated content
+shader shader 8725 alpha 797
+socket shader 14108 rho 649

@@ -1,0 +1,9 @@
+# sigma module — generated content
+tau matrix 28831 cache 950
+kernel buffer 27250 sigma 159
+socket socket 31473 iota 702
+thread thread 23897 quantum 345
+eta eta 6574 tensor 350
+alpha beta 24875 tensor 581
+epsilon zeta 7492 vertex 315
+delta mu 5276 eta 316

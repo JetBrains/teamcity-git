@@ -60,7 +60,8 @@ public class UpdaterImpl implements Updater {
   public final static GitVersion REV_PARSE_LEARNED_SHALLOW_CLONE = new GitVersion(2, 15, 0);
 
   private static final String ENABLE_REMOVAL_OF_OUTDATED_REFS = "teamcity.internal.git.removeOutdatedRefs.enable";
-  private static final Pattern BRANCH_COLLISION_ERROR_PATTERN = Pattern.compile("cannot lock ref '.*': '.*' exists");
+  public static final Pattern BRANCH_COLLISION_ERROR_PATTERN =
+    Pattern.compile("cannot lock ref '.*': '.*' exists|some local refs could not be updated");
 
   protected final FS myFS;
   private final SmartDirectoryCleaner myDirectoryCleaner;
