@@ -26,7 +26,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.SSHAgentServiceTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleUrlResolverTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProcessXmxProviderTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProcessTimeoutCallbackTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ProcessTimeoutCallbackTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ProcessTimeoutCallbackE2ETest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryXmxStorageTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RetryTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.NativeGitTestConnectionRunnerTest"/>
