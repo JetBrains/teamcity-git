@@ -28,6 +28,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAw
 public class CheckoutRulesRevWalk extends LimitingRevWalk {
   public static final String TEAMCITY_MAX_CHECKED_COMMITS_PROP = "teamcity.git.checkoutRulesRevWalk.maxCheckedCommits";
   private final CheckoutRules myCheckoutRules;
+  private final CheckoutRulesCommitCache myCommitCache;
   private final Set<String> myStopRevisions = new HashSet<>();
   private final List<String> myReachedStopRevisions = new ArrayList<>();
   private String myStartRevision;
@@ -39,9 +40,11 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
-                       @NotNull final CheckoutRules checkoutRules) throws VcsException {
+                       @NotNull final CheckoutRules checkoutRules,
+                       @NotNull final CheckoutRulesCommitCache commitCache) throws VcsException {
     super(config, context);
     myCheckoutRules = checkoutRules;
+    myCommitCache = commitCache;
   }
 
   public void setStartRevision(@NotNull RevCommit c) {
@@ -139,46 +142,63 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   protected boolean isCurrentCommitIncluded() throws IOException {
     checkCurrentCommit();
 
-    final RevCommit[] parents = getCurrentCommit().getParents();
-
+    final RevCommit currentCommit = getCurrentCommit();
+    final RevCommit[] parents = currentCommit.getParents();
     final GitVcsRoot gitRoot = getGitRoot();
-    if (parents.length > 1) {
-      // merge commit is interesting only if it changes interesting files when comparing to both of its parents,
-      // otherwise, if files are changed comparing to one parent only, then we need to go deeper through the commit graph
-      // and find the actual commit which changed the files
-      int numAffectedParents = 0;
+    if (parents.length == 0) {
+      return isAffectedByCheckoutRules(gitRoot, null);
+    }
 
-      Set<RevCommit> uninterestingParents = new HashSet<>();
+    CheckoutRulesCommitCache.Value evaluation = myCommitCache.get(gitRoot, myCheckoutRules, currentCommit.name());
+    if (evaluation == null) {
+      String[] affectedParents = new String[parents.length];
+      int affectedParentsCount = 0;
       for (RevCommit parent : parents) {
         if (isAffectedByCheckoutRules(gitRoot, parent)) {
-          numAffectedParents++;
-        } else {
-          for (RevCommit p : parents) {
-            if (p != parent) {
-              uninterestingParents.add(p);
-            }
+          affectedParents[affectedParentsCount++] = parent.name();
+        }
+      }
+      evaluation = new CheckoutRulesCommitCache.Value(affectedParents, affectedParentsCount);
+      myCommitCache.put(gitRoot, myCheckoutRules, currentCommit.name(), evaluation);
+    }
+
+    if (parents.length == 1) {
+      return evaluation.isParentAffected(parents[0].name());
+    }
+
+    // merge commit is interesting only if it changes interesting files when comparing to both of its parents,
+    // otherwise, if files are changed comparing to one parent only, then we need to go deeper through the commit graph
+    // and find the actual commit which changed the files
+    int numAffectedParents = 0;
+
+    Set<RevCommit> uninterestingParents = new HashSet<>();
+    for (RevCommit parent : parents) {
+      if (evaluation.isParentAffected(parent.name())) {
+        numAffectedParents++;
+      } else {
+        for (RevCommit p : parents) {
+          if (p != parent) {
+            uninterestingParents.add(p);
           }
         }
       }
-
-      if (numAffectedParents == 0) {
-        // we have a merge commit which does not change anything interesting in the files tree comparing to all of its parents
-        // this can happen in two cases:
-        // 1) interesting files were not changed by this commit
-        // 2) interesting files were changed in all parents of this commit in the same way (mutual merges)
-        // in either case we should go deeper
-      } else if (numAffectedParents < parents.length) {
-        // only one parent brings changes in files included by checkout rules
-        // we need to mark all other parents as uninteresting to exclude them from traversing
-        for (RevCommit p: uninterestingParents) {
-          markUninteresting(p);
-        }
-      }
-
-      return numAffectedParents > 1;
     }
 
-    return isAffectedByCheckoutRules(gitRoot, parents.length > 0 ? parents[0] : null);
+    if (numAffectedParents == 0) {
+      // we have a merge commit which does not change anything interesting in the files tree comparing to all of its parents
+      // this can happen in two cases:
+      // 1) interesting files were not changed by this commit
+      // 2) interesting files were changed in all parents of this commit in the same way (mutual merges)
+      // in either case we should go deeper
+    } else if (numAffectedParents < parents.length) {
+      // only one parent brings changes in files included by checkout rules
+      // we need to mark all other parents as uninteresting to exclude them from traversing
+      for (RevCommit p: uninterestingParents) {
+        markUninteresting(p);
+      }
+    }
+
+    return numAffectedParents > 1;
   }
 
   private void initSubmodulesResolver() {

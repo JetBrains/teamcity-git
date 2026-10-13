@@ -379,6 +379,74 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
   }
 
   @Test(dataProvider = "nativeGit")
+  public void cached_checkout_rules_evaluation_preserves_visited_commits(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
+    VcsRoot root = getVcsRootBuilder().build();
+    CheckoutRules rules = new CheckoutRules("+:non-existing-path");
+    String startRevision = "6ff32b16fe485e7a0a1e209bf10987e1ad46292e";
+
+    Set<String> firstVisited = new HashSet<>();
+    Result firstResult = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, "refs/heads/master", Collections.emptySet(), firstVisited);
+    long hitsBeforeSecondCalculation = getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount();
+
+    Set<String> secondVisited = new HashSet<>();
+    Result secondResult = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:non-existing-path"), startRevision, "refs/heads/master", Collections.emptySet(), secondVisited);
+
+    then(secondResult.getRevision()).isEqualTo(firstResult.getRevision());
+    then(secondResult.getReachableStopRevisions()).isEqualTo(firstResult.getReachableStopRevisions());
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isGreaterThan(hitsBeforeSecondCalculation);
+    then(secondVisited).containsExactlyInAnyOrderElementsOf(firstVisited);
+  }
+
+  @Test(dataProvider = "nativeGit")
+  public void checkout_rules_cache_is_recreated_when_configuration_changes(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
+    VcsRoot root = getVcsRootBuilder().build();
+    CheckoutRules rules = new CheckoutRules("+:non-existing-path");
+    String startRevision = "6ff32b16fe485e7a0a1e209bf10987e1ad46292e";
+
+    populateCheckoutRulesCommitCache(root, rules, startRevision);
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isGreaterThan(0);
+
+    setInternalProperty("teamcity.git.checkoutRulesRevision.commitCache.size", "200000");
+    forceCheckoutRulesCommitCacheStateRefresh();
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isZero();
+    populateCheckoutRulesCommitCache(root, rules, startRevision);
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isGreaterThan(0);
+
+    setInternalProperty("teamcity.git.checkoutRulesRevision.commitCache.expiration.hours", "1");
+    forceCheckoutRulesCommitCacheStateRefresh();
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isZero();
+    populateCheckoutRulesCommitCache(root, rules, startRevision);
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isGreaterThan(0);
+
+    setInternalProperty("teamcity.git.checkoutRulesRevision.commitCache.enabled", "false");
+    forceCheckoutRulesCommitCacheStateRefresh();
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isZero();
+    setInternalProperty("teamcity.git.checkoutRulesRevision.commitCache.enabled", "true");
+    forceCheckoutRulesCommitCacheStateRefresh();
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isZero();
+    populateCheckoutRulesCommitCache(root, rules, startRevision);
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isGreaterThan(0);
+  }
+
+  @Test(dataProvider = "nativeGit")
+  public void initial_commit_checkout_rules_evaluation_is_not_cached(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
+    VcsRoot root = getVcsRootBuilder().build();
+    CheckoutRules rules = new CheckoutRules("+:non-existing-path");
+    String initialCommit = "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf";
+
+    Result firstResult = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, rules, initialCommit, "refs/heads/master", Collections.emptySet());
+    long hitsAfterFirstCalculation = getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount();
+    Result secondResult = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, rules, initialCommit, "refs/heads/master", Collections.emptySet());
+
+    then(firstResult.getRevision()).isNull();
+    then(secondResult.getRevision()).isNull();
+    then(getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount()).isEqualTo(hitsAfterFirstCalculation);
+  }
+
+  @Test(dataProvider = "nativeGit")
   public void stop_revisions_and_non_existing_path(boolean withNativeGit) throws VcsException {
     setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
@@ -413,5 +481,16 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   private VcsRootBuilder getVcsRootBuilder() {
     return vcsRoot().withFetchUrl(GitUtils.toURL(myRepo));
+  }
+
+  private void populateCheckoutRulesCommitCache(@NotNull VcsRoot root, @NotNull CheckoutRules rules, @NotNull String startRevision) throws VcsException {
+    getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, "refs/heads/master", Collections.emptySet());
+    getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, "refs/heads/master", Collections.emptySet());
+  }
+
+  private void forceCheckoutRulesCommitCacheStateRefresh() {
+    setInternalProperty("teamcity.git.checkoutRulesRevision.commitCache.resetInterval", "-1");
+    getCollectChangesPolicy().getCheckoutRulesCommitCacheHitCount();
+    setInternalProperty("teamcity.git.checkoutRulesRevision.commitCache.resetInterval", "30000");
   }
 }

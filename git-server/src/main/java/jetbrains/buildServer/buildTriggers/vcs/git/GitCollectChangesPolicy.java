@@ -43,6 +43,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private final Counter myCollectChangesMetric;
   private final Counter myComputeRevisionMetric;
   private final GitProxyChangesCollector myGitProxyChangesCollector;
+  private final CheckoutRulesCommitCache myCheckoutRulesCommitCache;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
                                  @NotNull VcsOperationProgressProvider progressProvider,
@@ -50,11 +51,13 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                  @NotNull RepositoryManager repositoryManager,
                                  @NotNull GitApiClientFactory gitApiClientFactory,
                                  @NotNull ParameterFactory parameterFactory,
-                                 @NotNull ChangesCollectorCache changesCollectorCache) {
+                                 @NotNull ChangesCollectorCache changesCollectorCache,
+                                 @NotNull CheckoutRulesCommitCache checkoutRulesCommitCache) {
     myVcs = vcs;
     myProgressProvider = progressProvider;
     myConfig = config;
     myRepositoryManager = repositoryManager;
+    myCheckoutRulesCommitCache = checkoutRulesCommitCache;
     myGitProxyChangesCollector = new GitProxyChangesCollector(parameterFactory, gitApiClientFactory, repositoryManager, changesCollectorCache);
     ServerMetrics serverMetrics = vcs.getServerMetrics();
     if (serverMetrics != null) {
@@ -343,7 +346,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
       // this revWalk helps us to compute reachable stop revisions, we do not need to apply checkout rules as we already checked that
       // there are no interesting commits between start and stop revisions
-      CheckoutRulesRevWalk revWalk = new CheckoutRulesRevWalk(myConfig, context, rules) {
+      CheckoutRulesRevWalk revWalk = new CheckoutRulesRevWalk(myConfig, context, rules, CheckoutRulesCommitCache.EMPTY) {
         @Override
         protected boolean isCurrentCommitIncluded() {
           return false;
@@ -381,7 +384,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
     CheckoutRulesRevWalk revWalk = null;
     try {
-      revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
+      revWalk = new CheckoutRulesRevWalk(myConfig, context, rules, myCheckoutRulesCommitCache);
       return computeResult(startRevision, stopRevisions, visited, gitRoot, revWalk);
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -456,6 +459,11 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     }
 
     return new Result(result, revWalk.getReachedStopRevisions());
+  }
+
+  @VisibleForTesting
+  public long getCheckoutRulesCommitCacheHitCount() {
+    return myCheckoutRulesCommitCache.getHitCount();
   }
 
   private void ensureRevisionIsFetched(@NotNull String revision, @NotNull String branchName, @NotNull OperationContext context) {

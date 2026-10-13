@@ -64,6 +64,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final SSLTrustStoreProvider mySslTrustStoreProvider;
   private final ParameterFactory myParameterFactory;
   private final ChangesCollectorCache myChangesCollectorCache;
+  private final CheckoutRulesCommitCache myCheckoutRulesCommitCache;
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
                        @NotNull ServerPluginConfig config,
@@ -80,10 +81,12 @@ public class GitVcsSupport extends ServerVcsSupport
                        @Nullable TestConnectionSupport customTestConnection,
                        @NotNull SSLTrustStoreProvider sslTrustStoreProvider,
                        @NotNull ParameterFactory parameterFactory,
-                       @NotNull ChangesCollectorCache changesCollectorCache) {
+                       @NotNull ChangesCollectorCache changesCollectorCache,
+                       @NotNull CheckoutRulesCommitCache checkoutRulesCommitCache,
+                       @NotNull ResetCheckoutRulesCommitCacheHandler resetCheckoutRulesCommitCacheHandler) {
     this(gitRepoOperations, config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
          resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), tokenRefresher, customTestConnection,
-         sslTrustStoreProvider, parameterFactory, changesCollectorCache);
+         sslTrustStoreProvider, parameterFactory, changesCollectorCache, checkoutRulesCommitCache, resetCheckoutRulesCommitCacheHandler);
   }
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
@@ -102,7 +105,9 @@ public class GitVcsSupport extends ServerVcsSupport
                        @Nullable TestConnectionSupport customTestConnection,
                        @NotNull SSLTrustStoreProvider sslTrustStoreProvider,
                        @NotNull ParameterFactory parameterFactory,
-                       @NotNull ChangesCollectorCache changesCollectorCache) {
+                       @NotNull ChangesCollectorCache changesCollectorCache,
+                       @NotNull CheckoutRulesCommitCache checkoutRulesCommitCache,
+                       @NotNull ResetCheckoutRulesCommitCacheHandler resetCheckoutRulesCommitCacheHandler) {
     myGitRepoOperations = gitRepoOperations;
     myConfig = config;
     myTransportFactory = transportFactory;
@@ -114,12 +119,14 @@ public class GitVcsSupport extends ServerVcsSupport
     setStreamFileThreshold();
     resetCacheManager.registerHandler(resetCacheHandler);
     resetCacheManager.registerHandler(resetRevisionsCacheHandler);
+    resetCacheManager.registerHandler(resetCheckoutRulesCommitCacheHandler);
     myGitTrustStoreProvider = gitTrustStoreProvider;
     myTestConnection = customTestConnection == null ? this : customTestConnection;
     myTokenRefresher = tokenRefresher;
     mySslTrustStoreProvider = sslTrustStoreProvider;
     myParameterFactory = parameterFactory;
     myChangesCollectorCache = changesCollectorCache;
+    myCheckoutRulesCommitCache = checkoutRulesCommitCache;
 
     JSchConfigInitializer.initJSchConfig(JSch.class);
   }
@@ -409,7 +416,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public GitCollectChangesPolicy getCollectChangesPolicy() {
     return new GitCollectChangesPolicy(this, myProgressProvider, myConfig, myRepositoryManager,
-                                       new GitApiClientFactory(mySslTrustStoreProvider), myParameterFactory, myChangesCollectorCache);
+                                       new GitApiClientFactory(mySslTrustStoreProvider), myParameterFactory, myChangesCollectorCache, myCheckoutRulesCommitCache);
   }
 
   @NotNull
