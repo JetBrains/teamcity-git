@@ -43,49 +43,11 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     if (isEmpty(url)) {
       rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must be specified"));
     } else {
-      if (url.contains("\n") || url.contains("\r")) {
-        rc.add(new InvalidProperty(Constants.FETCH_URL, "URL should not contain newline symbols"));
-      } else if (!mayContainReference(url)) {
-        try {
-          new URIish(url);
-        } catch (URISyntaxException e) {
-          rc.add(new InvalidProperty(Constants.FETCH_URL, "Invalid URL syntax: " + url));
-        }
-
-        try {
-          validateUrlAuthMethod(url, authenticationMethod, "fetch");
-        } catch (VcsException e) {
-          rc.add(new InvalidProperty(Constants.FETCH_URL, e.getMessage()));
-          rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
-        }
-
-        if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(url)) {
-          rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must not be a local file URL"));
-        }
-      }
+      checkUrl(rc, Constants.FETCH_URL, url, authenticationMethod, "fetch");
     }
     String pushUrl = properties.get(Constants.PUSH_URL);
     if (!isEmpty(pushUrl)) {
-      if (pushUrl.contains("\n") || pushUrl.contains("\r")) {
-        rc.add(new InvalidProperty(Constants.PUSH_URL, "URL should not contain newline symbols"));
-      } else if (!mayContainReference(pushUrl)) {
-        try {
-          new URIish(pushUrl);
-        } catch (URISyntaxException e) {
-          rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
-        }
-
-        try {
-          validateUrlAuthMethod(pushUrl, authenticationMethod, "push");
-        } catch (VcsException e) {
-          rc.add(new InvalidProperty(Constants.PUSH_URL, e.getMessage()));
-          rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
-        }
-
-        if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(pushUrl)) {
-          rc.add(new InvalidProperty(Constants.PUSH_URL, "The URL must not be a local file URL"));
-        }
-      }
+      checkUrl(rc, Constants.PUSH_URL, pushUrl, authenticationMethod, "push");
     }
 
     rc.addAll(validateBranchName(properties));
@@ -119,6 +81,33 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     }
 
     return rc;
+  }
+
+  private void checkUrl(@NotNull Collection<InvalidProperty> rc, @NotNull String propertyName, @NotNull String url,
+                         @NotNull AuthenticationMethod authenticationMethod, @NotNull String urlLabel) {
+    if (url.contains("\n") || url.contains("\r")) {
+      rc.add(new InvalidProperty(propertyName, "URL should not contain newline symbols"));
+      return;
+    }
+    if (mayContainReference(url)) return;
+
+    try {
+      new URIish(url);
+    } catch (URISyntaxException e) {
+      rc.add(new InvalidProperty(propertyName, "Invalid URL syntax: " + url));
+    }
+
+    try {
+      validateUrlAuthMethod(url, authenticationMethod, urlLabel);
+    } catch (VcsException e) {
+      rc.add(new InvalidProperty(propertyName, e.getMessage()));
+      rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
+    }
+
+    GitRemoteUrlInspector.UrlRestriction restriction = GitRemoteUrlInspector.verifyUrl(url);
+    if (restriction != null) {
+      rc.add(new InvalidProperty(propertyName, GitRemoteUrlInspector.describe(restriction, url)));
+    }
   }
 
   /**
