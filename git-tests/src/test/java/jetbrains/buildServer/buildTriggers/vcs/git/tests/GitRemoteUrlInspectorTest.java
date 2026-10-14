@@ -5,9 +5,12 @@ import java.util.HashSet;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -16,6 +19,23 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector.
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector.UrlRestriction.MALFORMED_URL;
 
 public class GitRemoteUrlInspectorTest extends BaseTestCase {
+  private InternalPropertiesHandler myInternalPropertiesHandler;
+
+  @BeforeMethod(alwaysRun = true)
+  @Override
+  protected void setUp() throws Exception {
+    super.setUp();
+    myInternalPropertiesHandler = new InternalPropertiesHandler();
+  }
+
+  @AfterMethod(alwaysRun = true)
+  @Override
+  protected void tearDown() throws Exception {
+    if (myInternalPropertiesHandler != null) {
+      myInternalPropertiesHandler.tearDown();
+    }
+    super.tearDown();
+  }
 
   @DataProvider(name = "localAccessCases")
   public Object[][] localAccessCases() {
@@ -189,7 +209,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_allow_transport_added_via_override_property() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "hg");
+    myInternalPropertiesHandler.setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "hg");
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("hg::https://example.com/repo"))
       .as("Expected 'hg' to be allowed once added to the override property")
@@ -201,7 +221,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_keep_default_transports_allowed_when_override_property_is_set() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "hg");
+    myInternalPropertiesHandler.setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "hg");
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("http://example.com/owner/repo.git")).isNull();
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("ssh://git@example.com/owner/repo.git")).isNull();
@@ -209,7 +229,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_allow_ext_when_explicitly_added_to_override_property() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "ext");
+    myInternalPropertiesHandler.setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "ext");
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("ext::sh /tmp/x.sh"))
       .as("The override is trusted uniformly, including for known-dangerous transports")
@@ -218,7 +238,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_match_override_property_case_sensitively() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "MyHelper");
+    myInternalPropertiesHandler.setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "MyHelper");
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("MyHelper::something"))
       .as("Exact case from the override property must be allowed")
@@ -230,7 +250,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_check_one_letter_scheme_against_allowlist_when_file_urls_are_allowed() {
-    setInternalProperty(Constants.ALLOW_FILE_URL, "true");
+    myInternalPropertiesHandler.setInternalProperty(Constants.ALLOW_FILE_URL, "true");
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("x://repo"))
       .as("A one-letter scheme is a transport, so allowing file URLs must not let it bypass the allowlist")
@@ -239,7 +259,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_allow_one_letter_scheme_added_via_override_property() {
-    setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "x");
+    myInternalPropertiesHandler.setInternalProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS, "x");
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("x://repo"))
       .as("Expected 'x' to be allowed once added to the override property")
@@ -248,7 +268,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_skip_transport_and_malformed_checks_when_url_checks_are_disabled() {
-    setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
+    myInternalPropertiesHandler.setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("ext::sh /tmp/x.sh")).isNull();
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("-oProxyCommand=id")).isNull();
@@ -256,7 +276,8 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_keep_local_file_check_when_url_checks_are_disabled() {
-    setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
+    myInternalPropertiesHandler.setInternalProperty(Constants.ALLOW_FILE_URL, "false");
+    myInternalPropertiesHandler.setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
 
     Assertions.assertThat(GitRemoteUrlInspector.verifyUrl("file:///tmp/repo.git"))
       .as("The local file check has its own '" + Constants.ALLOW_FILE_URL + "' switch")
@@ -265,7 +286,7 @@ public class GitRemoteUrlInspectorTest extends BaseTestCase {
 
   @Test
   public void should_detect_disallowed_transport_regardless_of_url_checks_toggle() {
-    setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
+    myInternalPropertiesHandler.setInternalProperty(Constants.REMOTE_URL_CHECKS_ENABLED, "false");
 
     Assertions.assertThat(GitRemoteUrlInspector.isDisallowedTransport("ext::sh /tmp/x.sh")).isTrue();
     Assertions.assertThat(GitRemoteUrlInspector.isDisallowedTransport("https://example.com/repo.git")).isFalse();
