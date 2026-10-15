@@ -156,14 +156,15 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
     @Override
     public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
-      return requiresRetryWithInputRefresh(e, super.requiresRetry(e, attempt, maxAttempts));
-    }
-
-    boolean requiresRetryWithInputRefresh(Exception e, boolean shouldRetry) {
+      boolean shouldRetry = super.requiresRetry(e, attempt, maxAttempts);
       if (!shouldRetry) {
         return false;
       }
 
+      return doRecoveryAndCheckIfRetry(e);
+    }
+
+    boolean doRecoveryAndCheckIfRetry(Exception e) {
       if (!(e instanceof VcsException)) {
         return true;
       }
@@ -213,6 +214,10 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
         remoteRefs = myListBranchesRefresher.call();
       } catch (Exception e) {
         throw new VcsException("Failed to refresh remote branches", e);
+      }
+
+      if (remoteRefs == null) {
+        return;
       }
 
       if (myRefSpecs.stream().anyMatch(ref -> ref.contains("*"))) {

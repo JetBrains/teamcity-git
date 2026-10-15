@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
@@ -33,6 +34,7 @@ public class CommandUtil {
   private static final Logger LOG = Logger.getInstance(CommandUtil.class);
   
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
+  public static final Pattern BRANCH_COLLISION_ERROR_PATTERN = Pattern.compile("cannot lock ref '.*': '.*' exists");
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
   private static void checkCommandFailed(@NotNull GitCommandLine cmd, @NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
@@ -248,7 +250,7 @@ public class CommandUtil {
     }
 
     if (isRemoteAccessError(ve)) return false;
-    if (e instanceof GitIndexCorruptedException) return false;
+    if (e instanceof GitIndexCorruptedException) return false; // todo refactor this error processing in the future
     if (e.getCause() instanceof SshKeyNotFoundException) return false;
 
     if ((attempt == 1 || attemptsLeft) && authSettings.doesTokenNeedRefresh())
@@ -271,7 +273,7 @@ public class CommandUtil {
   public static boolean isRefsError(@NotNull VcsException e) {
     return isNotFoundRemoteRefError(e) ||
            isMessageContains(e, "some local refs could not be updated") || // git: fetch.c method: ref_transaction_rejection_handler. When branch was renamed
-           isMessageContains(e, "cannot lock ref");
+           isMessageContains(e, "cannot lock ref") && BRANCH_COLLISION_ERROR_PATTERN.matcher(e.getMessage()).find();
   }
 
   public static boolean isCommitGraphError(@NotNull VcsException e) {

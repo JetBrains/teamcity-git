@@ -8,7 +8,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
@@ -60,7 +59,6 @@ public class UpdaterImpl implements Updater {
   public final static GitVersion REV_PARSE_LEARNED_SHALLOW_CLONE = new GitVersion(2, 15, 0);
 
   private static final String ENABLE_REMOVAL_OF_OUTDATED_REFS = "teamcity.internal.git.removeOutdatedRefs.enable";
-  private static final Pattern BRANCH_COLLISION_ERROR_PATTERN = Pattern.compile("cannot lock ref '.*': '.*' exists");
 
   protected final FS myFS;
   private final SmartDirectoryCleaner myDirectoryCleaner;
@@ -728,19 +726,11 @@ public class UpdaterImpl implements Updater {
 
 
   private void doFetch() throws VcsException {
-    boolean outdatedRefsFound = removeOutdatedRefs(myTargetDirectory, false);
-    try {
-      ensureCommitLoaded(outdatedRefsFound);
-    } catch (VcsException e) {
-      if (shouldRetryFetchAfterRemovingOutadedRefs(e)) {
-        LOG.warn("Fetch failed. Removing outdated refs and retrying fetch", e);
-        myLogger.warning("Fetch failed. Removing outdated refs and retrying fetch");
-        outdatedRefsFound = removeOutdatedRefs(myTargetDirectory, true);
-        ensureCommitLoaded(outdatedRefsFound);
-      } else {
-        throw e;
-      }
+    boolean fetchRequired = false;
+    if (shouldRemoveOutdatedRefsBeforeEveryFetch()) {
+      fetchRequired = removeOutdatedRefs(myTargetDirectory);
     }
+    ensureCommitLoaded(fetchRequired);
   }
 
 
@@ -887,23 +877,15 @@ public class UpdaterImpl implements Updater {
       LOG.warn("Push URL '" + push.toString() + "'for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, push will probably fail");
   }
 
-  private boolean shouldRemoveOutdatedRefs() {
+  protected boolean shouldRemoveOutdatedRefsBeforeEveryFetch() {
     String paramValue = myBuild.getSharedConfigParameters().get(ENABLE_REMOVAL_OF_OUTDATED_REFS);
     if (paramValue != null) {
       return Boolean.parseBoolean(paramValue);
     }
-    return TeamCityProperties.getBooleanOrTrue(ENABLE_REMOVAL_OF_OUTDATED_REFS);
+    return TeamCityProperties.getBoolean(ENABLE_REMOVAL_OF_OUTDATED_REFS);
   }
 
-  protected boolean shouldRetryFetchAfterRemovingOutadedRefs(@NotNull VcsException e) {
-    // we should retry fetch after removing outdated refs only if we didn't try to remove them before
-    return !shouldRemoveOutdatedRefs() && BRANCH_COLLISION_ERROR_PATTERN.matcher(e.getMessage()).find();
-  }
-
-  protected boolean removeOutdatedRefs(@NotNull File workingDir, boolean forceOutdatedRefsCheck) throws VcsException {
-    if (!forceOutdatedRefsCheck && !shouldRemoveOutdatedRefs()) {
-      return false;
-    }
+  protected boolean removeOutdatedRefs(@NotNull File workingDir) throws VcsException {
     boolean outdatedRefsRemoved = false;
     final AgentGitFacade git = myGitFactory.create(workingDir);
 
@@ -1189,7 +1171,7 @@ public class UpdaterImpl implements Updater {
 
   @NotNull
   protected AgentCommitLoader getCommitLoader(@NotNull File repo) {
-    return AgentCommitLoaderFactory.getCommitLoader(myRoot, repo, myGitFactory, myPluginConfig, myLogger);
+    return AgentCommitLoaderFactory.getCommitLoader(myRoot, repo, myGitFactory, myPluginConfig, () -> removeOutdatedRefs(myTargetDirectory), myLogger);
   }
 
   @NotNull

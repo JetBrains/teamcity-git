@@ -29,7 +29,7 @@ public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
   FetchCommand setRemote(@NotNull String remoteUrl);
 
   @NotNull
-  FetchCommand setRefSpecsRefresher(Callable<List<Ref>> lsBranchRefresher);
+  FetchCommand setRefSpecsRefresher(Callable<List<Ref>> lsBranchRefresher); // todo generic
 
   @NotNull
   FetchCommand setRefreshCommitGraphIfCorrupted(GitFacade facade);

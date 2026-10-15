@@ -3,7 +3,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -35,8 +37,9 @@ public class AgentCommitLoaderFactory {
                                                                     @NotNull GitFactory gitFactory,
                                                                     @NotNull AgentPluginConfig pluginConfig,
                                                                     @NotNull String maxRefSpec,
+                                                                    @Nullable Callable<Boolean> outdatedRefsCleaner,
                                                                     @NotNull BuildProgressLogger logger) {
-    return new AbstractAgentCommitLoader(root, targetDirectory, gitFactory, pluginConfig, maxRefSpec, logger) {
+    return new AbstractAgentCommitLoader(root, targetDirectory, gitFactory, pluginConfig, maxRefSpec, outdatedRefsCleaner, logger) {
       @NotNull
       @Override
       protected String getRemoteRefName(@NotNull String branch) {
@@ -68,8 +71,9 @@ public class AgentCommitLoaderFactory {
                                                            @NotNull File targetDirectory,
                                                            @NotNull GitFactory gitFactory,
                                                            @NotNull AgentPluginConfig pluginConfig,
+                                                           @Nullable Callable<Boolean> outdatedRefsCleaner,
                                                            @NotNull BuildProgressLogger logger) {
-    return new AbstractAgentCommitLoader(root, targetDirectory, gitFactory, pluginConfig, "+refs/heads/*:refs/remotes/origin/*", logger) {
+    return new AbstractAgentCommitLoader(root, targetDirectory, gitFactory, pluginConfig, "+refs/heads/*:refs/remotes/origin/*", outdatedRefsCleaner, logger) {
       @NotNull
       @Override
       protected String getRemoteRefName(@NotNull String branch) {
@@ -94,8 +98,9 @@ public class AgentCommitLoaderFactory {
                                                                     @NotNull File targetDirectory,
                                                                     @NotNull GitFactory gitFactory,
                                                                     @NotNull AgentPluginConfig pluginConfig,
+                                                                    @Nullable Callable<Boolean> outdatedRefsCleaner,
                                                                     @NotNull BuildProgressLogger logger) {
-    return getCommitLoaderForMirror(root, build, targetDirectory, gitFactory, pluginConfig, "+refs/heads/*:refs/heads/*", logger);
+    return getCommitLoaderForMirror(root, build, targetDirectory, gitFactory, pluginConfig, "+refs/heads/*:refs/heads/*", outdatedRefsCleaner, logger);
   }
 
 
@@ -105,9 +110,10 @@ public class AgentCommitLoaderFactory {
                                                               @NotNull File targetDirectory,
                                                               @NotNull GitFactory gitFactory,
                                                               @NotNull AgentPluginConfig pluginConfig,
+                                                              @Nullable Callable<Boolean> outdatedRefsCleaner,
                                                               @NotNull BuildProgressLogger logger) {
 
-    return getCommitLoaderForMirror(root, build, targetDirectory, gitFactory, pluginConfig, "+refs/*:refs/*", logger);
+    return getCommitLoaderForMirror(root, build, targetDirectory, gitFactory, pluginConfig, "+refs/*:refs/*", outdatedRefsCleaner, logger);
   }
 
   private static abstract class AbstractAgentCommitLoader implements AgentCommitLoader {
@@ -122,11 +128,14 @@ public class AgentCommitLoaderFactory {
 
     @NotNull private final BuildProgressLogger myLogger;
 
+    @Nullable private final Callable<Boolean> myOutdatedRefsCleaner;
+
     public AbstractAgentCommitLoader(@NotNull GitVcsRoot root,
                                      @NotNull File targetDirectory,
                                      @NotNull GitFactory gitFactory,
                                      @NotNull AgentPluginConfig pluginConfig,
                                      @NotNull String maxRefSpec,
+                                     @Nullable Callable<Boolean> outdatedRefsCleaner,
                                      @NotNull BuildProgressLogger logger) {
       myRoot = root;
       myTargetDirectory = targetDirectory;
@@ -134,6 +143,7 @@ public class AgentCommitLoaderFactory {
       myPluginConfig = pluginConfig;
       myMaxRefSpec = maxRefSpec;
       myLogger = logger;
+      myOutdatedRefsCleaner = outdatedRefsCleaner;
     }
 
     @Override
@@ -400,6 +410,16 @@ public class AgentCommitLoaderFactory {
       if(!myPluginConfig.isGitMaintenanceAutoEnabled()) {
         result.addConfig("maintenance.auto", "false");
       }
+
+      // todo feature toggle
+      result.setRefSpecsRefresher(() -> {
+        if (myOutdatedRefsCleaner != null) {
+          myOutdatedRefsCleaner.call();
+        }
+
+        // todo generic
+        return null;
+      });
 
       if (silent)
         result.setQuite(true);

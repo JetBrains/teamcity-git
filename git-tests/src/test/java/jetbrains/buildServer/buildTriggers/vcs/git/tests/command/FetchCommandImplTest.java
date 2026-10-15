@@ -457,4 +457,80 @@ public class FetchCommandImplTest extends BaseTestCase {
     int verify2 = verifyCommitGraph2.call();
     assertEquals(0, verify2);
   }
+
+  /**
+   * The remote replaces feature-a with feature-a/x, so the local ref refs/remotes/origin/feature-a blocks the new one.
+   * Since git 2.51 fetch reports it only as "some local refs could not be updated", without the conflicting ref name.
+   */
+  @Test
+  public void fetch_error_on_branch_collision_matches_updater_pattern() throws Exception {
+    final String gitPath = getGitPath();
+    final GitVersion version = new AgentGitFacadeImpl(gitPath).version().call();
+    final File remote = copyCommitGraphTestRemote();
+
+    final File work = createTempDir();
+    runCommand(false, gitPath, work, "init");
+    fetchAllBranches(gitPath, version, work, remote);
+
+    runCommand(false, gitPath, remote, "branch", "-D", "feature-a");
+    runCommand(false, gitPath, remote, "branch", "feature-a/x", "main");
+
+    try {
+      fetchAllBranches(gitPath, version, work, remote);
+      fail("Fetch must fail on the branch collision");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage(), CommandUtil.BRANCH_COLLISION_ERROR_PATTERN.matcher(e.getMessage()).find());
+    }
+  }
+
+  /**
+   * The remote force-pushes feature-a back to its parent commit, the branch name stays the same.
+   * The forced refspec must overwrite refs/remotes/origin/feature-a without a fetch error.
+   */
+  @Test
+  public void fetch_succeeds_on_force_push_of_same_branch() throws Exception {
+    final String gitPath = getGitPath();
+    final GitVersion version = new AgentGitFacadeImpl(gitPath).version().call();
+    final File remote = copyCommitGraphTestRemote();
+
+    final File work = createTempDir();
+    runCommand(false, gitPath, work, "init");
+    fetchAllBranches(gitPath, version, work, remote);
+    final String oldRevision = revParse(gitPath, version, work, "refs/remotes/origin/feature-a");
+
+    runCommand(false, gitPath, remote, "branch", "-f", "feature-a", "feature-a~1");
+    final String newRevision = revParse(gitPath, version, remote, "refs/heads/feature-a");
+    assertFalse(oldRevision.equals(newRevision));
+
+    fetchAllBranches(gitPath, version, work, remote);
+
+    assertEquals(newRevision, revParse(gitPath, version, work, "refs/remotes/origin/feature-a"));
+  }
+
+  @NotNull
+  private File copyCommitGraphTestRemote() throws IOException {
+    final File remote = createTempDir();
+    FileUtil.copyDir(GitTestUtil.dataFile("TW-100479/remote/commit_graph_test_repo"), remote);
+    FileUtil.rename(new File(remote, "_git1"), new File(remote, ".git"));
+    return remote;
+  }
+
+  private void fetchAllBranches(@NotNull String gitPath, @NotNull GitVersion version, @NotNull File work, @NotNull File remote) throws Exception {
+    final GitCommandLine cmd = new GitCommandLine(new StubContext(gitPath, version), getFakeGen());
+    cmd.setExePath(gitPath);
+    cmd.setWorkingDirectory(work);
+    final FetchCommand fetch = new FetchCommandImpl(cmd);
+    fetch.setRemote(remote.getAbsolutePath());
+    fetch.setAuthSettings(getEmptyAuthSettings());
+    fetch.setRefspec("+refs/heads/*:refs/remotes/origin/*");
+    fetch.call();
+  }
+
+  @NotNull
+  private String revParse(@NotNull String gitPath, @NotNull GitVersion version, @NotNull File repo, @NotNull String ref) throws Exception {
+    final GitCommandLine cmd = new GitCommandLine(new StubContext(gitPath, version), getFakeGen());
+    cmd.setExePath(gitPath);
+    cmd.setWorkingDirectory(repo);
+    return new RevParseCommandImpl(cmd).setRef(ref).call();
+  }
 }

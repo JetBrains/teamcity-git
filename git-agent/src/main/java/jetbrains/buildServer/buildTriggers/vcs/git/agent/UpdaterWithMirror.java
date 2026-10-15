@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
@@ -103,7 +104,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
     final AgentGitFacade git = myGitFactory.create(bareRepositoryDir);
     final SSLInvestigator sslInvestigator = getSSLInvestigator(fetchUrl);
-    boolean fetchRequired;
+    boolean fetchRequired = false;
     if (shouldInit || !bareRepositoryDir.exists()) {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
@@ -114,29 +115,19 @@ public class UpdaterWithMirror extends UpdaterImpl {
     } else {
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
       sslInvestigator.setCertificateOptions(git);
-      fetchRequired = removeOutdatedRefs(bareRepositoryDir, false);
+      if (shouldRemoveOutdatedRefsBeforeEveryFetch()) {
+        fetchRequired = removeOutdatedRefs(bareRepositoryDir);
+      }
     }
 
+    Callable<Boolean> outdatedRefsCleaner = () -> removeOutdatedRefs(bareRepositoryDir);
     final AgentCommitLoader commitLoader =
       isSubmodule ?
-      AgentCommitLoaderFactory.getCommitLoaderForSubmodule(myRoot, myBuild, bareRepositoryDir, myGitFactory, myPluginConfig, myLogger) :
-      AgentCommitLoaderFactory.getCommitLoaderForMirror(myRoot, myBuild, bareRepositoryDir, myGitFactory, myPluginConfig, myLogger);
+      AgentCommitLoaderFactory.getCommitLoaderForSubmodule(myRoot, myBuild, bareRepositoryDir, myGitFactory, myPluginConfig, outdatedRefsCleaner, myLogger) :
+      AgentCommitLoaderFactory.getCommitLoaderForMirror(myRoot, myBuild, bareRepositoryDir, myGitFactory, myPluginConfig, outdatedRefsCleaner, myLogger);
     try {
       loadCommits(fetchRequired, commitLoader, revisions);
-    } catch (VcsException e) {
-      VcsException vcsException = e;
-      if (shouldRetryFetchAfterRemovingOutadedRefs(vcsException)) {
-        try {
-          LOG.warnAndDebugDetails("Fetch failed. Removing outdated refs and retrying fetch", e);
-          myLogger.warning("Fetch failed. Removing outdated refs and retrying fetch");
-          fetchRequired |= removeOutdatedRefs(bareRepositoryDir, true);
-          loadCommits(fetchRequired, commitLoader, revisions);
-          return;
-        } catch (VcsException retryException) {
-          vcsException = retryException;
-        }
-      }
-
+    } catch (VcsException vcsException) {
       if (myPluginConfig.isFailOnCleanCheckout() ||
           CommandUtil.isRemoteAccessError(vcsException) ||
           CommandUtil.isCanceledError(vcsException) ||
