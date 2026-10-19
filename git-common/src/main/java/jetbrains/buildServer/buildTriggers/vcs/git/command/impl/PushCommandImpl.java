@@ -38,6 +38,7 @@ public class PushCommandImpl extends BaseAuthCommandImpl<PushCommand> implements
     if (Loggers.VCS.isDebugEnabled()) {
       cmd.addParameter("-v");
     }
+    cmd.addParameter("--");
     cmd.addParameter(getRemote());
     myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
 

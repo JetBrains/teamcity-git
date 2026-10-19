@@ -30,6 +30,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jmock.Mock;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -307,7 +308,37 @@ public class GitUrlSupportTest extends BaseTestCase {
   public void shouldThrowForFileUrlIfBlocked() {
     myInternalPropertiesHandler.setInternalProperty(Constants.ALLOW_FILE_URL, "false");
     final VcsUrl url = new VcsUrl("file:///tmp/test");
-    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, "The git fetch URL must not be a local file URL");
+    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, "Cannot create a VCS root from this URL. Local file URLs are forbidden for security reasons. Use a network protocol such as SSH or HTTPS.");
+  }
+
+  @TestFor(issues = "TW-104064")
+  @Test
+  public void shouldDeclineRemoteHelperUrlLikeAnyOtherNonGitProvider() throws MalformedURLException, VcsException {
+    final VcsUrl url = new VcsUrl("ext::sh /tmp/x.sh");
+    assertNull(myUrlSupport.convertToVcsRootProperties(url, createRootContext()));
+  }
+
+  @DataProvider(name = "urlsRejectedWithVcsException")
+  public Object[][] urlsRejectedWithVcsException() {
+    return new Object[][]{
+      // "ftp" is in MavenVcsUrl's NON_VCS_SCHEMATA exclusion set, so it bypasses the Maven-SCM-style
+      // provider dispatch and reaches the actual transport check.
+      {"ftp://example.com/repo", "Allowed:"},
+
+      // "ssh::..." parses to Maven scmName "ssh", exempt from the "decline for some other provider"
+      // check, so it must still be caught by the transport check itself (as a malformed URL, since
+      // MavenVcsUrl's own unwrapping mangles the value into ":sh -c id").
+      {"ssh::sh -c id", "malformed"}
+    };
+  }
+
+  @TestFor(issues = "TW-104064")
+  @Test(dataProvider = "urlsRejectedWithVcsException")
+  public void shouldRejectUrlWithVcsException(String rawUrl, String expectedMessageFragment) {
+    final VcsUrl url = new VcsUrl(rawUrl);
+    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, e ->
+      assertTrue("Expected message to contain '" + expectedMessageFragment + "', but got: " + e.getMessage(),
+                 e.getMessage().contains(expectedMessageFragment)));
   }
 
   private void checkAuthMethod(MavenVcsUrl url, GitVcsRoot root) {

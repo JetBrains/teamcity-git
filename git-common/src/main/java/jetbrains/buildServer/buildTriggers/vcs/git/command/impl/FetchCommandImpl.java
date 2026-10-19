@@ -103,6 +103,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
     if (myRefSpecs.size() > 1 && GitVersion.fetchSupportsStdin(gitVersion)) {
       cmd.addParameter("--stdin");
+      cmd.addParameter("--");
       cmd.addParameter(getRemote());
       if (CommandUtil.shouldHandleRemoteRefNotFound()) {
         runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
@@ -110,6 +111,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
         runCmd(cmd.stdErrLogLevel("debug"), refSpecsToBytes(cmd));
       }
     } else {
+      cmd.addParameter("--");
       cmd.addParameter(getRemote());
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
       runCmd(cmd.stdErrLogLevel("debug"));

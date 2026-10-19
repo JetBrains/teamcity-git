@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitRemoteUrlInspector;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
@@ -128,8 +129,10 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
     }
   }
 
-  public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException {
-    return new URIish(SubmoduleUrlResolver.resolveSubmoduleUrl(myContext.getPluginConfig(), myContext.getConfig(getRepository()), url));
+  public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException, VcsException {
+    String resolved = SubmoduleUrlResolver.resolveSubmoduleUrl(myContext.getPluginConfig(), myContext.getConfig(getRepository()), url);
+    GitRemoteUrlInspector.verifyUrlOrThrow(resolved, String.format("Submodule '%s' cannot use URL '%s'", url, resolved));
+    return new URIish(resolved);
   }
 
   /**

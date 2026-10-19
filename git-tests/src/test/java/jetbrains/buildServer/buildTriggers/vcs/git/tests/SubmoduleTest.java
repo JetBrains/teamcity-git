@@ -5,7 +5,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
@@ -14,6 +16,7 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -22,12 +25,14 @@ import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
+import java.util.Collections;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -161,6 +166,127 @@ public class SubmoduleTest {
       }
     } finally {
       rm.close();
+    }
+  }
+
+  @DataProvider(name = "rejectedSubmoduleUrls")
+  public Object[][] rejectedSubmoduleUrls() {
+    return new Object[][]{
+      {"file:///tmp/x.git", null},
+      {"ext::sh /tmp/x.sh", "Allowed:"}
+    };
+  }
+
+  @TestFor(issues = {"TW-103519", "TW-104064"})
+  @Test(dataProvider = "rejectedSubmoduleUrls")
+  public void resolveSubmoduleUrl_rejects_unsafe_urls(String badUrl, String expectedMessageFragment) throws Exception {
+    try (Repository dataRepo = new RepositoryBuilder().setGitDir(dataFile("repo.git")).build();
+         Repository db = createSubmoduleResolverDb()) {
+      RevCommit anyCommit = parseSubmoduleAddedCommit(dataRepo);
+
+      InternalPropertiesHandler internalProperties = new InternalPropertiesHandler();
+      OperationContext context = null;
+      try {
+        internalProperties.setInternalProperty("teamcity.git.allowFileUrl", "false");
+        context = myGitSupport.createContext(vcsRoot().withFetchUrl("https://main.example.com/repo.git").build(), "testing");
+        SubmoduleResolverImpl resolver = new SubmoduleResolverImpl(context, myCommitLoader, db, anyCommit, "");
+
+        try {
+          resolver.resolveSubmoduleUrl(badUrl);
+          fail("Expected VcsException for: " + badUrl);
+        } catch (VcsException e) {
+          if (expectedMessageFragment != null) {
+            assertTrue(e.getMessage().contains(expectedMessageFragment), "Unexpected message: " + e.getMessage());
+          }
+        }
+      } finally {
+        if (context != null) context.close();
+        internalProperties.tearDown();
+      }
+    }
+  }
+
+  @TestFor(issues = "TW-103519")
+  @Test
+  public void resolveSubmoduleUrl_allows_local_file_when_property_enabled_and_resolves_relative_paths() throws Exception {
+    try (Repository dataRepo = new RepositoryBuilder().setGitDir(dataFile("repo.git")).build();
+         Repository db = createSubmoduleResolverDb()) {
+      RevCommit anyCommit = parseSubmoduleAddedCommit(dataRepo);
+
+      InternalPropertiesHandler internalProperties = new InternalPropertiesHandler();
+      OperationContext context = null;
+      try {
+        internalProperties.setInternalProperty("teamcity.git.allowFileUrl", "true");
+        context = myGitSupport.createContext(vcsRoot().withFetchUrl("https://main.example.com/repo.git").build(), "testing");
+        SubmoduleResolverImpl resolver = new SubmoduleResolverImpl(context, myCommitLoader, db, anyCommit, "");
+
+        assertNotNull(resolver.resolveSubmoduleUrl("file:///tmp/x.git"));
+        assertNotNull(resolver.resolveSubmoduleUrl("../submodule.git"));
+      } finally {
+        if (context != null) context.close();
+        internalProperties.tearDown();
+      }
+    }
+  }
+
+  @NotNull
+  private static RevCommit parseSubmoduleAddedCommit(@NotNull Repository repo) throws IOException {
+    try (RevWalk revWalk = new RevWalk(repo)) {
+      return revWalk.parseCommit(ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)));
+    }
+  }
+
+  @NotNull
+  private Repository createSubmoduleResolverDb() throws IOException {
+    Repository db = new RepositoryBuilder().setBare().setGitDir(myTempFiles.createTempDir()).build();
+    try {
+      db.create(true);
+      db.getConfig().setString("teamcity", null, "remote", "https://main.example.com/repo.git");
+      db.getConfig().save();
+      return db;
+    } catch (IOException | RuntimeException e) {
+      db.close();
+      throw e;
+    }
+  }
+
+  @DataProvider(name = "rejectedFetchSubmoduleUrls")
+  public Object[][] rejectedFetchSubmoduleUrls() throws Exception {
+    File localTargetDir = myTempFiles.createTempDir();
+    try (Repository localTarget = new RepositoryBuilder().setBare().setGitDir(localTargetDir).build()) {
+      localTarget.create(true);
+    }
+
+    return new Object[][]{
+      {new URIish(localTargetDir.toURI().toString()), null},
+      {new URIish("ext::sh /tmp/x.sh"), "Allowed:"}
+    };
+  }
+
+  @TestFor(issues = {"TW-103519", "TW-104064"})
+  @Test(dataProvider = "rejectedFetchSubmoduleUrls")
+  public void fetchSubmodule_rejects_unsafe_urls(URIish badUri, String expectedMessageFragment) throws Exception {
+    try (Repository mirror = new RepositoryBuilder().setBare().setGitDir(myTempFiles.createTempDir()).build()) {
+      mirror.create(true);
+
+      InternalPropertiesHandler internalProperties = new InternalPropertiesHandler();
+      OperationContext context = null;
+      try {
+        internalProperties.setInternalProperty("teamcity.git.allowFileUrl", "false");
+        context = myGitSupport.createContext(vcsRoot().withFetchUrl("https://main.example.com/repo.git").build(), "testing");
+
+        try {
+          context.fetchSubmodule(mirror, badUri, Collections.singletonList(new RefSpec("+refs/*:refs/*")), context.getGitRoot().getAuthSettings());
+          fail("Expected VcsException for: " + badUri);
+        } catch (VcsException e) {
+          if (expectedMessageFragment != null) {
+            assertTrue(e.getMessage().contains(expectedMessageFragment), "Unexpected message: " + e.getMessage());
+          }
+        }
+      } finally {
+        if (context != null) context.close();
+        internalProperties.tearDown();
+      }
     }
   }
 
