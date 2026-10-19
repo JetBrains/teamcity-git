@@ -122,6 +122,7 @@ public class OperationContext {
                              @NotNull URIish fetchURI,
                              @NotNull Collection<RefSpec> refSpecs,
                              @NotNull AuthSettings auth) throws IOException, VcsException {
+    GitRemoteUrlInspector.verifyUrlOrThrow(fetchURI.toPrivateString(), "Cannot fetch submodule from URL '" + fetchURI.toPrivateString() + "'");
     if (alreadyFetched(fetchURI, refSpecs))
       return;
     try {

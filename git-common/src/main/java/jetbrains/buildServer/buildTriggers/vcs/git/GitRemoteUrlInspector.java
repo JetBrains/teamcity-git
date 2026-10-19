@@ -1,5 +1,15 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import jetbrains.buildServer.DevelopmentMode;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,12 +22,134 @@ import org.jetbrains.annotations.Nullable;
 public final class GitRemoteUrlInspector {
   private GitRemoteUrlInspector() {}
 
+  private static final Pattern REMOTE_HELPER_PREFIX = Pattern.compile("^([A-Za-z0-9][A-Za-z0-9+.-]*)::");
+  private static final Pattern SCHEME_PREFIX = Pattern.compile("^([A-Za-z0-9][A-Za-z0-9+.-]*)://");
+  // [user@]host:path or [user@][bracketed-host]:path (e.g. IPv6). Matches git's own scp-like rule: no '/'
+  // before the separating ':' - host/user characters are otherwise unrestricted, same as real git.
+  private static final Pattern SCP_LIKE_URL = Pattern.compile("^(?:[^/:@]+@)?(?:\\[[^/\\]]+]|[^/:]+):(?!:).+$");
+  private static final Set<String> DEFAULT_ALLOWED_TRANSPORTS =
+    Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList("http", "https", "ssh", "git")));
+
   public enum LocalReason {
     FILE_SCHEME,
     UNIX_ABSOLUTE,
     UNIX_RELATIVE,
     WINDOWS_DRIVE,
     WINDOWS_UNC
+  }
+
+  public enum UrlRestriction {
+    LOCAL_FILE_ACCESS,
+    DISALLOWED_TRANSPORT,
+    MALFORMED_URL
+  }
+
+  /**
+   * Combines the local-file-access check (subject to {@code Constants#ALLOW_FILE_URL}) with the
+   * disallowed-transport and malformed-URL checks (subject to {@code Constants#REMOTE_URL_CHECKS_ENABLED}). Use this at every checkpoint that must reject unsafe URLs;
+   * use {@link #isLocalFileAccess} directly only where the ALLOW_FILE_URL override must be ignored.
+   */
+  @Nullable
+  public static UrlRestriction verifyUrl(@Nullable String rawUrl) {
+    if (rawUrl == null) return null;
+    String url = rawUrl.trim();
+
+    if (isLocalFileAccess(rawUrl)) {
+      return isFileUrlAllowed() ? null : UrlRestriction.LOCAL_FILE_ACCESS;
+    }
+    if (!isRemoteUrlChecksEnabled()) return null;
+
+    String name = getTransportName(url);
+    if (name != null) {
+      return getEffectiveAllowedTransports().contains(name) ? null : UrlRestriction.DISALLOWED_TRANSPORT;
+    }
+
+    if (url.indexOf(':') >= 0 || url.startsWith("-")) {
+      return UrlRestriction.MALFORMED_URL;
+    }
+    return null;
+  }
+
+  /**
+   * Checks whether the URL declares a transport outside {@link #getEffectiveAllowedTransports()}, ignoring
+   * {@code Constants#REMOTE_URL_CHECKS_ENABLED}. Local file URLs are never reported, see {@link #isLocalFileAccess}.
+   */
+  public static boolean isDisallowedTransport(@Nullable String rawUrl) {
+    if (rawUrl == null || isLocalFileAccess(rawUrl)) return false;
+    String name = getTransportName(rawUrl);
+    return name != null && !getEffectiveAllowedTransports().contains(name);
+  }
+
+  @NotNull
+  public static Set<String> getEffectiveAllowedTransports() {
+    Set<String> allowed = new LinkedHashSet<>(DEFAULT_ALLOWED_TRANSPORTS);
+    for (String transport : StringUtil.split(TeamCityProperties.getProperty(Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS), true, ',')) {
+      allowed.add(transport.trim());
+    }
+    return allowed;
+  }
+
+
+  public static void verifyUrlOrThrow(@Nullable String url, @NotNull String leadSentence) throws VcsException {
+    UrlRestriction restriction = verifyUrl(url);
+    if (restriction != null) {
+      throw new VcsException(leadSentence + ". " + describe(restriction, url));
+    }
+  }
+
+  @NotNull
+  public static String describe(@NotNull UrlRestriction restriction, @Nullable String url) {
+    switch (restriction) {
+      case LOCAL_FILE_ACCESS:
+        return "Local file URLs are forbidden for security reasons. Use a network protocol such as SSH or HTTPS.";
+      case DISALLOWED_TRANSPORT:
+        return "Transport '" + getTransportName(url) + "' is not allowed. " + getAllowedTransportsHint();
+      case MALFORMED_URL:
+        return "The URL is malformed and cannot be used.";
+      default:
+        return "The URL is not allowed for security reasons.";
+    }
+  }
+
+  @NotNull
+  private static String getAllowedTransportsHint() {
+    return "Allowed: " + StringUtil.join(", ", getEffectiveAllowedTransports()) +
+           ". To allow another, add it to the '" + Constants.ADDITIONAL_ALLOWED_URL_TRANSPORTS + "' internal property.";
+  }
+
+  // Historical native-ssh aliases git still recognizes
+  private static final Set<String> SSH_SCHEME_ALIASES = new LinkedHashSet<>(Arrays.asList("git+ssh", "ssh+git"));
+
+  /**
+   * Returns the transport name a raw URL declares (scheme, remote-helper name, or {@code "ssh"} for
+   * scp-like syntax), or {@code null} if the URL matches none of the recognized shapes.
+   */
+  @Nullable
+  public static String getTransportName(@Nullable String rawUrl) {
+    if (rawUrl == null) return null;
+    String url = rawUrl.trim();
+    if (url.startsWith("-")) return null; // never a legitimate transport marker
+
+    Matcher m = SCHEME_PREFIX.matcher(url); // scheme://
+    if (m.find()) {
+      String scheme = m.group(1);
+      return SSH_SCHEME_ALIASES.contains(scheme) ? "ssh" : scheme;
+    }
+
+    m = REMOTE_HELPER_PREFIX.matcher(url); // name::
+    if (m.find()) return m.group(1);
+
+    if (SCP_LIKE_URL.matcher(url).matches()) return "ssh"; // [user@]host:path or [user@][host]:path
+
+    return null;
+  }
+
+  private static boolean isRemoteUrlChecksEnabled() {
+    return TeamCityProperties.getBooleanOrTrue(Constants.REMOTE_URL_CHECKS_ENABLED);
+  }
+
+  private static boolean isFileUrlAllowed() {
+    return DevelopmentMode.isEnabled || TeamCityProperties.getBoolean(Constants.ALLOW_FILE_URL);
   }
 
   /**
@@ -94,8 +226,10 @@ public final class GitRemoteUrlInspector {
 
     char firstChar = url.charAt(0);
     char secondChar = url.charAt(1);
+    if (!isAsciiLetter(firstChar) || secondChar != ':') return false;
 
-    return isAsciiLetter(firstChar) && secondChar == ':';
+    // "X::..." is a remote helper and "X://..." a scheme, not a drive letter
+    return url.length() < 3 || url.charAt(2) != ':' && !url.startsWith("//", 2);
   }
 
   private static boolean isAsciiLetter(char c) {

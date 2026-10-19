@@ -32,7 +32,7 @@ public class AddRemoteCommandImpl extends BaseCommandImpl implements AddRemoteCo
 
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
-    cmd.addParameters("remote", "add", myName, myUrl);
+    cmd.addParameters("remote", "add", "--", myName, myUrl);
     CommandUtil.runCommand(cmd.stdErrExpected(false));
   }
 }

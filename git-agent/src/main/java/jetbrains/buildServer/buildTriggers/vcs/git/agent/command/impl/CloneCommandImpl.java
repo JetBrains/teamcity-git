@@ -47,6 +47,7 @@ public class CloneCommandImpl extends BaseCommandImpl implements CloneCommand {
     if (myMirror) {
       cmd.addParameter("--mirror");
     }
+    cmd.addParameter("--");
     cmd.addParameter(myRepo);
     if (StringUtil.isNotEmpty(myFolder)) {
       cmd.addParameter(myFolder);
