@@ -69,13 +69,9 @@ class ModificationDataRevWalk extends LimitingRevWalk {
       result.setAttributes(attributes);
 
     final PersonIdent commiterIdent = GitServerUtil.getCommitterIdent(getCurrentCommit());
-    final String commiter = GitServerUtil.getUser(getGitRoot(), commiterIdent);
     final Date commitDate = commiterIdent.getWhen();
     if (!Objects.equals(authorDate, commitDate)) {
       result.setAttribute(DBVcsModification.TEAMCITY_COMMIT_TIME, Long.toString(commitDate.getTime()));
-    }
-    if (!Objects.equals(author, commiter)) {
-      result.setAttribute(DBVcsModification.TEAMCITY_COMMIT_USER, commiter);
     }
 
     if (getCurrentCommit().getParentCount() > 0) {

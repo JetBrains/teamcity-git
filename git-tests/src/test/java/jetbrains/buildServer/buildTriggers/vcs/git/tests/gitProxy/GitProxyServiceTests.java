@@ -92,7 +92,6 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                            myVcsRootInstance,
                                                            "rev5", "rev5");
     rev5data.setParentRevisions(Collections.singletonList("rev4"));
-    rev5data.setAttribute("teamcity.commit.user", "user2");
     rev5data.setAttribute("teamcity.commit.time", "2000");
 
     ModificationData rev4data = new ModificationData(new Date(1L * 1000),

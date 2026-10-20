@@ -667,13 +667,9 @@ public class GitProxyChangesCollector {
     if (perParentChangedFilesForMergeCommit != null) {
       setMergeCommitAttributes(modificationData, perParentChangedFilesForMergeCommit);
     }
-    String commiter = GitServerUtil.getUser(gitRoot, new PersonIdent(info.committer.name, info.committer.email));
     Date commitDate = new Date((long)info.commitTime * 1000);
     if (!Objects.equals(authorDate, commitDate)) {
       modificationData.setAttribute(DBVcsModification.TEAMCITY_COMMIT_TIME, Long.toString(commitDate.getTime()));
-    }
-    if (!Objects.equals(author, commiter)) {
-      modificationData.setAttribute(DBVcsModification.TEAMCITY_COMMIT_USER, commiter);
     }
 
     modificationData.setParentRevisions(info.parents != null && !info.parents.isEmpty() ? info.parents : Collections.singletonList(ObjectId.zeroId().name()));
