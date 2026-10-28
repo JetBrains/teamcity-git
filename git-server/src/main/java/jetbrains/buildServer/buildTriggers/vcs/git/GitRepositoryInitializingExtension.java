@@ -40,14 +40,6 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
     myServerPaths = serverPaths;
   }
 
-  @Override
-  public void createSelfHostedRepository(Path path) throws Exception {
-    if (!Files.exists(path)) {
-      Files.createDirectories(path);
-    }
-    myGitRepoOperations.initCommand().init(path.toString(), true, null);
-  }
-
   @NotNull
   @Override
   public Map<String, String> getRootProperties(@NotNull CentralRepositoryConfiguration repositoryConfiguration) {

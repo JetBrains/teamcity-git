@@ -32,7 +32,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
   private File originRepository;
 
   @Override
-  @BeforeMethod
+  @BeforeMethod(alwaysRun = true)
   public void setUp() throws Exception {
     super.setUp();
 
@@ -48,7 +48,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     myVcsSupport = gitSupport().withPluginConfig(config).build();
     myExtension = new GitRepositoryInitializingExtension(myVcsSupport, repoOperations, myServerPaths);
 
-    myExtension.createSelfHostedRepository(originRepository.toPath());
+    repoOperations.initCommand().init(originRepository.getAbsolutePath(), true, null);
 
     setInternalProperty("teamcity.git.nativeOperationsEnabled", "true");
   }
@@ -84,7 +84,6 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
   private CentralRepositoryConfiguration getRepositoryConfiguration() {
     CentralRepositoryConfiguration centralRepositoryConfiguration = new CentralRepositoryConfiguration();
     centralRepositoryConfiguration.setEnabled(true);
-    centralRepositoryConfiguration.setSelfHosted(true);
     centralRepositoryConfiguration.setRepositoryUrl("file://" + originRepository.getAbsolutePath());
     centralRepositoryConfiguration.setBranch("refs/heads/master");
     return centralRepositoryConfiguration;
