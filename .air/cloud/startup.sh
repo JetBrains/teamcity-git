@@ -12,9 +12,18 @@
 #       SPACE_USERNAME / SPACE_PASSWORD come from the environment configuration
 #       (personal secrets: your jetbrains.team username and a permanent token
 #       with Packages read permission).
+#  - MAVEN_ARGS with a usable -DMAJOR_VERSION: the pom pins MAJOR_VERSION=2024.11,
+#    but master is developed against the current TeamCity trunk — the pinned
+#    2024.11-SNAPSHOT artifacts are too old to compile it (and some trunk API this
+#    code uses, e.g. BranchCreationSupport, exists only in recent trunk builds).
+#    The environment configuration sets MAVEN_ARGS=-DMAJOR_VERSION=2026.3 so plain
+#    `mvn package` / `mvn test -Ptest` work; bump it there when trunk moves on.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Fallback for launches that predate the MAVEN_ARGS variable in the env config.
+export MAVEN_ARGS="${MAVEN_ARGS:--DMAJOR_VERSION=2026.3}"
 
 if [ "${AIR_STARTUP_MODE:-}" = warmup ]; then WARMUP=1; else WARMUP=; fi
 
@@ -108,7 +117,7 @@ write_maven_settings
 if [ -n "$WARMUP" ]; then
   # Warmup bakes the snapshot real tasks boot from: run the full plugin build so
   # ~/.m2 is primed and every module (including test classes) is compiled.
-  log "warmup: running mvn package (builds the plugin zip, primes ~/.m2)"
+  log "warmup: running mvn package with MAVEN_ARGS=$MAVEN_ARGS (builds the plugin zip, primes ~/.m2)"
   cd "$REPO_DIR"
   mvn -B -ntp -U package
   healthcheck
