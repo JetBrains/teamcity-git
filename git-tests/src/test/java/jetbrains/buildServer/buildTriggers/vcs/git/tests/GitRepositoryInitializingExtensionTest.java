@@ -9,7 +9,9 @@ import java.util.Map;
 import java.util.Objects;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
+import jetbrains.buildServer.maintenance.configs.CentralRepositoryStartupUtils;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.configsRepo.CentralConfigsRepositoryUtils;
 import jetbrains.buildServer.serverSide.impl.configsRepo.CentralRepositoryConfiguration;
 import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingExtension;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -85,6 +87,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     CentralRepositoryConfiguration centralRepositoryConfiguration = new CentralRepositoryConfiguration();
     centralRepositoryConfiguration.setEnabled(true);
     centralRepositoryConfiguration.setRepositoryUrl("file://" + originRepository.getAbsolutePath());
+    centralRepositoryConfiguration.setAuth(CentralRepositoryConfiguration.Auth.ANONYMOUS);
     centralRepositoryConfiguration.setBranch("refs/heads/master");
     return centralRepositoryConfiguration;
   }

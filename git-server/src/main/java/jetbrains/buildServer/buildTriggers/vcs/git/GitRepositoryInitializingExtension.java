@@ -50,7 +50,9 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
     props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
     if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
       props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
-      Path authKeyPath = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
+      String privateKeyPath = repositoryConfiguration.getPrivateKeyPath();
+      if (privateKeyPath == null) throw new RuntimeException("Central repository is configured with key authentication but the key path isn't specified");
+      Path authKeyPath = Paths.get(privateKeyPath);
       if (!Files.exists(authKeyPath)) {
         throw new RuntimeException("Private key for repository isn't found. Upload private key with write access to the repository");
       }
@@ -98,7 +100,10 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
         if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
           props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
-          Path authKeyPath = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
+
+          String privateKeyPath = repositoryConfiguration.getPrivateKeyPath();
+          if (privateKeyPath == null) throw new RuntimeException("Central repository is configured with key authentication but the key path isn't specified");
+          Path authKeyPath = Paths.get(privateKeyPath);
           if (!Files.exists(authKeyPath)) {
             throw new RuntimeException("Private key for repository isn't found. Upload private key with write access to the repository");
           }
