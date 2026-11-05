@@ -35,13 +35,6 @@
 
     <dependency>
       <groupId>org.jetbrains.teamcity</groupId>
-      <artifactId>change-viewers</artifactId>
-      <version>${teamcity.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.jetbrains.teamcity</groupId>
       <artifactId>web-diagnostic</artifactId>
       <version>${teamcity.version}</version>
       <scope>provided</scope>
