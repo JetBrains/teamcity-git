@@ -124,12 +124,6 @@
 
     <dependency>
       <groupId>org.jetbrains.teamcity</groupId>
-      <artifactId>common-tests</artifactId>
-      <version>${teamcity.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.jetbrains.teamcity</groupId>
       <artifactId>server-test-core</artifactId>
       <version>${teamcity.version}</version>
     </dependency>
@@ -137,12 +131,6 @@
     <dependency>
       <groupId>org.jetbrains.teamcity</groupId>
       <artifactId>server-metrics</artifactId>
-      <version>${teamcity.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.jetbrains.teamcity</groupId>
-      <artifactId>change-viewers</artifactId>
       <version>${teamcity.version}</version>
     </dependency>
 
