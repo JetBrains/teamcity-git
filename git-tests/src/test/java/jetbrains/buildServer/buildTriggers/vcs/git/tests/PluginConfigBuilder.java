@@ -442,6 +442,11 @@ public class PluginConfigBuilder {
       }
 
       @Override
+      public int getRefTipReachabilityCheckMaxCommits() {
+        return myDelegate.getRefTipReachabilityCheckMaxCommits();
+      }
+
+      @Override
       public boolean isNoShowForcedUpdates() {
         return false;
       }

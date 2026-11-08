@@ -2,6 +2,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
 import java.io.IOException;
@@ -144,6 +145,7 @@ public class CommitLoaderImpl implements CommitLoader {
   private static Collection<RefCommit> findRefsToFetch(@NotNull OperationContext context,
                                                        @NotNull Repository db,
                                                        @NotNull Collection<RefCommit> revisions,
+                                                       @NotNull Map<String, String> fromRevisions,
                                                        boolean checkTipRefs,
                                                        boolean throwErrors) throws VcsException {
     final Set<RefCommit> refsToFetch = new HashSet<>();
@@ -159,17 +161,10 @@ public class CommitLoaderImpl implements CommitLoader {
         final String revNumber = GitUtils.versionRevision(r.getCommit());
         try {
           if (checkTipRefs && r.isRefTip() && !GitServerUtil.isTag(ref)) {
-            // For the refs from the new ("to") state we check if these refs in the local clone point to the same revisions
+            // For the refs from the new ("to") state we check if these refs in the local clone point to the same revisions or to their descendants,
             // this is only done prior to determining if we need to fetch these refs selectively (hence checkTipRefs argument)
-            String localRev = null;
-            Ref localRef = currentRefTips.get(ref);
-            if (localRef != null) {
-              ObjectId localRevId = localRef.getObjectId();
-              if (localRevId != null) {
-                localRev = localRevId.getName();
-              }
-            }
-            if (localRev == null || !localRev.equals(revNumber))
+            if (!isLocalRefUpToDate(walk, currentRefTips.get(ref), fromRevisions.get(ref), revNumber,
+                                    context.getPluginConfig().getRefTipReachabilityCheckMaxCommits()))
               refsToFetch.add(r);
           } else {
             // In all other cases we just check if revisions exist in the local clone
@@ -211,6 +206,89 @@ public class CommitLoaderImpl implements CommitLoader {
     }
   }
 
+  /**
+   * Tells whether the local ref needs no fetch for the revision the ref points to in the new state. That is the case when the
+   * local ref points to the revision, and also when the local ref points to a descendant of the revision while the ref moved
+   * forward between the old and the new state, i.e. the old revision is an ancestor of the new one: the ref of a busy remote
+   * branch keeps moving forward, so by the time a caller holding an older state of the branch gets to the clone, another caller
+   * has usually fetched the branch past that state already.
+   * <p>
+   * Any other change of the ref, a force push to an older commit or to a commit on another line of history, is fetched, so the
+   * local ref follows the remote one: TeamCity pushes its own commits from this clone, and without a lease the push checks the
+   * local ref against the commit the new one is based on.
+   *
+   * @param walk the walk to look for the revisions with, it is reset before and after each search
+   * @param localRef the ref in the local clone, null if the clone has no such ref
+   * @param fromRevision the revision the ref points to in the old state, null if the ref is not in the old state; without it the
+   *                     local ref has to point exactly to the revision since the direction of the change is unknown
+   * @param toRevision the revision the ref points to in the new state
+   * @param maxCommitsToVisit how many commits to look through when searching for the revision among the commits reachable from the
+   *                          local ref, and for the old revision among the commits reachable from the revision; 0 or less requires
+   *                          the local ref to point exactly to the revision
+   * @return true if the ref does not need a fetch
+   * @throws IOException if the local ref points to an object that is missing from the clone or cannot be read
+   */
+  @VisibleForTesting
+  public static boolean isLocalRefUpToDate(@NotNull RevWalk walk,
+                                           @Nullable Ref localRef,
+                                           @Nullable String fromRevision,
+                                           @NotNull String toRevision,
+                                           int maxCommitsToVisit) throws IOException {
+    if (localRef == null) return false;
+    final ObjectId localRevId = localRef.getObjectId();
+    if (localRevId == null) return false;
+    if (localRevId.getName().equals(toRevision)) return true;
+    if (maxCommitsToVisit <= 0 || fromRevision == null || !ObjectId.isId(toRevision) || !ObjectId.isId(fromRevision)) return false;
+
+    final ObjectId toRevisionId = ObjectId.fromString(toRevision);
+    // first check whether the toRevision is reachable from the local ref, and if it is not then we need to run fetch
+    if (!isReachable(walk, localRevId, toRevisionId, maxCommitsToVisit)) return false;
+
+    // the toRevision is reachable, but we need to check whether there was a force push which might cause a
+    // branch reset to some older commits, because in this case we need to update the local ref
+    // for this we'll try to go from the toRevision to fromRevision and if fromRevision is not reachable, then we need to fetch
+
+    if (fromRevision.equals(toRevision)) return true; // definitely not a force push
+
+    return isReachable(walk, toRevisionId, ObjectId.fromString(fromRevision), maxCommitsToVisit);
+  }
+
+  /**
+   * @return true if the target commit is among the first maxCommitsToVisit commits reachable from the start commit, the start included
+   */
+  private static boolean isReachable(@NotNull RevWalk walk, @NotNull ObjectId start, @NotNull ObjectId target, int maxCommitsToVisit) throws IOException {
+    // a commit missing from the clone cannot be reachable, and the history of a missing start commit cannot be walked
+    if (!walk.getObjectReader().has(target) || !walk.getObjectReader().has(start)) return false;
+
+    walk.reset();
+    try {
+      walk.markStart(walk.parseCommit(start));
+      int visited = 0;
+      RevCommit commit;
+      while (visited < maxCommitsToVisit && (commit = walk.next()) != null) {
+        if (commit.equals(target)) return true;
+        visited++;
+      }
+      return false;
+    } finally {
+      walk.reset();
+    }
+  }
+
+  /**
+   * @return the revisions of the old ("from") state by the full ref name
+   */
+  @NotNull
+  private static Map<String, String> getFromRevisions(@NotNull Collection<RefCommit> revisions) {
+    final Map<String, String> result = new HashMap<>();
+    for (RefCommit r : revisions) {
+      if (!r.isRefTip()) {
+        result.put(GitUtils.expandRef(r.getRef()), GitUtils.versionRevision(r.getCommit()));
+      }
+    }
+    return result;
+  }
+
   private static @NotNull Map<String, Ref> loadCurrentRefTips(@NotNull Repository db, @NotNull Collection<RefCommit> revisions) {
     Map<String, Ref> allRefsMap = new HashMap<>();
     try {
@@ -242,7 +320,9 @@ public class CommitLoaderImpl implements CommitLoader {
     final File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
 
-    Collection<RefCommit> refsToFetch = findRefsToFetch(context, db, revisions, true, false);
+    // the old state revisions are needed by the checks of the tips from the new state, including the ones made on the refs left to fetch
+    final Map<String, String> fromRevisions = getFromRevisions(revisions);
+    Collection<RefCommit> refsToFetch = findRefsToFetch(context, db, revisions, fromRevisions, true, false);
     if (refsToFetch.isEmpty()) return;
 
     final long start = System.currentTimeMillis();
@@ -256,14 +336,14 @@ public class CommitLoaderImpl implements CommitLoader {
       }
       PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
 
-      refsToFetch = findRefsToFetch(context, db, refsToFetch, true, false);
+      refsToFetch = findRefsToFetch(context, db, refsToFetch, fromRevisions, true, false);
       if (refsToFetch.isEmpty()) return;
 
       final boolean includeTags = context.getGitRoot().isReportTags();
       FetchSettings settings = myFetchSettingsFactory.getFetchSettings(context, refsToFetch, revisions, remoteRefsSupplier.get(), includeTags);
       doFetch(db, fetchURI, settings);
 
-      refsToFetch = findRefsToFetch(context, db, refsToFetch, false, false);
+      refsToFetch = findRefsToFetch(context, db, refsToFetch, fromRevisions, false, false);
       if (refsToFetch.isEmpty()) return;
 
       final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
@@ -271,7 +351,7 @@ public class CommitLoaderImpl implements CommitLoader {
 
       settings = myFetchSettingsFactory.getFetchSettings(context, includeTags || !fetchAllRefsDisabled);
       doFetch(db, fetchURI, settings);
-      findRefsToFetch(context, db, refsToFetch, false, true);
+      findRefsToFetch(context, db, refsToFetch, fromRevisions, false, true);
     } catch (Throwable t) {
       if (t instanceof VcsException) throw t;
       if (t.getCause() instanceof VcsException) throw (VcsException)t.getCause();

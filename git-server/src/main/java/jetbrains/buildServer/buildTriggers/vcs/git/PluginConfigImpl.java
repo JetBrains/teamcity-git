@@ -103,6 +103,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public static final String FETCH_REMOTE_BRANCHES_FACTOR = "teamcity.server.git.fetchRemoteBranchesFactor";
   public static final String FETCH_REMOTE_BRANCHES_THRESHOLD = "teamcity.server.git.fetchRemoteBranchesThreshold";
   public static final int FETCH_REMOTE_BRANCHES_THRESHOLD_DEFAULT = 200;
+  public static final String REF_TIP_REACHABILITY_CHECK_MAX_COMMITS = "teamcity.server.git.refTipReachabilityCheckMaxCommits";
+  public static final int REF_TIP_REACHABILITY_CHECK_MAX_COMMITS_DEFAULT = 50;
   private static final String GIT_PRUNE_TIMEOUT_SECONDS = "teamcity.git.pruneTimeoutSeconds";
 
   private final File myCachesDir;
@@ -730,6 +732,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
       LOG.warn(String.format("Unexpected \"%s\" value \"%s\": the value should be a float number from 0 to 1, where 0 means the feature is disabled", FETCH_REMOTE_BRANCHES_FACTOR, factor));
     }
     return factor;
+  }
+
+  @Override
+  public int getRefTipReachabilityCheckMaxCommits() {
+    return TeamCityProperties.getInteger(REF_TIP_REACHABILITY_CHECK_MAX_COMMITS, REF_TIP_REACHABILITY_CHECK_MAX_COMMITS_DEFAULT);
   }
 
   @Override
