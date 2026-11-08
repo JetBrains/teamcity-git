@@ -213,7 +213,7 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
   @NotNull
   public ReentrantLock getWriteLock(@NotNull final File dir) {
-    return getOrCreate(myWriteLocks, getCanonicalName(dir), new ReentrantLock());
+    return getOrCreate(myWriteLocks, getCanonicalName(dir), new ReentrantLock(true));
   }
 
 
