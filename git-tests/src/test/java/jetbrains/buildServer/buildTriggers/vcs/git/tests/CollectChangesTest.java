@@ -1002,6 +1002,64 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     assertNull(vcs.getCommitLoader().findCommit(repositoryManager.openRepository(new URIish(fetchUrl)), "b96aa6a603a178bcf34ac0aff54c004104381f41"));
   }
 
+  public void older_state_of_branch_already_fetched_past_it_is_not_fetched_again() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 4);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(3)), CheckoutRules.DEFAULT);
+    // any fetch fails from now on
+    FileUtil.delete(repoDir);
+
+    List<ModificationData> changes = vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(1)), CheckoutRules.DEFAULT);
+
+    then(changes).extracting(ModificationData::getVersion).containsExactly(commits.get(1).name());
+    then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(3).name());
+  }
+
+  public void branch_moved_back_by_force_push_is_moved_back_in_local_clone() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 4);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(3)), CheckoutRules.DEFAULT);
+    then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(3).name());
+
+    try (Git git = Git.open(repoDir)) {
+      git.reset().setMode(org.eclipse.jgit.api.ResetCommand.ResetType.HARD).setRef(commits.get(1).name()).call();
+    }
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(3)), masterState(commits.get(1)), CheckoutRules.DEFAULT);
+
+    then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(1).name());
+  }
+
+  @NotNull
+  private List<RevCommit> createLinearHistory(@NotNull File repoDir, int commitsCount) throws Exception {
+    List<RevCommit> commits = new ArrayList<>();
+    try (Git git = Git.init().setDirectory(repoDir).call()) {
+      File file = new File(repoDir, "file.txt");
+      for (int i = 0; i < commitsCount; i++) {
+        FileUtil.writeFileAndReportErrors(file, String.valueOf(i));
+        git.add().addFilepattern(".").call();
+        commits.add(git.commit().setMessage("commit " + i).call());
+      }
+    }
+    return commits;
+  }
+
+  @NotNull
+  private static RepositoryStateData masterState(@NotNull RevCommit commit) {
+    return createVersionState("refs/heads/master", map("refs/heads/master", commit.name()));
+  }
+
+  @NotNull
+  private static String localMasterRevision(@NotNull GitVcsSupport vcs, @NotNull File repoDir) throws Exception {
+    Repository clone = vcs.getRepositoryManager().openRepository(new URIish(repoDir.getCanonicalPath()));
+    return clone.exactRef("refs/heads/master").getObjectId().name();
+  }
+
   private GitVcsSupport git() {
     return gitSupport().withPluginConfig(myConfig).build();
   }
