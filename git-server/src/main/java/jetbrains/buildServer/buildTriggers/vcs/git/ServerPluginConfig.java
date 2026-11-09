@@ -171,6 +171,15 @@ public interface ServerPluginConfig extends PluginConfig {
 
   int fetchRemoteBranchesThreshold();
 
+  /**
+   * How many commits reachable from a ref in the local clone to look through for the revision this ref points to in a new
+   * repository state. When the revision is found and the ref moved forward since the old state, the ref is not fetched, since
+   * the clone already has the ref past that revision. The same limit applies to looking for the old revision among the commits
+   * reachable from the new one, which tells that the ref moved forward.
+   * 0 or less fetches the ref whenever the local ref does not point exactly to the revision.
+   */
+  int getRefTipReachabilityCheckMaxCommits();
+
   boolean isNoShowForcedUpdates();
 
   /**
