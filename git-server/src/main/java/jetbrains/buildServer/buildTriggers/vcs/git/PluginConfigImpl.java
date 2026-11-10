@@ -19,14 +19,13 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import jetbrains.buildServer.DevelopmentMode;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
+import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.log.Loggable;
 import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
 import jetbrains.buildServer.metrics.Counter;
-import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
@@ -688,6 +687,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public boolean reportPerParentChangedFiles() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.reportPerParentChangedFiles");
+  }
+
+  @Override
+  public boolean reportAllFilesChangedForParentsWithoutCommonFiles() {
+    return TeamCityProperties.getBoolean("teamcity.git.reportAllFilesChangedForParentsWithoutCommonFiles");
   }
 
   @Override

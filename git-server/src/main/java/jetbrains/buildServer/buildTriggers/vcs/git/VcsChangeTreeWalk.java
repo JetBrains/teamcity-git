@@ -3,18 +3,19 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.IOException;
+import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.VcsChange;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.treewalk.NameConflictTreeWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.*;
 
 /**
  * @author dmitry.neverov
@@ -22,12 +23,14 @@ import java.util.*;
 public class VcsChangeTreeWalk extends TreeWalk {
 
   private static final Logger LOG = Logger.getInstance(VcsChangeTreeWalk.class.getName());
+  public static final String CHANGED_FILES_ATTR_PREFIX = "teamcity.transient.changedFiles.";
 
   private final String myRepositoryDebugInfo;
   private final boolean myVerboseTreeWalkLog;
 
   private final List<String> myParentCommits = new ArrayList<>(0);
   private final Map<String, List<String>> myPerParentChangedFiles = new HashMap<>();
+  private final Set<String> myAllFilesChangedParents = new HashSet<>();
 
   public VcsChangeTreeWalk(@NotNull ObjectReader repo,
                            @NotNull String repositoryDebugInfo,
@@ -51,12 +54,83 @@ public class VcsChangeTreeWalk extends TreeWalk {
     myPerParentChangedFiles.put(parentCommit.name(), new ArrayList<>());
   }
 
+  /**
+   * Reports all the files of the commit as changed against the parent, without collecting them;
+   * use when the parent has no files in common with the commit, see {@link #hasAnyCommonFiles}.
+   */
+  public void reportAllFilesChangedForParentCommit(@NotNull RevCommit parentCommit) {
+    // keeps the tree index -> parent mapping used by fillPerParentChangedFiles,
+    // which skips parents without a list in myPerParentChangedFiles
+    myParentCommits.add(parentCommit.name());
+    myAllFilesChangedParents.add(parentCommit.name());
+  }
+
   public Map<String, String> buildChangedFilesAttributes() {
-    return buildChangedFilesAttributesFor(myPerParentChangedFiles);
+    Map<String, String> result = buildChangedFilesAttributesFor(myPerParentChangedFiles);
+    if (myAllFilesChangedParents.isEmpty()) return result;
+
+    result = new HashMap<>(result);
+    for (String parentCommit : myAllFilesChangedParents) {
+      result.put(CHANGED_FILES_ATTR_PREFIX + parentCommit, "**/*");
+    }
+    return result;
   }
 
 
-    @NotNull
+  /**
+   * Checks whether the commit tree has at least one entry, a file or a whole directory, with the same object id and mode
+   * at the same path in the parent tree. When it does not, every path of the commit differs from the parent; for a merge
+   * commit this is the case of a parent with unrelated history, e.g. a separate repository merged into a monorepo.
+   * <p>
+   * Equal tree ids mean equal directories all the way down, so the walk stops at the first equal entry and descends
+   * only into directories present in both trees with different ids.
+   *
+   * Equal trees, including two empty ones, count as having common files: the edge between them has no differences.
+   * <p>
+   * A submodule present in both trees, or replacing a file or a directory, also counts as a common file: with submodule
+   * checkout the changes collection compares the files of the submodule, which cannot be compared using gitlinks only.
+   * <p>
+   * The check runs in a separate walk sharing the reader of this one, the reader stays open when that walk is closed.
+   *
+   * @param commit the commit, its tree must be parsed
+   * @param parentCommit one of its parents, its tree must be parsed
+   * @return true if the trees are equal, share at least one file or directory, or can share files of a submodule
+   */
+  public boolean hasAnyCommonFiles(@NotNull RevCommit commit, @NotNull RevCommit parentCommit) throws IOException {
+    // without this check two empty trees have no entries to compare and would be reported as having no common files
+    if (commit.getTree().equals(parentCommit.getTree())) return true;
+
+    // matches entries with the same name and different types, e.g. a submodule replacing a directory, in one step
+    try (TreeWalk tw = new NameConflictTreeWalk(getObjectReader())) {
+      tw.addTree(commit.getTree());
+      tw.addTree(parentCommit.getTree());
+      tw.setRecursive(false);
+      while (tw.next()) {
+        // modes are compared the same way as in fillPerParentChangedFiles, which builds the list this check stands in for:
+        // getFileMode folds non-canonical modes into the canonical ones, e.g. 100664 into REGULAR_FILE
+        FileMode commitMode = tw.getFileMode(0);
+        if (FileMode.MISSING.equals(commitMode)) continue; // the path exists in the parent only
+
+        FileMode parentMode = tw.getFileMode(1);
+        if (tw.idEqual(0, 1) && Objects.equals(commitMode, parentMode)) return true; // the same file or the same directory
+
+        if (!FileMode.MISSING.equals(parentMode) && (FileMode.GITLINK.equals(commitMode) || FileMode.GITLINK.equals(parentMode))) {
+          // with submodule checkout the changes collection expands gitlinks into the files of the submodules,
+          // they can have common files which cannot be detected here, so assume they do
+          return true;
+        }
+
+        if (FileMode.TREE.equals(commitMode) && FileMode.TREE.equals(parentMode)) {
+          tw.enterSubtree();
+        }
+        // a directory present in the commit tree only consists of new files, no need to descend
+      }
+      return false;
+    }
+  }
+
+
+  @NotNull
   public static Map<String, String> buildChangedFilesAttributesFor(@NotNull Map<String, ? extends Collection<String>> perParentChangedFiles) {
     if (perParentChangedFiles.isEmpty())
       return Collections.emptyMap();
@@ -97,7 +171,7 @@ public class VcsChangeTreeWalk extends TreeWalk {
         }
       }
 
-      result.put("teamcity.transient.changedFiles." + parentCommit, value.length() > 0 ? value.substring(0, value.length()-1) : "");
+      result.put(CHANGED_FILES_ATTR_PREFIX + parentCommit, value.length() > 0 ? value.substring(0, value.length() - 1) : "");
     }
     return result;
   }

@@ -158,9 +158,16 @@ class ModificationDataRevWalk extends LimitingRevWalk {
         RevCommit[] parents = commit.getParents();
         boolean reportPerParentChangedFiles =
           getConfig().reportPerParentChangedFiles() && parents.length > 1; // report only for merge commits
+        boolean reportAllFilesChanged = reportPerParentChangedFiles && getConfig().reportAllFilesChangedForParentsWithoutCommonFiles();
         for (RevCommit parentCommit : parents) {
           getContext().addTree(getGitRoot(), tw, getRepository(), parentCommit, missingSubmoduleCommitInfo, true);
-          if (reportPerParentChangedFiles) {
+          if (!reportPerParentChangedFiles) continue;
+
+          if (reportAllFilesChanged && !tw.hasAnyCommonFiles(commit, parentCommit)) {
+            // a parent with unrelated history, e.g. a separate repository merged into a monorepo, differs from the merge commit
+            // in every file, so report a marker instead of collecting the list of all the files of the merge commit
+            tw.reportAllFilesChangedForParentCommit(parentCommit);
+          } else {
             tw.reportChangedFilesForParentCommit(parentCommit);
           }
         }

@@ -7,7 +7,6 @@ import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
@@ -155,6 +154,12 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean treatMissingBranchTipAsRecoverableError();
 
   boolean reportPerParentChangedFiles();
+
+  /**
+   * @return true if a merge commit parent without files in common with the merge commit should be reported
+   * with the all files changed marker instead of the list of all the files of the merge commit
+   */
+  boolean reportAllFilesChangedForParentsWithoutCommonFiles();
 
   boolean shouldSetSubmoduleUserInAbsoluteUrls();
 

@@ -54,6 +54,7 @@ public class PluginConfigBuilder {
   private Integer myMergeRetryAttempts;
   private Boolean myRunInPlaceGc;
   private Boolean myReportPerParentChangedFiles;
+  private Boolean myReportAllFilesChangedForParentsWithoutCommonFiles;
   private boolean myFetchAllRefsEnabled;
   private float myFetchRemoteBranchesFactor;
   private int myFetchRemoteBranchesThreshold;
@@ -412,6 +413,13 @@ public class PluginConfigBuilder {
       }
 
       @Override
+      public boolean reportAllFilesChangedForParentsWithoutCommonFiles() {
+        return myReportAllFilesChangedForParentsWithoutCommonFiles != null
+               ? myReportAllFilesChangedForParentsWithoutCommonFiles
+               : myDelegate.reportAllFilesChangedForParentsWithoutCommonFiles();
+      }
+
+      @Override
       public boolean shouldSetSubmoduleUserInAbsoluteUrls() {
         return myDelegate.shouldSetSubmoduleUserInAbsoluteUrls();
       }
@@ -664,6 +672,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setReportPerParentChangedFiles(boolean report) {
     myReportPerParentChangedFiles = report;
+    return this;
+  }
+
+  PluginConfigBuilder setReportAllFilesChangedForParentsWithoutCommonFiles(boolean report) {
+    myReportAllFilesChangedForParentsWithoutCommonFiles = report;
     return this;
   }
 

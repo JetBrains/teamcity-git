@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TestLogger;
+import jetbrains.buildServer.buildTriggers.vcs.AnalyzeMergedBranches;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -33,7 +34,6 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -902,6 +902,99 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     then(getChangedFileAttributes(m4)).containsOnly(
       MapEntry.entry("teamcity.transient.changedFiles." + c2.name(), "f3\ndir1/dir2/\n./f2"),
       MapEntry.entry("teamcity.transient.changedFiles." + c3.name(), "dir1/dir2/dir3/\n./f1"));
+  }
+
+  public void report_all_files_changed_for_parent_with_unrelated_history() throws Exception {
+    UnrelatedHistoryMerge merge = createUnrelatedHistoryMerge();
+    myConfig.setReportPerParentChangedFiles(true);
+    myConfig.setReportAllFilesChangedForParentsWithoutCommonFiles(true);
+
+    ModificationData m = merge.collectMergeCommit();
+
+    then(getChangedFileAttributes(m)).containsOnly(
+      MapEntry.entry(AnalyzeMergedBranches.CHANGED_FILES_PREFIX + merge.mainline.name(), "projectB/src/\n./b.txt"),
+      MapEntry.entry(AnalyzeMergedBranches.CHANGED_FILES_PREFIX + merge.imported.name(), AnalyzeMergedBranches.ALL_FILES_CHANGED_MARKER));
+  }
+
+  public void report_changed_files_for_parent_with_unrelated_history_when_all_files_changed_marker_disabled() throws Exception {
+    UnrelatedHistoryMerge merge = createUnrelatedHistoryMerge();
+    myConfig.setReportPerParentChangedFiles(true);
+    myConfig.setReportAllFilesChangedForParentsWithoutCommonFiles(false);
+
+    ModificationData m = merge.collectMergeCommit();
+
+    Map<String, String> attributes = getChangedFileAttributes(m);
+    then(attributes).containsEntry(AnalyzeMergedBranches.CHANGED_FILES_PREFIX + merge.mainline.name(), "projectB/src/\n./b.txt");
+    then(attributes.get(AnalyzeMergedBranches.CHANGED_FILES_PREFIX + merge.imported.name()))
+      .isNotEqualTo(AnalyzeMergedBranches.ALL_FILES_CHANGED_MARKER)
+      .contains("projectA/\n./a.txt")
+      .contains("projectB/src/\n./b.txt");
+  }
+
+  /**
+   * <pre>
+   * 3       merge, files: projectA/a.txt, projectB/src/b.txt
+   * |\
+   * 1 2     1 - mainline, files: projectA/a.txt; 2 - unrelated history, files: src/b.txt
+   * </pre>
+   */
+  @NotNull
+  private UnrelatedHistoryMerge createUnrelatedHistoryMerge() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    Git git = Git.init().setDirectory(repoDir).call();
+
+    writeFile(new File(repoDir, "projectA/a.txt"), "a");
+    git.add().addFilepattern(".").call();
+    RevCommit mainline = git.commit().setMessage("1").call();
+
+    git.checkout().setOrphan(true).setName("imported").call();
+    git.rm().addFilepattern("projectA/a.txt").call();
+    writeFile(new File(repoDir, "src/b.txt"), "b");
+    git.add().addFilepattern("src").call();
+    RevCommit imported = git.commit().setMessage("2").call();
+
+    // a merge of the unrelated history under the projectB prefix, like a subtree merge into a monorepo
+    git.checkout().setName("master").call();
+    FileUtil.delete(new File(repoDir, "src"));
+    writeFile(new File(repoDir, "projectB/src/b.txt"), "b");
+    git.add().addFilepattern("projectB").call();
+    git.getRepository().writeMergeHeads(Collections.singletonList(imported));
+    RevCommit merge = git.commit().setMessage("3").call();
+    then(merge.getParents()).extracting(RevCommit::name).containsExactly(mainline.name(), imported.name());
+
+    return new UnrelatedHistoryMerge(repoDir, mainline, imported, merge);
+  }
+
+  private static void writeFile(@NotNull File file, @NotNull String content) throws IOException {
+    file.getParentFile().mkdirs();
+    FileUtil.writeFileAndReportErrors(file, content);
+  }
+
+  private final class UnrelatedHistoryMerge {
+    private final File repoDir;
+    private final RevCommit mainline;
+    private final RevCommit imported;
+    private final RevCommit merge;
+
+    private UnrelatedHistoryMerge(@NotNull File repoDir, @NotNull RevCommit mainline, @NotNull RevCommit imported, @NotNull RevCommit merge) {
+      this.repoDir = repoDir;
+      this.mainline = mainline;
+      this.imported = imported;
+      this.merge = merge;
+    }
+
+    @NotNull
+    private ModificationData collectMergeCommit() throws VcsException, IOException {
+      GitVcsSupport vcs = gitSupport().withPluginConfig(myConfig.build()).build();
+      VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+      RepositoryStateData from = createVersionState("refs/heads/master", map("refs/heads/master", mainline.name(),
+                                                                             "refs/heads/imported", imported.name()));
+      RepositoryStateData to = createVersionState("refs/heads/master", map("refs/heads/master", merge.name(),
+                                                                           "refs/heads/imported", imported.name()));
+      List<ModificationData> changes = vcs.getCollectChangesPolicy().collectChanges(root, from, to, CheckoutRules.DEFAULT);
+      then(changes).extracting(ModificationData::getVersion).containsExactly(merge.name());
+      return changes.get(0);
+    }
   }
 
   private Map<String, String> getChangedFileAttributes(@NotNull ModificationData m) {
