@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TestLogger;
-import jetbrains.buildServer.buildTriggers.vcs.AnalyzeMergedBranches;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -912,8 +911,8 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     ModificationData m = merge.collectMergeCommit();
 
     then(getChangedFileAttributes(m)).containsOnly(
-      MapEntry.entry(AnalyzeMergedBranches.CHANGED_FILES_PREFIX + merge.mainline.name(), "projectB/src/\n./b.txt"),
-      MapEntry.entry(AnalyzeMergedBranches.CHANGED_FILES_PREFIX + merge.imported.name(), AnalyzeMergedBranches.ALL_FILES_CHANGED_MARKER));
+      MapEntry.entry("teamcity.transient.changedFiles." + merge.mainline.name(), "projectB/src/\n./b.txt"),
+      MapEntry.entry("teamcity.transient.changedFiles." + merge.imported.name(), "**/*"));
   }
 
   public void report_changed_files_for_parent_with_unrelated_history_when_all_files_changed_marker_disabled() throws Exception {
@@ -924,9 +923,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     ModificationData m = merge.collectMergeCommit();
 
     Map<String, String> attributes = getChangedFileAttributes(m);
-    then(attributes).containsEntry(AnalyzeMergedBranches.CHANGED_FILES_PREFIX + merge.mainline.name(), "projectB/src/\n./b.txt");
-    then(attributes.get(AnalyzeMergedBranches.CHANGED_FILES_PREFIX + merge.imported.name()))
-      .isNotEqualTo(AnalyzeMergedBranches.ALL_FILES_CHANGED_MARKER)
+    then(attributes).containsEntry("teamcity.transient.changedFiles." + merge.mainline.name(), "projectB/src/\n./b.txt");
+    then(attributes.get("teamcity.transient.changedFiles." + merge.imported.name()))
+      .isNotEqualTo("**/*")
       .contains("projectA/\n./a.txt")
       .contains("projectB/src/\n./b.txt");
   }
