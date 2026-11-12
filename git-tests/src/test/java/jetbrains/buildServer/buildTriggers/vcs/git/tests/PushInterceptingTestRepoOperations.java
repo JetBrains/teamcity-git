@@ -4,6 +4,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,19 +50,42 @@ public class PushInterceptingTestRepoOperations implements GitRepoOperations {
   @Override
   public PushCommand pushCommand(@NotNull String repoUrl) {
     final PushCommand delegate = myDelegate.pushCommand(repoUrl);
-    return (db, gitRoot, ref, commit, lastCommit) -> {
-      if (myBeforePush != null) {
-        try {
-          myBeforePush.run();
-        } catch (Exception e) {
-          throw new VcsException("Failed to run the action before the push", e);
-        }
+    //both kinds of push are passed on as they were asked for, so the interception does not turn one into the other
+    return new PushCommand() {
+      @NotNull
+      @Override
+      public CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref,
+                               @NotNull String commit, @NotNull String lastCommit) throws VcsException {
+        return intercept(() -> delegate.push(db, gitRoot, ref, commit, lastCommit));
       }
-      CommitResult result = delegate.push(db, gitRoot, ref, commit, lastCommit);
-      if (myFailureAfterPush != null)
-        throw new VcsException(myFailureAfterPush);
-      return result;
+
+      @NotNull
+      @Override
+      public CommitResult pushWithLease(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref,
+                                        @NotNull String commit, @NotNull String lastCommit) throws VcsException {
+        return intercept(() -> delegate.pushWithLease(db, gitRoot, ref, commit, lastCommit));
+      }
     };
+  }
+
+  private interface Push {
+    @NotNull
+    CommitResult run() throws VcsException;
+  }
+
+  @NotNull
+  private CommitResult intercept(@NotNull Push push) throws VcsException {
+    if (myBeforePush != null) {
+      try {
+        myBeforePush.run();
+      } catch (Exception e) {
+        throw new VcsException("Failed to run the action before the push", e);
+      }
+    }
+    CommitResult result = push.run();
+    if (myFailureAfterPush != null)
+      throw new VcsException(myFailureAfterPush);
+    return result;
   }
 
   @NotNull

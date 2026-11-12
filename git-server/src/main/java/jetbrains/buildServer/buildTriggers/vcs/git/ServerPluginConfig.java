@@ -190,7 +190,9 @@ public interface ServerPluginConfig extends PluginConfig {
   /**
    * Whether a push protects the ref it updates with a lease, so that the remote side rejects the update when the ref
    * no longer points to the revision it was based on. When off, the push is a plain one, which accepts such an
-   * update silently if the ref was deleted or rewound meanwhile.
+   * update silently if the ref was deleted or rewound meanwhile. Branch creation and cherry-pick promise their
+   * callers that this never happens, so they push with the lease whatever the value is, see
+   * {@link PushCommand#pushWithLease}.
    */
   boolean isPushWithLeaseEnabled();
 

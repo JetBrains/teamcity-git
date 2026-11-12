@@ -86,6 +86,9 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
       } catch (CherryPickRejectedException e) {
         LOG.info(operation + " was rejected, root " + root + ", destination " + dstBranch + ": " + e.getMessage());
         return CherryPickResult.createRejected(e.getMessage());
+      } catch (DestinationUpdatedException e) {
+        LOG.info(operation + " published nothing, root " + root + ", destination " + dstBranch + ": " + e.getMessage());
+        return CherryPickResult.createConcurrentlyUpdated(e.getMessage());
       } catch (Exception e) {
         throw context.wrapException(e);
       } finally {
@@ -101,7 +104,8 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                                          @NotNull List<String> srcRevisions,
                                          @NotNull String dstBranch,
                                          @NotNull CherryPickOptions options,
-                                         boolean publish) throws IOException, VcsException, CherryPickRejectedException {
+                                         boolean publish)
+    throws IOException, VcsException, CherryPickRejectedException, DestinationUpdatedException {
     String dstRef = GitUtils.expandRef(dstBranch);
     if (!GitServerUtil.isBranch(dstRef)) {
       //a qualified ref is taken as is, and a tag or a note is not something this operation may update
@@ -177,7 +181,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                                       @NotNull Repository db,
                                       @NotNull String dstBranch,
                                       @NotNull String dstRef,
-                                      @NotNull String observedRevision) throws IOException, VcsException, CherryPickRejectedException {
+                                      @NotNull String observedRevision) throws IOException, VcsException, DestinationUpdatedException {
     RefSpec spec = new RefSpec().setSource(dstRef).setDestination(dstRef).setForceUpdate(true);
     try {
       myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), new FetchSettings(gitRoot.getAuthSettings(), asList(spec)));
@@ -200,14 +204,14 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   /**
    * Loads the revision the destination branch pointed to when the operation started.
    *
-   * @throws CherryPickRejectedException if that revision is already gone, which means the branch was updated
+   * @throws DestinationUpdatedException if that revision is already gone, which means the branch was updated
    * between the moment it was read and the fetch: the result would be computed against a revision nobody has
    */
   @NotNull
   private RevCommit loadBranchTip(@NotNull OperationContext context,
                                   @NotNull GitVcsRoot gitRoot,
                                   @NotNull String dstBranch,
-                                  @NotNull String revision) throws VcsException, IOException, CherryPickRejectedException {
+                                  @NotNull String revision) throws VcsException, IOException, DestinationUpdatedException {
     try {
       return myCommitLoader.loadCommit(context, gitRoot, revision);
     } catch (RevisionNotFoundException e) {
@@ -216,8 +220,8 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   }
 
   @NotNull
-  private static CherryPickRejectedException updatedConcurrently(@NotNull String dstBranch) {
-    return new CherryPickRejectedException("The '" + dstBranch + "' destination branch was updated concurrently, " +
+  private static DestinationUpdatedException updatedConcurrently(@NotNull String dstBranch) {
+    return new DestinationUpdatedException("The '" + dstBranch + "' destination branch was updated concurrently, " +
                                           "nothing was published");
   }
 
@@ -255,12 +259,12 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
                     @NotNull String dstBranch,
                     @NotNull String dstRef,
                     @NotNull RevCommit newTip,
-                    @NotNull RevCommit expectedOldTip) throws VcsException, CherryPickRejectedException {
+                    @NotNull RevCommit expectedOldTip) throws VcsException, DestinationUpdatedException {
     ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
     lock.lock();
     try {
       myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString())
-                      .push(db, gitRoot, dstRef, newTip.name(), expectedOldTip.name());
+                      .pushWithLease(db, gitRoot, dstRef, newTip.name(), expectedOldTip.name());
     } catch (VcsException e) {
       String published;
       try {
@@ -450,10 +454,19 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   }
 
   /**
-   * The cherry-pick cannot be performed, the reason is reported to the caller via {@link CherryPickResult#getMessage()}.
+   * The cherry-pick cannot be performed and repeating it will not help, see {@link CherryPickResult.Status#REJECTED}.
    */
   private static class CherryPickRejectedException extends Exception {
     private CherryPickRejectedException(@NotNull String message) {
+      super(message);
+    }
+  }
+
+  /**
+   * The destination branch moved while the cherry-pick ran, see {@link CherryPickResult.Status#CONCURRENTLY_UPDATED}.
+   */
+  private static class DestinationUpdatedException extends Exception {
+    private DestinationUpdatedException(@NotNull String message) {
       super(message);
     }
   }

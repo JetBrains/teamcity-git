@@ -25,7 +25,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -47,8 +46,6 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
   private static final String TOPIC_2 = "6ffbeea7e607c069bdfeea5ea10d7b139c06ecca";
 
   private GitVcsSupport myGit;
-  //the tests ask it which git implementation the suite runs with
-  private GitRepoOperations myRepoOperations;
   private BranchCreationSupport myBranchCreationSupport;
   private CherryPickSupport myCherryPickSupport;
   private VcsRoot myRoot;
@@ -80,7 +77,6 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
                                                                  myKnownHostsManager);
     if (intercept != null)
       repoOperations = intercept.apply(repoOperations);
-    myRepoOperations = repoOperations;
     myBranchCreationSupport = new GitBranchCreationSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), repoOperations);
     myCherryPickSupport = new GitCherryPickSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(),
                                                    repoOperations);
@@ -166,71 +162,102 @@ public class GitBranchCreationSupportTest extends BaseRemoteRepositoryTest {
 
   public void rejects_a_name_which_is_not_a_branch_ref() throws Exception {
     //a qualified ref is taken as is, so a tag must not be created by an operation which creates a branch
-    try {
-      myBranchCreationSupport.createBranch(myRoot, "refs/tags/v1.0", MASTER);
-      fail("VcsException is expected for a ref which is not a branch");
-    } catch (VcsException e) {
-      then(e.getMessage()).contains("refs/tags/v1.0");
-    }
+    BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/tags/v1.0", MASTER);
+
+    then(result.getStatus())
+      .overridingErrorMessage("a retry cannot make the name a branch, so this is a refusal and not a failure")
+      .isEqualTo(BranchCreationResult.Status.REJECTED);
+    then(result.getMessage()).contains("refs/tags/v1.0");
+    then(result.getRevision()).isNull();
     then(resolveRef(myRemote, "refs/tags/v1.0")).isNull();
   }
 
 
-  public void switching_the_lease_off_goes_back_to_a_plain_push() throws Exception {
-    if (!myRepoOperations.isNativeGitOperationsEnabled(myRemote.getAbsolutePath())) {
-      //the JGit transport sends the expected revision with the update itself, so the toggle changes nothing there
-      throw new SkipException("the toggle only affects the native git push");
-    }
+  @TestFor(issues = "TW-105651")
+  public void does_not_move_a_concurrently_created_branch_when_the_lease_is_switched_off() throws Exception {
+    //the toggle turns the lease off for the other pushes of the plugin; a branch is never moved, so this one keeps it
     setInternalProperty("teamcity.git.push.forceWithLease", "false");
     createSupports(ops -> new PushInterceptingTestRepoOperations(ops)
       .beforePush(() -> setRef(myRemote, "refs/heads/release-1.0", MASTER_PARENT)));
 
     BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
 
-    //this is the behaviour the toggle brings back: a plain push fast-forwards the branch somebody else created
-    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
-    then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER);
+    then(result.getStatus())
+      .overridingErrorMessage("a plain push would fast-forward the branch somebody else created and report it as created")
+      .isEqualTo(BranchCreationResult.Status.EXISTS_AT_OTHER_REVISION);
+    then(result.getRevision()).isEqualTo(MASTER_PARENT);
+    then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER_PARENT);
   }
 
 
-  public void switching_the_lease_off_brings_back_the_mirror_check() throws Exception {
-    if (!myRepoOperations.isNativeGitOperationsEnabled(myRemote.getAbsolutePath())) {
-      //the JGit push updates nothing in the mirror, so there is no local check to bring back
-      throw new SkipException("the toggle only affects the native git push");
-    }
+  @TestFor(issues = "TW-105651")
+  public void creates_a_branch_deleted_remotely_when_the_lease_is_switched_off() throws Exception {
     setInternalProperty("teamcity.git.push.forceWithLease", "false");
     myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
     deleteRef(myRemote, "refs/heads/release-1.0");
 
-    //without the lease nothing enforces the precondition on the remote side, so the stale ref in the mirror is the
-    //only check left, and it rejects the creation the way it always did before the lease
-    try {
-      myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER_PARENT);
-      fail("VcsException is expected: the mirror still has the branch and there is no lease to rely on instead");
-    } catch (VcsException e) {
-      //expected
-    }
-    then(resolveRef(myRemote, "refs/heads/release-1.0")).isNull();
+    //a plain push checks the stale ref in the mirror instead of the remote one and fails on every attempt
+    BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER_PARENT);
+
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.CREATED);
+    then(resolveRef(myRemote, "refs/heads/release-1.0")).isEqualTo(MASTER_PARENT);
+  }
+
+
+  @TestFor(issues = "TW-105651")
+  public void rejects_a_malformed_branch_name() throws Exception {
+    BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release..1", MASTER);
+
+    then(result.getStatus())
+      .overridingErrorMessage("git refuses such a name on every attempt, so the caller must be told not to retry")
+      .isEqualTo(BranchCreationResult.Status.REJECTED);
+    then(result.getMessage()).contains("release..1");
+    then(resolveRef(myRemote, "refs/heads/release..1")).isNull();
   }
 
 
   public void rejects_a_revision_which_is_not_a_full_one() throws Exception {
-    try {
-      myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER.substring(0, 8));
-      fail("VcsException is expected for a revision which is not a full one");
-    } catch (VcsException e) {
-      then(e.getMessage()).contains(MASTER.substring(0, 8));
-    }
+    BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER.substring(0, 8));
+
+    then(result.getStatus()).isEqualTo(BranchCreationResult.Status.REJECTED);
+    then(result.getMessage()).contains(MASTER.substring(0, 8));
     then(resolveRef(myRemote, "refs/heads/release-1.0")).isNull();
   }
 
 
+  @TestFor(issues = "TW-105651")
   public void rejects_unknown_revision() throws Exception {
+    String unknown = ObjectId.zeroId().name();
+
+    BranchCreationResult result = myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", unknown);
+
+    then(result.getStatus())
+      .overridingErrorMessage("the repository has no such revision, so the caller must be told not to retry")
+      .isEqualTo(BranchCreationResult.Status.REJECTED);
+    then(result.getMessage()).contains(unknown);
+    then(result.getRevision()).isNull();
+    then(resolveRef(myRemote, "refs/heads/release-1.0")).isNull();
+  }
+
+
+  @TestFor(issues = "TW-105651")
+  public void fails_when_the_push_fails_and_the_branch_is_not_there() throws Exception {
+    //the request itself is fine and may succeed later, so it must stay an exception the caller retries on
+    createSupports(ops -> new PushInterceptingTestRepoOperations(ops) {
+      @NotNull
+      @Override
+      public jetbrains.buildServer.buildTriggers.vcs.git.PushCommand pushCommand(@NotNull String repoUrl) {
+        return (db, gitRoot, ref, commit, lastCommit) -> {
+          throw new VcsException("Authentication failed");
+        };
+      }
+    });
+
     try {
-      myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", ObjectId.zeroId().name());
-      fail("VcsException is expected for a revision which doesn't exist");
+      myBranchCreationSupport.createBranch(myRoot, "refs/heads/release-1.0", MASTER);
+      fail("VcsException is expected when the push itself fails");
     } catch (VcsException e) {
-      //expected
+      then(e.getMessage()).contains("Authentication failed");
     }
     then(resolveRef(myRemote, "refs/heads/release-1.0")).isNull();
   }

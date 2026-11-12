@@ -426,6 +426,18 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @NotNull
   @Override
   public CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref, @NotNull String commit, @NotNull String lastCommit) throws VcsException {
+    return push(db, gitRoot, ref, commit, lastCommit, myConfig.isPushWithLeaseEnabled());
+  }
+
+  @NotNull
+  @Override
+  public CommitResult pushWithLease(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref, @NotNull String commit, @NotNull String lastCommit) throws VcsException {
+    return push(db, gitRoot, ref, commit, lastCommit, true);
+  }
+
+  @NotNull
+  private CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref, @NotNull String commit, @NotNull String lastCommit,
+                            boolean pushWithLease) throws VcsException {
 
     final String fullRef = GitUtils.expandRef(ref);
 
@@ -433,7 +445,6 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
-    final boolean pushWithLease = myConfig.isPushWithLeaseEnabled();
     final boolean creatingBranch = ObjectId.zeroId().name().equals(lastCommit);
     //what the mirror has to be restored to if the push fails, null when the ref has to be removed from it
     final String localRevisionBeforePush;

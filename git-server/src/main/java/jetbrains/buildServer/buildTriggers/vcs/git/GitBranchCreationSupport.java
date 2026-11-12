@@ -4,6 +4,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.vcs.BranchCreationResult;
 import jetbrains.buildServer.vcs.BranchCreationSupport;
+import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.lib.ObjectId;
@@ -39,11 +40,15 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
                                            @NotNull String revision) throws VcsException {
     LOG.info("Create branch " + branchName + " at revision " + revision + " in root " + root);
     if (!ObjectId.isId(revision))
-      throw new VcsException("Cannot create branch " + branchName + ": '" + revision + "' is not a full revision");
+      return rejected(root, branchName, "'" + revision + "' is not a full revision");
     String ref = GitUtils.expandRef(branchName);
     if (!GitServerUtil.isBranch(ref)) {
       //a qualified ref is taken as is, and creating a tag or a note is not what this operation is for
-      throw new VcsException("Cannot create branch " + branchName + ": '" + ref + "' is not a branch");
+      return rejected(root, branchName, "'" + ref + "' is not a branch");
+    }
+    if (!Repository.isValidRefName(ref)) {
+      //git refuses such a name on every attempt, and the push failing on it would read as a failure worth a retry
+      return rejected(root, branchName, "'" + ref + "' is not a valid branch name");
     }
     OperationContext context = myVcs.createContext(root, "createBranch");
     GitVcsRoot gitRoot = context.getGitRoot();
@@ -57,8 +62,15 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
         }
 
         RevCommit commit = myCommitLoader.findCommit(db, revision);
-        if (commit == null)
-          commit = myCommitLoader.loadCommit(context, gitRoot, revision);
+        if (commit == null) {
+          try {
+            commit = myCommitLoader.loadCommit(context, gitRoot, revision);
+          } catch (RevisionNotFoundException e) {
+            //the loader fetched everything and the revision is still not there: a failure of the fetch itself is
+            //another exception and stays a failure of the operation
+            return rejected(root, branchName, "revision " + revision + " is not in the repository");
+          }
+        }
 
         ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
         lock.lock();
@@ -66,7 +78,7 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
           //the zero id means the ref must not exist yet, so a branch created meanwhile is reported instead of
           //being moved by this push
           myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString())
-                          .push(db, gitRoot, ref, commit.name(), ObjectId.zeroId().name());
+                          .pushWithLease(db, gitRoot, ref, commit.name(), ObjectId.zeroId().name());
         } catch (VcsException e) {
           BranchCreationResult createdMeanwhile;
           try {
@@ -93,6 +105,13 @@ public class GitBranchCreationSupport implements BranchCreationSupport, GitServe
         context.close();
       }
     });
+  }
+
+  @NotNull
+  private static BranchCreationResult rejected(@NotNull VcsRoot root, @NotNull String branchName, @NotNull String reason) {
+    String message = "Cannot create branch " + branchName + ": " + reason;
+    LOG.info(message + ", root " + root);
+    return BranchCreationResult.rejected(branchName, message);
   }
 
   /**

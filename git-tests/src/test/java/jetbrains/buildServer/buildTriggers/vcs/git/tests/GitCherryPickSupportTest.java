@@ -391,6 +391,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
   }
 
 
+  @TestFor(issues = "TW-105651")
   public void rejects_the_pick_when_the_branch_is_updated_between_the_fetch_and_the_push() throws Exception {
     //another writer advances the destination branch in the window the operation cannot see
     myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
@@ -400,8 +401,8 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
 
     then(result.getStatus())
-      .overridingErrorMessage("the result was computed against a revision the branch no longer points to")
-      .isEqualTo(CherryPickResult.Status.REJECTED);
+      .overridingErrorMessage("a lost race is worth a retry, so it must not be reported as a refusal a retry cannot change")
+      .isEqualTo(CherryPickResult.Status.CONCURRENTLY_UPDATED);
     then(result.getMessage()).contains("concurrently");
     then(result.getNewBranchRevision()).isNull();
     then(resolveRef(myRemote, "refs/heads/master"))
@@ -419,12 +420,38 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
 
-    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.CONCURRENTLY_UPDATED);
     then(result.getMessage()).contains("concurrently");
     then(result.getNewBranchRevision()).isNull();
     then(resolveRef(myRemote, "refs/heads/master"))
       .overridingErrorMessage("the rewound branch must not be fast-forwarded to the cherry-pick result")
       .isEqualTo(MASTER_PARENT);
+  }
+
+
+  @TestFor(issues = "TW-105651")
+  public void does_not_publish_onto_a_rewound_branch_when_the_lease_is_switched_off() throws Exception {
+    //the toggle turns the lease off for the other pushes of the plugin; a pick never overwrites a concurrent update,
+    //so this one keeps it. A plain push would accept the result as a fast-forward of the rewound branch
+    setInternalProperty("teamcity.git.push.forceWithLease", "false");
+    myCherryPickSupport = createCherryPickSupport(gitSupport().withServerPaths(myPaths),
+                                                  ops -> new PushInterceptingTestRepoOperations(ops)
+                                                    .beforePush(() -> setRef(myRemote, "refs/heads/master", MASTER_PARENT)));
+
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.CONCURRENTLY_UPDATED);
+    then(resolveRef(myRemote, "refs/heads/master")).isEqualTo(MASTER_PARENT);
+  }
+
+
+  @TestFor(issues = "TW-105651")
+  public void writes_the_source_revision_the_way_git_reports_it() throws Exception {
+    //git accepts a revision in upper case and reports it in lower case, which is the form callers match
+    CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1.toUpperCase(), "refs/heads/master", CherryPickOptions.create());
+
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.PICKED);
+    then(fullMessage(myRemote, result.getNewBranchRevision())).endsWith("\n(cherry picked from commit " + TOPIC_1 + ")\n");
   }
 
 
@@ -436,7 +463,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
 
     CherryPickResult result = myCherryPickSupport.cherryPick(myRoot, TOPIC_1, "master", CherryPickOptions.create());
 
-    then(result.getStatus()).isEqualTo(CherryPickResult.Status.REJECTED);
+    then(result.getStatus()).isEqualTo(CherryPickResult.Status.CONCURRENTLY_UPDATED);
     then(result.getMessage()).contains("'master'").doesNotContain("refs/heads/master");
   }
 
@@ -543,7 +570,7 @@ public class GitCherryPickSupportTest extends BaseRemoteRepositoryTest {
         .isNotNull();
       //a lost race publishes nothing; a thread which ran after the other one finds the change already applied
       then(result.getStatus()).isIn(CherryPickResult.Status.PICKED,
-                                    CherryPickResult.Status.REJECTED,
+                                    CherryPickResult.Status.CONCURRENTLY_UPDATED,
                                     CherryPickResult.Status.ALREADY_PRESENT);
       if (result.getStatus() == CherryPickResult.Status.PICKED)
         published.add(result.getNewBranchRevision());
