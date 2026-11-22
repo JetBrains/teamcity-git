@@ -5,17 +5,24 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TestLogger;
+import jetbrains.buildServer.WaitForAssertions;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.util.ThreadUtil;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.vcs.*;
 import org.apache.log4j.Level;
@@ -34,6 +41,7 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.testng.SkipException;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -46,6 +54,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateData.createVersionState;
 import static junit.framework.Assert.*;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.fail;
@@ -57,6 +66,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   private PluginConfigBuilder myConfig;
   private File myRepo;
   private TestLogger myLogger;
+  private final List<GitVcsSupport> mySupports = new ArrayList<>(); // disposed after each test, preparing for collecting changes starts threads
 
   public CollectChangesTest() {
     super("repo.git", "TW-43643-1", "TW-43643-2", "repo_with_tags", "TW-64455-no_second_fetch_if_from_revision_missing_1", "TW-64455-no_second_fetch_if_from_revision_missing_2");
@@ -70,6 +80,12 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     myLogger.setLogLevel(Level.INFO);
     myConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()));
     myRepo = getRemoteRepositoryDir("repo.git");
+  }
+
+  @AfterMethod(alwaysRun = true)
+  public void disposeSupports() {
+    mySupports.forEach(GitVcsSupport::dispose);
+    mySupports.clear();
   }
 
 
@@ -1127,6 +1143,157 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(1).name());
   }
 
+  public void prepare_fetches_missing_commits_so_that_collecting_changes_does_not_fetch() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 3);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+
+    CompletableFuture<Void> preparation = vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(commits.get(2)));
+    preparation.get(1, TimeUnit.MINUTES);
+    then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(2).name());
+
+    // any fetch fails from now on
+    FileUtil.delete(repoDir);
+
+    List<ModificationData> changes = vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(2)), CheckoutRules.DEFAULT);
+    then(changes).extracting(ModificationData::getVersion).containsExactly(commits.get(2).name(), commits.get(1).name());
+  }
+
+  public void prepare_completes_at_once_when_local_clone_has_the_commits() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(1)), CheckoutRules.DEFAULT);
+
+    CompletableFuture<Void> preparation = vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(commits.get(1)));
+
+    then(preparation.isDone()).isTrue();
+    preparation.get();
+  }
+
+  public void prepare_completes_at_once_when_local_clone_has_fetched_the_branch_past_the_revision() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 3);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    // another VCS root sharing the clone has fetched the branch further
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(2)), CheckoutRules.DEFAULT);
+    // any fetch fails from now on
+    FileUtil.delete(repoDir);
+
+    CompletableFuture<Void> preparation = vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(commits.get(1)));
+
+    then(preparation.isDone()).isTrue();
+    preparation.get();
+    then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(2).name());
+  }
+
+  public void prepare_fetches_branch_moved_to_another_line_of_history() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    RevCommit otherLine;
+    try (Git git = Git.open(repoDir)) {
+      git.checkout().setCreateBranch(true).setName("other").setStartPoint(commits.get(0)).call();
+      FileUtil.writeFileAndReportErrors(new File(repoDir, "file.txt"), "other line");
+      git.add().addFilepattern(".").call();
+      otherLine = git.commit().setMessage("other line").call();
+    }
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    RepositoryStateData bothLines = createVersionState("refs/heads/master", map("refs/heads/master", commits.get(1).name(),
+                                                                                "refs/heads/other", otherLine.name()));
+    vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, bothLines).get(1, TimeUnit.MINUTES);
+
+    // a force push moves the branch to a commit the local clone has, but not among the commits of the local branch
+    try (Git git = Git.open(repoDir)) {
+      git.branchCreate().setName("master").setForce(true).setStartPoint(otherLine).call();
+    }
+    vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(otherLine)).get(1, TimeUnit.MINUTES);
+
+    then(localMasterRevision(vcs, repoDir)).isEqualTo(otherLine.name());
+  }
+
+  public void prepare_waits_for_write_lock_of_local_clone_longer_than_collecting_changes_does() throws Exception {
+    myConfig.setRepositoryWriteLockTimeoutSeconds(1);
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    vcs.getCurrentState(root); // creates the local clone
+
+    CompletableFuture<Void> preparation;
+    try (WriteLockHolder ignored = new WriteLockHolder(vcs, repoDir)) {
+      preparation = vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(commits.get(1)));
+      ThreadUtil.sleep(2000); // longer than the write lock timeout of collecting changes
+      then(preparation.isDone()).as("the preparation waits for the write lock rather than fails").isFalse();
+    }
+
+    preparation.get(1, TimeUnit.MINUTES);
+    then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(1).name());
+  }
+
+  public void prepare_fails_when_write_lock_of_local_clone_is_held_longer_than_allowed() throws Exception {
+    setInternalProperty(GitCollectChangesPolicy.PREPARE_WRITE_LOCK_TIMEOUT, "500"); // milliseconds
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    vcs.getCurrentState(root); // creates the local clone
+
+    try (WriteLockHolder ignored = new WriteLockHolder(vcs, repoDir)) {
+      CompletableFuture<Void> preparation = vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(commits.get(1)));
+
+      then(catchThrowable(() -> preparation.get(30, TimeUnit.SECONDS))).isInstanceOf(ExecutionException.class).hasStackTraceContaining("Write lock timeout");
+    }
+  }
+
+  public void unloading_plugin_stops_preparation_waiting_for_write_lock_of_local_clone() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    vcs.getCurrentState(root); // creates the local clone
+
+    try (WriteLockHolder lockHolder = new WriteLockHolder(vcs, repoDir)) {
+      CompletableFuture<Void> preparation = vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(commits.get(1)));
+      WaitForAssertions.doWaitForAssert(lockHolder::hasWaiters);
+
+      vcs.dispose();
+
+      then(preparation).isCompletedExceptionally();
+      then(lockHolder.hasWaiters()).as("the thread of the preparation stops waiting for the write lock").isFalse();
+    }
+  }
+
+  public void prepare_does_nothing_when_disabled() throws Exception {
+    setInternalProperty(GitCollectChangesPolicy.PREPARE_FOR_COLLECTING_CHANGES_ENABLED, "false");
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 1);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    // a fetch would fail
+    FileUtil.delete(repoDir);
+
+    CompletableFuture<Void> preparation = vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(commits.get(0)));
+
+    then(preparation.isDone()).isTrue();
+    preparation.get();
+  }
+
+  public void prepare_fails_when_fetch_fails() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 1);
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    FileUtil.delete(repoDir);
+
+    CompletableFuture<Void> preparation = vcs.getCollectChangesPolicy().prepareForCollectingChanges(root, masterState(commits.get(0)));
+
+    then(catchThrowable(() -> preparation.get(1, TimeUnit.MINUTES))).isInstanceOf(ExecutionException.class);
+  }
+
   @NotNull
   private List<RevCommit> createLinearHistory(@NotNull File repoDir, int commitsCount) throws Exception {
     List<RevCommit> commits = new ArrayList<>();
@@ -1153,6 +1320,44 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   }
 
   private GitVcsSupport git() {
-    return gitSupport().withPluginConfig(myConfig).build();
+    GitVcsSupport support = gitSupport().withPluginConfig(myConfig).build();
+    mySupports.add(support);
+    return support;
+  }
+
+  /**
+   * Holds the write lock of the local clone of the repository in another thread until closed
+   */
+  private static final class WriteLockHolder implements AutoCloseable {
+    private final ReentrantLock myLock;
+    private final CountDownLatch myRelease = new CountDownLatch(1);
+    private final Thread myThread;
+
+    private WriteLockHolder(@NotNull GitVcsSupport vcs, @NotNull File repoDir) throws Exception {
+      myLock = vcs.getRepositoryManager().getWriteLock(vcs.getRepositoryManager().getMirrorDir(new URIish(repoDir.getCanonicalPath()).toString()));
+      CountDownLatch locked = new CountDownLatch(1);
+      myThread = new Thread(() -> {
+        myLock.lock();
+        try {
+          locked.countDown();
+          myRelease.await();
+        } catch (InterruptedException ignored) {
+        } finally {
+          myLock.unlock();
+        }
+      });
+      myThread.start();
+      then(locked.await(1, TimeUnit.MINUTES)).isTrue();
+    }
+
+    private boolean hasWaiters() {
+      return myLock.hasQueuedThreads();
+    }
+
+    @Override
+    public void close() throws InterruptedException {
+      myRelease.countDown();
+      myThread.join();
+    }
   }
 }

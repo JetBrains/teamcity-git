@@ -22,6 +22,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetcherPropertiesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ScriptGenTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RevisionsCacheTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.LocalClonePreparerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.WellKnownHostingsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.SSHCommandLineTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.SSHAgentServiceTest"/>

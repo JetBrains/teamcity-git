@@ -5,13 +5,17 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.metrics.*;
+import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
@@ -35,6 +39,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private static final String ENABLE_CHANGES_COLLECTION_LOGGING = "teamcity.internal.git.changesCollectionTimeLogging.enabled";
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
   public static final String REVISION_BY_CHECKOUT_RULES_USE_LOG_COMMAND = "teamcity.git.checkoutRulesRevision.useLogCommand";
+  public static final String PREPARE_FOR_COLLECTING_CHANGES_ENABLED = "teamcity.git.prepareForCollectingChanges.enabled";
+  /**
+   * How long a preparation waits for the write lock of the local clone before it fails. The bound frees the thread of {@link LocalClonePreparer}
+   * for the preparations of other clones when a clone stays busy, collecting changes fetches itself then. The default does not depend on
+   * {@link ServerPluginConfig#repositoryWriteLockTimeout()}, which can be 0 meaning no bound.
+   */
+  public static final String PREPARE_WRITE_LOCK_TIMEOUT = "teamcity.git.prepareForCollectingChanges.writeLockTimeout";
+  private static final long DEFAULT_PREPARE_WRITE_LOCK_TIMEOUT_MILLIS = TimeUnit.MINUTES.toMillis(5);
 
   private final GitVcsSupport myVcs;
   private final VcsOperationProgressProvider myProgressProvider;
@@ -101,6 +113,70 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                         @NotNull RepositoryStateData toState,
                                                         @NotNull CheckoutRules checkoutRules) throws VcsException {
     return collectChangesInternal(toRoot, fromState, toState, true).toChangesCollectionResult();
+  }
+
+  /**
+   * Fetches the commits of the state into the local clone in the background, so that collecting changes up to the state rarely has to fetch,
+   * and does not wait for the write lock of the clone while TeamCity keeps the VCS root locked.
+   * <p>
+   * Implements {@code CollectRepositoryChangesPolicy#prepareForCollectingChanges} of TeamCity 2027.1. The method is not annotated with
+   * {@code @Override}, so that the plugin compiles and works with older TeamCity versions, which do not call it.
+   * <p>
+   * With {@link #PREPARE_FOR_COLLECTING_CHANGES_ENABLED} set to false the plugin is ready at once, and collecting changes fetches itself.
+   */
+  @NotNull
+  public CompletableFuture<Void> prepareForCollectingChanges(@NotNull VcsRoot root, @NotNull RepositoryStateData toState) {
+    if (!TeamCityProperties.getBooleanOrTrue(PREPARE_FOR_COLLECTING_CHANGES_ENABLED)) return CompletableFuture.completedFuture(null);
+
+    try {
+      SProject project = retrieveProject(root);
+      if (GitProxyChangesCollector.isGitProxyEnabled(project) && myGitProxyChangesCollector.getGitProxyInfo(root, project) != null) {
+        return CompletableFuture.completedFuture(null); // gitProxy collects changes without the local clone
+      }
+
+      OperationContext context = myVcs.createContext(root, "preparing for collecting changes");
+      File cloneDir;
+      boolean fetchNeeded;
+      try {
+        cloneDir = context.getGitRoot().getRepositoryDir();
+        fetchNeeded = myRepositoryManager.runWithDisabledRemove(cloneDir, () -> createPreparationFetchContext(context, toState).isFetchNeeded());
+      } finally {
+        context.close();
+      }
+      if (!fetchNeeded) return CompletableFuture.completedFuture(null);
+
+      return myVcs.getLocalClonePreparer().schedule(cloneDir, () -> fetchForCollectingChanges(root, toState));
+    } catch (Exception e) {
+      CompletableFuture<Void> failed = new CompletableFuture<>();
+      failed.completeExceptionally(e);
+      return failed;
+    }
+  }
+
+  /**
+   * The preparation knows no old state: it accepts a local ref which another VCS root sharing the clone has already fetched past the revision,
+   * and leaves a force push to an older commit to collecting changes, which knows the old state and fetches it
+   */
+  @NotNull
+  private FetchContext createPreparationFetchContext(@NotNull OperationContext context, @NotNull RepositoryStateData toState) throws VcsException {
+    return new FetchContext(context, myVcs).withToRevisions(toState.getBranchRevisions()).acceptingLocalRefsAhead();
+  }
+
+  private void fetchForCollectingChanges(@NotNull VcsRoot root, @NotNull RepositoryStateData toState) throws VcsException {
+    OperationContext context = myVcs.createContext(root, "preparing for collecting changes");
+    try {
+      File cloneDir = context.getGitRoot().getRepositoryDir();
+      long writeLockTimeoutMillis = TeamCityProperties.getIntervalMilliseconds(PREPARE_WRITE_LOCK_TIMEOUT, DEFAULT_PREPARE_WRITE_LOCK_TIMEOUT_MILLIS);
+      IOGuard.allowNetworkAndCommandLine(() -> myRepositoryManager.runWithDisabledRemove(cloneDir, () -> {
+        try {
+          createPreparationFetchContext(context, toState).fetchIfNoCommitsOrFail(writeLockTimeoutMillis);
+        } catch (Exception e) {
+          throw context.wrapException(e);
+        }
+      }));
+    } finally {
+      context.close();
+    }
   }
 
   @NotNull

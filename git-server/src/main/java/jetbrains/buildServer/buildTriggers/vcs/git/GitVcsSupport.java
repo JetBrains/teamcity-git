@@ -65,6 +65,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final ParameterFactory myParameterFactory;
   private final ChangesCollectorCache myChangesCollectorCache;
   private final CheckoutRulesCommitCache myCheckoutRulesCommitCache;
+  private final LocalClonePreparer myLocalClonePreparer = new LocalClonePreparer();
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
                        @NotNull ServerPluginConfig config,
@@ -668,6 +669,18 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public CommitLoader getCommitLoader() {
     return myCommitLoader;
+  }
+
+  @NotNull
+  public LocalClonePreparer getLocalClonePreparer() {
+    return myLocalClonePreparer;
+  }
+
+  /**
+   * Releases the resources of the plugin, called when the plugin is unloaded: see the destroy-method of the bean in build-server-plugin-git.xml
+   */
+  public void dispose() {
+    myLocalClonePreparer.shutdown();
   }
 
   @NotNull

@@ -59,6 +59,7 @@ public class PluginConfigBuilder {
   private float myFetchRemoteBranchesFactor;
   private int myFetchRemoteBranchesThreshold;
   private Integer mySshConnectTimeoutSeconds;
+  private long myRepositoryWriteLockTimeoutSeconds;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -431,7 +432,7 @@ public class PluginConfigBuilder {
 
       @Override
       public long repositoryWriteLockTimeout() {
-        return 0;
+        return myRepositoryWriteLockTimeoutSeconds;
       }
 
       @Override
@@ -549,6 +550,11 @@ public class PluginConfigBuilder {
     return this;
   }
 
+
+  public PluginConfigBuilder setRepositoryWriteLockTimeoutSeconds(long timeoutSeconds) {
+    myRepositoryWriteLockTimeoutSeconds = timeoutSeconds;
+    return this;
+  }
 
   public PluginConfigBuilder setIdleTimeoutSeconds(int timeout) {
     myIdleTimeoutSeconds = timeout;

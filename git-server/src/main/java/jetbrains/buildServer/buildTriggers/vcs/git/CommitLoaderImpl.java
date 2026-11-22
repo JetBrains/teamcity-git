@@ -125,14 +125,14 @@ public class CommitLoaderImpl implements CommitLoader {
 
 
   @NotNull
-  private ReentrantLock acquireWriteLock(@NotNull File repo, long timeout) throws VcsException {
+  private ReentrantLock acquireWriteLock(@NotNull File repo, long timeoutMillis) throws VcsException {
     final ReentrantLock lock = myRepositoryManager.getWriteLock(repo);
-    if (timeout > 0) {
+    if (timeoutMillis > 0) {
       try {
-        if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
+        if (lock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
           return lock;
         }
-        throw new VcsOperationRejectedException("Write lock timeout: failed to acquire lock in " + timeout + StringUtil.pluralize(" second") + " for the Git clone directory: " + repo.getAbsolutePath());
+        throw new VcsOperationRejectedException("Write lock timeout: failed to acquire lock in " + timeoutMillis + " ms for the Git clone directory: " + repo.getAbsolutePath());
       } catch (InterruptedException e) {
         throw new VcsException("Commit loader operation interrupted", e);
       }
@@ -276,6 +276,25 @@ public class CommitLoaderImpl implements CommitLoader {
   }
 
   /**
+   * @param acceptLocalRefsAhead whether to take the revisions of the new state for the old one when the old state is unknown:
+   *                             {@link #isLocalRefUpToDate} then accepts a local ref pointing to a descendant of the new revision
+   * @return the revisions of the old ("from") state by the full ref name
+   */
+  @NotNull
+  private static Map<String, String> getFromRevisions(@NotNull Collection<RefCommit> revisions, boolean acceptLocalRefsAhead) {
+    if (!acceptLocalRefsAhead) return getFromRevisions(revisions);
+
+    final Map<String, String> result = new HashMap<>();
+    for (RefCommit r : revisions) {
+      if (r.isRefTip()) {
+        result.put(GitUtils.expandRef(r.getRef()), GitUtils.versionRevision(r.getCommit()));
+      }
+    }
+    result.putAll(getFromRevisions(revisions));
+    return result;
+  }
+
+  /**
    * @return the revisions of the old ("from") state by the full ref name
    */
   @NotNull
@@ -314,6 +333,21 @@ public class CommitLoaderImpl implements CommitLoader {
                           @NotNull URIish fetchURI,
                           @NotNull Collection<RefCommit> revisions,
                           @NotNull Supplier<Set<String>> remoteRefsSupplier) throws IOException, VcsException {
+    loadCommits(context, fetchURI, revisions, remoteRefsSupplier, TimeUnit.SECONDS.toMillis(context.getPluginConfig().repositoryWriteLockTimeout()), false);
+  }
+
+  public boolean isFetchNeeded(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, boolean acceptLocalRefsAhead) throws VcsException {
+    if (revisions.isEmpty()) return false;
+
+    return !findRefsToFetch(context, context.getRepository(), revisions, getFromRevisions(revisions, acceptLocalRefsAhead), true, false).isEmpty();
+  }
+
+  public void loadCommits(@NotNull OperationContext context,
+                          @NotNull URIish fetchURI,
+                          @NotNull Collection<RefCommit> revisions,
+                          @NotNull Supplier<Set<String>> remoteRefsSupplier,
+                          long writeLockTimeoutMillis,
+                          boolean acceptLocalRefsAhead) throws IOException, VcsException {
     if (revisions.isEmpty()) return;
 
     final Repository db = context.getRepository();
@@ -321,12 +355,12 @@ public class CommitLoaderImpl implements CommitLoader {
     assert repositoryDir != null : "Non-local repository";
 
     // the old state revisions are needed by the checks of the tips from the new state, including the ones made on the refs left to fetch
-    final Map<String, String> fromRevisions = getFromRevisions(revisions);
+    final Map<String, String> fromRevisions = getFromRevisions(revisions, acceptLocalRefsAhead);
     Collection<RefCommit> refsToFetch = findRefsToFetch(context, db, revisions, fromRevisions, true, false);
     if (refsToFetch.isEmpty()) return;
 
     final long start = System.currentTimeMillis();
-    final ReentrantLock lock = acquireWriteLock(repositoryDir, context.getPluginConfig().repositoryWriteLockTimeout());
+    final ReentrantLock lock = acquireWriteLock(repositoryDir, writeLockTimeoutMillis);
     try {
       final long finish = System.currentTimeMillis();
       final long waitTime = finish - start;
