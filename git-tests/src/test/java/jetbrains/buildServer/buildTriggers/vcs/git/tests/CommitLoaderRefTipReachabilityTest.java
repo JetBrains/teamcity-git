@@ -90,7 +90,22 @@ public class CommitLoaderRefTipReachabilityTest extends BaseTestCase {
   }
 
   public void local_ref_ahead_without_old_state() throws Exception {
-    then(isLocalRefUpToDate(null, myHistory.get(3), LIMIT)).isFalse();
+    // e.g. a branch created after the old state, which another VCS root sharing the clone has fetched further
+    then(isLocalRefUpToDate(null, myHistory.get(3), LIMIT)).isTrue();
+  }
+
+  public void local_ref_ahead_further_than_the_limit_without_old_state() throws Exception {
+    then(isLocalRefUpToDate(null, myHistory.get(1), 3)).isFalse();
+  }
+
+  public void local_ref_ahead_without_old_state_when_reachability_check_disabled() throws Exception {
+    then(isLocalRefUpToDate(null, myHistory.get(3), 0)).isFalse();
+  }
+
+  public void branch_on_another_line_of_history_without_old_state() throws Exception {
+    resetHead(myHistory.get(2));
+    RevCommit sideCommit = commit("side");
+    then(isLocalRefUpToDate(null, sideCommit, LIMIT)).isFalse();
   }
 
   public void local_ref_ahead_with_old_revision_missing_from_clone() throws Exception {

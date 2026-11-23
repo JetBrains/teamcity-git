@@ -10,8 +10,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TestLogger;
@@ -1126,6 +1126,28 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(3).name());
   }
 
+  public void branch_created_after_old_state_and_already_fetched_past_new_state_is_not_fetched_again() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 3);
+    try (Git git = Git.open(repoDir)) {
+      git.branchCreate().setName("feature").setStartPoint(commits.get(2)).call();
+    }
+    GitVcsSupport vcs = git();
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+
+    // another VCS root sharing the clone has fetched the new branch further
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterAndFeatureState(commits.get(0), commits.get(2)), CheckoutRules.DEFAULT);
+    // any fetch fails from now on
+    FileUtil.delete(repoDir);
+
+    List<ModificationData> changes = vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)),
+                                                                                  masterAndFeatureState(commits.get(0), commits.get(1)), CheckoutRules.DEFAULT);
+
+    then(changes).extracting(ModificationData::getVersion).containsExactly(commits.get(1).name());
+    Repository clone = vcs.getRepositoryManager().openRepository(new URIish(repoDir.getCanonicalPath()));
+    then(clone.exactRef("refs/heads/feature").getObjectId().name()).isEqualTo(commits.get(2).name());
+  }
+
   public void branch_moved_back_by_force_push_is_moved_back_in_local_clone() throws Exception {
     File repoDir = myTempFiles.createTempDir();
     List<RevCommit> commits = createLinearHistory(repoDir, 4);
@@ -1311,6 +1333,11 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @NotNull
   private static RepositoryStateData masterState(@NotNull RevCommit commit) {
     return createVersionState("refs/heads/master", map("refs/heads/master", commit.name()));
+  }
+
+  @NotNull
+  private static RepositoryStateData masterAndFeatureState(@NotNull RevCommit master, @NotNull RevCommit feature) {
+    return createVersionState("refs/heads/master", map("refs/heads/master", master.name(), "refs/heads/feature", feature.name()));
   }
 
   @NotNull

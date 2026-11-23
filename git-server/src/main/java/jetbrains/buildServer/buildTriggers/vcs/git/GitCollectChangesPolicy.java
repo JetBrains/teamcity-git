@@ -155,11 +155,11 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   /**
    * The preparation knows no old state: it accepts a local ref which another VCS root sharing the clone has already fetched past the revision,
-   * and leaves a force push to an older commit to collecting changes, which knows the old state and fetches it
+   * see {@link CommitLoaderImpl#isLocalRefUpToDate}, and leaves a force push to an older commit to collecting changes, which knows the old state and fetches it
    */
   @NotNull
   private FetchContext createPreparationFetchContext(@NotNull OperationContext context, @NotNull RepositoryStateData toState) throws VcsException {
-    return new FetchContext(context, myVcs).withToRevisions(toState.getBranchRevisions()).acceptingLocalRefsAhead();
+    return new FetchContext(context, myVcs).withToRevisions(toState.getBranchRevisions());
   }
 
   private void fetchForCollectingChanges(@NotNull VcsRoot root, @NotNull RepositoryStateData toState) throws VcsException {
