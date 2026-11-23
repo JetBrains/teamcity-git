@@ -125,8 +125,14 @@ public class CommandUtil {
 
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBuffer = cli.createStderrBuffer();
-        ExecResult res = SimpleCommandLineProcessRunner
-          .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize()), stdoutBuffer, stderrBuffer);
+        ProcessTimeoutCallback processCallback = new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize());
+        ExecResult res;
+        try {
+          res = SimpleCommandLineProcessRunner
+            .runCommandSecure(cli, cli.getCommandLineString(), input, processCallback, stdoutBuffer, stderrBuffer);
+        } finally {
+          processCallback.terminateProcessTreeIfRunning();
+        }
 
         cli.logFinish(cmdStr);
         final String out = res.getStdout().trim();

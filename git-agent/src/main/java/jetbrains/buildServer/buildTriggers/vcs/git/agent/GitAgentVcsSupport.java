@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import jetbrains.buildServer.agent.AgentLifeCycleAdapter;
 import jetbrains.buildServer.agent.AgentLifeCycleListener;
 import jetbrains.buildServer.agent.AgentRunningBuild;
+import jetbrains.buildServer.agent.BuildInterruptReason;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.agent.vcs.AgentCheckoutAbility;
@@ -22,6 +23,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ProcessTimeoutCallback;
 import jetbrains.buildServer.buildTriggers.vcs.git.jgit.LenientSystemReader;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.EventDispatcher;
@@ -88,6 +90,12 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       @Override
       public void preparationFinished(@NotNull final AgentRunningBuild runningBuild) {
         clearPluginConfigCache();
+      }
+
+      @Override
+      public void beforeBuildInterrupted(@NotNull final AgentRunningBuild runningBuild,
+                                         @NotNull final BuildInterruptReason reason) {
+        ProcessTimeoutCallback.terminateRunningProcesses();
       }
     });
 
