@@ -1126,6 +1126,38 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(3).name());
   }
 
+  public void fetch_command_reports_fetch_of_all_refs_after_revision_not_found_by_selective_fetch() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    RevCommit otherBranchCommit;
+    try (Git git = Git.open(repoDir)) {
+      git.checkout().setCreateBranch(true).setName("other").setStartPoint(commits.get(0)).call();
+      FileUtil.writeFileAndReportErrors(new File(repoDir, "file.txt"), "other");
+      git.add().addFilepattern(".").call();
+      otherBranchCommit = git.commit().setMessage("other").call();
+    }
+    GitSupportBuilder builder = gitSupport().withPluginConfig(myConfig.setFetchAllRefsEnabled(true));
+    // native git or JGit, depending on the test suite
+    FetchCommand defaultFetchCommand = builder.getDefaultFetchCommand();
+    List<FetchSettings.FetchMode> usedFetchModes = new ArrayList<>();
+    GitVcsSupport vcs = builder.withFetchCommand((db, fetchURI, settings) -> {
+      settings.addListener(new FetchListener() {
+        @Override
+        public void fetchModeUsed(@NotNull FetchSettings.FetchMode fetchMode) {
+          usedFetchModes.add(fetchMode);
+        }
+      });
+      defaultFetchCommand.fetch(db, fetchURI, settings);
+    }).build();
+    mySupports.add(vcs);
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+
+    // the commit is not reachable from master, the branch of the state, but from another branch
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(otherBranchCommit), CheckoutRules.DEFAULT);
+
+    then(usedFetchModes).containsExactly(FetchSettings.FetchMode.FETCH_REF_SPECS, FetchSettings.FetchMode.FETCH_ALL_REFS);
+  }
+
   public void branch_created_after_old_state_and_already_fetched_past_new_state_is_not_fetched_again() throws Exception {
     File repoDir = myTempFiles.createTempDir();
     List<RevCommit> commits = createLinearHistory(repoDir, 3);

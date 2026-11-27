@@ -8,6 +8,7 @@ import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
+import jetbrains.buildServer.util.EventDispatcher;
 import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.TextProgressMonitor;
@@ -20,6 +21,7 @@ public class FetchSettings {
   private final Collection<RefSpec> myRefSpecs;
   private FetchMode myFetchMode;
   private boolean myDoRemotePrune = false;
+  private final EventDispatcher<FetchListener> myListeners = EventDispatcher.create(FetchListener.class);
 
   public FetchSettings(@NotNull AuthSettings authSettings) {
     this(authSettings, Collections.emptyList());
@@ -107,7 +109,24 @@ public class FetchSettings {
     return myDoRemotePrune;
   }
 
-  public static enum FetchMode {
+  public void addListener(@NotNull FetchListener listener) {
+    myListeners.addListener(listener);
+  }
+
+  public void removeListener(@NotNull FetchListener listener) {
+    myListeners.removeListener(listener);
+  }
+
+  /**
+   * @return the listener the fetch command reports the events of the fetch to, it passes them to the added listeners;
+   * an error of a listener is logged rather than thrown, so it does not fail the fetch
+   */
+  @NotNull
+  public FetchListener getListenersMulticaster() {
+    return myListeners.getMulticaster();
+  }
+
+  public enum FetchMode {
     FETCH_REF_SPECS,
     FETCH_ALL_REFS,
     FETCH_ALL_REFS_EXCEPT_TAGS

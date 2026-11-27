@@ -2,11 +2,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitNativeOperationsStatus;
@@ -22,7 +21,6 @@ import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CommitResult;
-import jetbrains.buildServer.vcs.Function;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -51,7 +49,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   private final FetchCommand myJGitFetchCommand;
   private final LazyGitExec myGitExec = new LazyGitExec();
 
-  private final Function<String, Counter> myFetchDurationTimerProvider;
+  private final BiFunction<String, FetchSettings.FetchMode, Counter> myFetchDurationTimerProvider;
   private final GitNativeOperationsStatus myMainConfigSettings;
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
@@ -59,7 +57,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand,
                                @NotNull SshKnownHostsManager sshKnownHostsManager) {
-    this(config, NO_IMPL, transportFactory, sshKeyManager, jGitFetchCommand, repoUrl -> EMPTY_COUNTER, sshKnownHostsManager);
+    this(config, NO_IMPL, transportFactory, sshKeyManager, jGitFetchCommand, (repoUrl, fetchMode) -> EMPTY_COUNTER, sshKnownHostsManager);
   }
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
@@ -77,7 +75,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                 @NotNull TransportFactory transportFactory,
                                 @NotNull VcsRootSshKeyManager sshKeyManager,
                                 @NotNull FetchCommand jGitFetchCommand,
-                                @NotNull Function<String, Counter> fetchDurationTimerProvider,
+                                @NotNull BiFunction<String, FetchSettings.FetchMode, Counter> fetchDurationTimerProvider,
                                 @NotNull SshKnownHostsManager sshKnownHostsManager) {
     myConfig = config;
     myMainConfigSettings = nativeOperationsStatus;
@@ -91,7 +89,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public FetchCommand fetchCommand(@NotNull String repoUrl) {
-    return new MetricReportingFetchCommand((FetchCommand)getNativeGitFetchOptional(repoUrl).orElse(myJGitFetchCommand), myFetchDurationTimerProvider.apply(repoUrl));
+    return new MetricReportingFetchCommand((FetchCommand)getNativeGitFetchOptional(repoUrl).orElse(myJGitFetchCommand), fetchMode -> myFetchDurationTimerProvider.apply(repoUrl, fetchMode));
   }
 
   protected Optional<GitCommand> getNativeGitFetchOptional(@NotNull String repoUrl) {
@@ -374,10 +372,10 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     }
   }
 
-  private static class FetchDurationTimers implements Function<String, Counter> {
+  private static class FetchDurationTimers implements BiFunction<String, FetchSettings.FetchMode, Counter> {
     private final ServerPluginConfig myConfig;
     private final ServerMetrics myServerMetrics;
-    private final ConcurrentHashMap<String, Counter> myFetchDurationTimers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<List<Object>, Counter> myFetchDurationTimers = new ConcurrentHashMap<>(); // [repoUrl tag, used fetch mode] -> timer
 
     private FetchDurationTimers(@NotNull ServerMetrics serverMetrics, @NotNull ServerPluginConfig config) {
       myServerMetrics = serverMetrics;
@@ -385,11 +383,11 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     }
 
     @Override
-    public Counter apply(final String repoUrl) {
+    public Counter apply(final String repoUrl, final FetchSettings.FetchMode fetchMode) {
       // we can report metric separately for specified repos
-      final String key = myConfig.getFetchDurationMetricRepos().contains(repoUrl) ? repoUrl : "ALL";
-      return myFetchDurationTimers.computeIfAbsent(key, url -> myServerMetrics.metricBuilder("vcs.git.fetch.duration")
-        .tags("repoUrl", key)
+      final String repoKey = myConfig.getFetchDurationMetricRepos().contains(repoUrl) ? repoUrl : "ALL";
+      return myFetchDurationTimers.computeIfAbsent(Arrays.asList(repoKey, fetchMode), key -> myServerMetrics.metricBuilder("vcs.git.fetch.duration")
+        .tags("repoUrl", repoKey, "fetchType", MetricReportingFetchCommand.getFetchTypeTagValue(fetchMode))
         .dataType(MetricDataType.MILLISECONDS)
         .experimental(true)
         .description("Git plugin fetch operations duration")

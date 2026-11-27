@@ -6,11 +6,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.PushCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.TagCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.RepackCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
@@ -275,6 +275,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
     Collection<String> resultRefSpecs = defineRefSpecsForFetch(settings);
+    settings.getListenersMulticaster().fetchModeUsed(settings.getFetchMode());
 
     if(myConfig.shouldExecutePruneBeforeEveryFetch() || settings.shouldDoRemotePrune()) {
       // Before running fetch we might prune branches which no longer exist in the remote.

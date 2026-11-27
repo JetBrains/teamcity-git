@@ -78,6 +78,10 @@ public class FetchCommandImpl implements FetchCommand {
                     @NotNull URIish fetchURI,
                     @NotNull FetchSettings settings) throws IOException, VcsException {
     GitServerUtil.removeRefLocks(db.getDirectory());
+    // JGit fetches the refspecs whatever the fetch mode is
+    settings.getListenersMulticaster().fetchModeUsed(settings.getRefSpecs().stream().anyMatch(spec -> "refs/*".equals(spec.getSource()))
+                                                     ? FetchSettings.FetchMode.FETCH_ALL_REFS
+                                                     : FetchSettings.FetchMode.FETCH_REF_SPECS);
     if (myConfig.isSeparateProcessForFetch()) {
       fetchInSeparateProcess(db, fetchURI, settings);
     } else {
