@@ -24,8 +24,15 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootInstance;
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.appender.rewrite.RewriteAppender;
+import org.apache.logging.log4j.core.config.AppenderRef;
+import org.apache.logging.log4j.core.config.DefaultConfiguration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.apache.logging.log4j.message.SimpleMessage;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -507,18 +514,51 @@ public class GitServerUtil {
 
 
   public static void configureExternalProcessLogger(boolean debugEnabled) {
+    // The rewrite below decides about stack traces, so the logger must always pass the exception to it.
+    System.setProperty(Logger.ALWAYS_SHOW_EXCEPTION_DETAILS_PROPERTY, "true");
     LogInitializer.reconfigureLog4j((loggerContext, configuration) -> {
       LoggerConfig rootLogger = configuration.getRootLogger();
+      String appenderName = "console";
       PatternLayout patternLayout = PatternLayout.newBuilder().withPattern("[%d] %6p - %30.30c - %m %n").build();
-      org.apache.logging.log4j.core.appender.ConsoleAppender consoleAppender = org.apache.logging.log4j.core.appender.ConsoleAppender.newBuilder().setName("console").setLayout(patternLayout).build();
-      consoleAppender.start();
-      configuration.addAppender(consoleAppender);
-      rootLogger.addAppender(consoleAppender, Level.INFO, null);
+      Appender appender = org.apache.logging.log4j.core.appender.ConsoleAppender.newBuilder().setName(appenderName).setLayout(patternLayout).build();
+      appender.start();
+      configuration.addAppender(appender);
+      if (!debugEnabled) {
+        appender = RewriteAppender.createAppender(
+          "shortExceptions",
+          "true",
+          new AppenderRef[]{AppenderRef.createAppenderRef(appenderName, null, null)},
+          configuration,
+          GitServerUtil::withoutStacktrace,
+          null
+        );
+        appender.start();
+        configuration.addAppender(appender);
+      }
+      if (configuration instanceof DefaultConfiguration) {
+        new ArrayList<>(rootLogger.getAppenders().keySet()).forEach(rootLogger::removeAppender);
+      }
+      rootLogger.removeAppender(appenderName);
+      rootLogger.addAppender(appender, debugEnabled ? Level.DEBUG : Level.INFO, null);
     });
     org.apache.log4j.Logger.getLogger("org.eclipse.jgit").setLevel(debugEnabled ? org.apache.log4j.Level.DEBUG : org.apache.log4j.Level.WARN);
     org.apache.log4j.Logger.getLogger("jetbrains.buildServer.buildTriggers.vcs.git").setLevel(debugEnabled ? org.apache.log4j.Level.DEBUG : org.apache.log4j.Level.INFO);
 
     JSch.setLogger(debugEnabled ? JSchLoggers.STD_DEBUG_JSCH_LOGGER : JSchLoggers.STD_JSCH_LOGGER);
+  }
+
+  // The server puts this output into user-visible VCS errors, so INFO and WARN stack traces only with debug.
+  @NotNull
+  private static LogEvent withoutStacktrace(@NotNull LogEvent event) {
+    Throwable t = event.getThrown();
+    if (t == null || event.getLevel().isMoreSpecificThan(Level.ERROR)) {
+      return event;
+    }
+    return new Log4jLogEvent.Builder(event)
+      .setMessage(new SimpleMessage(event.getMessage().getFormattedMessage() + ": " + t + " (enable debug to see stacktrace)"))
+      .setThrown(null)
+      .setThrownProxy(null)
+      .build();
   }
 
 

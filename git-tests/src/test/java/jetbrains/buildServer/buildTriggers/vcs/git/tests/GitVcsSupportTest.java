@@ -691,8 +691,67 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
 
     Loggers.VCS.setLevel(Level.DEBUG);
     String debugError = getFetchExceptionMessage(gitSupport);
-    assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"), "output: " + noDebugError);
-    assertFalse(debugError.endsWith("\n"), "output: " + noDebugError);
+    assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"), "output: " + debugError);
+    assertFalse(debugError.endsWith("\n"), "output: " + debugError);
+  }
+
+  @TestFor(issues = "TW-102962")
+  @Test
+  public void fetch_process_logs_once_with_stacktraces_only_for_errors_or_debug() {
+    String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
+                       ClasspathUtil.composeClasspath(new Class[]{FetcherLoggingOnce.class}, null, null);
+    myConfigBuilder.setSeparateProcessForFetch(true)
+      .setFetchClasspath(classpath)
+      .setFetcherClassName(FetcherLoggingOnce.class.getName());
+
+    GitSupportBuilder supportBuilder = getSupportBuilder(null);
+    GitVcsSupport gitSupport = supportBuilder.build();
+
+    if (supportBuilder.getGitRepoOperations().isNativeGitOperationsEnabled())
+      throw new SkipException("The test is not relevant for native Git mode");
+
+    then(getFetchExceptionMessage(gitSupport))
+      .containsOnlyOnce("info message: java.lang.Exception: info cause (enable debug to see stacktrace)")
+      .containsOnlyOnce("infoAndDebugDetails message: java.lang.Exception: infoAndDebugDetails cause (enable debug to see stacktrace)")
+      .containsOnlyOnce("warn message: java.lang.Exception: warn cause (enable debug to see stacktrace)")
+      .containsOnlyOnce("multi-line message: java.lang.Exception: line1\nline2 (enable debug to see stacktrace)")
+      .containsOnlyOnce("warnAndDebugDetails message: java.lang.Exception: warnAndDebugDetails cause (enable debug to see stacktrace)")
+      .containsOnlyOnce("error message")
+      .containsOnlyOnce("java.lang.Exception: error cause")
+      .containsOnlyOnce("at " + FetcherLoggingOnce.class.getName() + ".main(")
+      .doesNotContain("debug message");
+
+    // FetchCommandImpl passes it to the fetch process as VCS_DEBUG_ENABLED
+    Loggers.VCS.setLevel(Level.DEBUG);
+    String debugError = getFetchExceptionMessage(gitSupport);
+    then(debugError)
+      .containsOnlyOnce("debug message")
+      .containsOnlyOnce("info message")
+      .containsOnlyOnce("infoAndDebugDetails message")
+      .containsOnlyOnce("warn message")
+      .containsOnlyOnce("multi-line message")
+      .containsOnlyOnce("warnAndDebugDetails message")
+      .containsOnlyOnce("error message")
+      .doesNotContain("(enable debug to see stacktrace)");
+    then(debugError.split(Pattern.quote("at " + FetcherLoggingOnce.class.getName() + ".main("), -1))
+      .as("one stack trace per logged exception")
+      .hasSize(7);
+  }
+
+  public static class FetcherLoggingOnce {
+    public static void main(String... args) throws IOException {
+      Map<String, String> properties = VcsUtil.stringToProperties(GitServerUtil.readInput());
+      GitServerUtil.configureExternalProcessLogger("true".equals(properties.get(Constants.VCS_DEBUG_ENABLED)));
+      Logger log = Logger.getInstance(FetcherLoggingOnce.class.getName());
+      log.debug("debug message");
+      log.info("info message", new Exception("info cause"));
+      log.infoAndDebugDetails("infoAndDebugDetails message", new Exception("infoAndDebugDetails cause"));
+      log.warn("warn message", new Exception("warn cause"));
+      log.warn("multi-line message", new Exception("line1\nline2"));
+      log.warnAndDebugDetails("warnAndDebugDetails message", new Exception("warnAndDebugDetails cause"));
+      log.error("error message", new Exception("error cause"));
+      System.exit(1);
+    }
   }
 
 

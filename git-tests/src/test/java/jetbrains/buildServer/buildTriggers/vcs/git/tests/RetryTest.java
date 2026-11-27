@@ -124,7 +124,7 @@ public class RetryTest extends BaseTestCase {
         private void append(final String category, final String message, final Throwable t) {
           myResult.append(category).append(" ").append(message);
           if (t != null) {
-            myResult.append(": ").append(t.getMessage());
+            myResult.append(": ").append(t);
           }
           myResult.append("\n");
         }
