@@ -6,28 +6,30 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.util.impl.Lazy;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 public class FetchContext {
   @NotNull private final OperationContext myContext;
-  @NotNull private final Lazy<Set<String>> myRemoteRefsLazy;
+  @NotNull private final Lazy<Map<String, Ref>> myRemoteRefsLazy;
   @NotNull private final CommitLoader myCommitLoader;
 
   @NotNull private final Collection<RefCommit> myRevisions = new ArrayList<>();
+  private boolean myFailFastOnMovedTips;
 
   public FetchContext(@NotNull final OperationContext context, @NotNull GitVcsSupport vcsSupport) throws VcsException {
     myContext = context;
     myCommitLoader = vcsSupport.getCommitLoader();
     myRemoteRefsLazy = Lazy.create(() -> {
       try {
-        return vcsSupport.getRemoteRefs(context.getRoot()).keySet().stream().filter(r -> r.startsWith("refs/")).collect(Collectors.toSet());
+        return vcsSupport.getRemoteRefs(context.getRoot()).entrySet().stream().filter(e -> e.getKey().startsWith("refs/"))
+                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
       } catch (VcsException e) {
         throw new RuntimeException("Failed to fetch remote refs during the fetch operation", e);
       }
@@ -72,6 +74,16 @@ public class FetchContext {
     }).collect(Collectors.toList());
   }
 
+  /**
+   * Makes the fetch fail with the recoverable error at once, rather than after fetching all refs, when the refs of the tips missing after the selective fetch
+   * point to other commits in the remote repository, e.g. after a force push; only for a caller collecting changes up to a state, which takes a new state after the error
+   */
+  @NotNull
+  public FetchContext failingFastOnMovedTips() {
+    myFailFastOnMovedTips = true;
+    return this;
+  }
+
   public void fetchIfNoCommitsOrFail() throws VcsException, IOException {
     fetchIfNoCommitsOrFail(TimeUnit.SECONDS.toMillis(myContext.getPluginConfig().repositoryWriteLockTimeout()));
   }
@@ -80,7 +92,7 @@ public class FetchContext {
    * The same as {@link #fetchIfNoCommitsOrFail()}, but waits for the write lock of the local clone not longer than the specified time
    */
   public void fetchIfNoCommitsOrFail(long writeLockTimeoutMillis) throws VcsException, IOException {
-    myCommitLoader.loadCommits(myContext, myContext.getGitRoot().getRepositoryFetchURL().get(), myRevisions, myRemoteRefsLazy, writeLockTimeoutMillis);
+    myCommitLoader.loadCommits(myContext, myContext.getGitRoot().getRepositoryFetchURL().get(), myRevisions, myRemoteRefsLazy, writeLockTimeoutMillis, myFailFastOnMovedTips);
   }
 
   /**

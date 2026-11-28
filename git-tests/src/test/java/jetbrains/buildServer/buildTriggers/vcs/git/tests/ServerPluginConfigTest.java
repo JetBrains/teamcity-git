@@ -27,6 +27,7 @@ import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -55,6 +56,25 @@ public class ServerPluginConfigTest extends BaseSimpleGitTestCase {
   public void tearDown() throws Exception {
     super.tearDown();
     myTempFiles.cleanup();
+  }
+
+  public void fails_fast_on_moved_tips_only_on_a_server_taking_a_new_state_after_an_error() {
+    then(PluginConfigImpl.isServerTakingNewStateAfterError(2026, 2)).isFalse();
+    then(PluginConfigImpl.isServerTakingNewStateAfterError(2027, 0)).isFalse();
+    then(PluginConfigImpl.isServerTakingNewStateAfterError(2027, 1)).isTrue();
+    then(PluginConfigImpl.isServerTakingNewStateAfterError(2028, 0)).isTrue();
+    then(PluginConfigImpl.isServerTakingNewStateAfterError(0, 0)).as("a development build").isTrue();
+  }
+
+  public void explicit_value_decides_whether_to_fail_fast_on_moved_tips() {
+    // the default depends on the version of the TeamCity artifacts the plugin runs with, see fails_fast_on_moved_tips_only_on_a_server_taking_a_new_state_after_an_error
+    PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
+
+    setInternalProperty(PluginConfigImpl.FAIL_FAST_ON_MOVED_TIPS, "true");
+    then(config.failFastOnMovedTips()).isTrue();
+
+    setInternalProperty(PluginConfigImpl.FAIL_FAST_ON_MOVED_TIPS, "false");
+    then(config.failFastOnMovedTips()).isFalse();
   }
 
 

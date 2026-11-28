@@ -56,6 +56,7 @@ public class PluginConfigBuilder {
   private Boolean myReportPerParentChangedFiles;
   private Boolean myReportAllFilesChangedForParentsWithoutCommonFiles;
   private boolean myFetchAllRefsEnabled;
+  private Boolean myFailFastOnMovedTips;
   private float myFetchRemoteBranchesFactor;
   private int myFetchRemoteBranchesThreshold;
   private Integer mySshConnectTimeoutSeconds;
@@ -431,6 +432,11 @@ public class PluginConfigBuilder {
       }
 
       @Override
+      public boolean failFastOnMovedTips() {
+        return myFailFastOnMovedTips != null ? myFailFastOnMovedTips : myDelegate.failFastOnMovedTips();
+      }
+
+      @Override
       public long repositoryWriteLockTimeout() {
         return myRepositoryWriteLockTimeoutSeconds;
       }
@@ -683,6 +689,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setReportAllFilesChangedForParentsWithoutCommonFiles(boolean report) {
     myReportAllFilesChangedForParentsWithoutCommonFiles = report;
+    return this;
+  }
+
+  PluginConfigBuilder setFailFastOnMovedTips(boolean failFastOnMovedTips) {
+    myFailFastOnMovedTips = failFastOnMovedTips;
     return this;
   }
 

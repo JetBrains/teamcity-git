@@ -2,6 +2,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.googlecode.javaewah.EWAHCompressedBitmap;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
@@ -35,6 +36,8 @@ import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.LowLevelPatchBuilder;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
+import jetbrains.buildServer.version.ServerVersionHolder;
+import jetbrains.buildServer.version.ServerVersionInfo;
 import org.apache.commons.codec.Decoder;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpEntity;
@@ -100,6 +103,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public static final float FETCH_PROCESS_MAX_MEMORY_MULT_FACTOR_DEFAULT = 1.4f;
   public static final String FETCH_REMOTE_BRANCHES_FACTOR = "teamcity.server.git.fetchRemoteBranchesFactor";
+  public static final String FAIL_FAST_ON_MOVED_TIPS = "teamcity.git.fetch.failFastOnMovedTips";
   public static final String FETCH_REMOTE_BRANCHES_THRESHOLD = "teamcity.server.git.fetchRemoteBranchesThreshold";
   public static final int FETCH_REMOTE_BRANCHES_THRESHOLD_DEFAULT = 200;
   public static final String REF_TIP_REACHABILITY_CHECK_MAX_COMMITS = "teamcity.server.git.refTipReachabilityCheckMaxCommits";
@@ -717,6 +721,33 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public boolean fetchAllRefsEnabled() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.fetch.all.refs.enabled");
+  }
+
+  /**
+   * An explicit value of {@link #FAIL_FAST_ON_MOVED_TIPS} wins. Otherwise the plugin fails fast only on a server which takes a new state when it repeats
+   * changes collecting after a recoverable error: an older one would repeat it with the same state and fail the same way until the attempts end,
+   * while fetching all refs can still find the revision through another ref.
+   */
+  @Override
+  public boolean failFastOnMovedTips() {
+    String value = TeamCityProperties.getPropertyOrNull(FAIL_FAST_ON_MOVED_TIPS);
+    if (value != null) return Boolean.parseBoolean(value);
+
+    try {
+      ServerVersionInfo version = ServerVersionHolder.getVersion();
+      return isServerTakingNewStateAfterError(version.getDisplayVersionMajor(), version.getDisplayVersionMinor());
+    } catch (Exception e) {
+      return true; // the version is unknown outside a release build, e.g. in tests
+    }
+  }
+
+  /**
+   * Since TeamCity 2027.1 a build chain repeating changes collecting after a recoverable error takes new states of its VCS roots rather than the cached ones
+   * @param major the major version, 0 if unknown, e.g. in development
+   */
+  @VisibleForTesting
+  public static boolean isServerTakingNewStateAfterError(int major, int minor) {
+    return major == 0 || major > 2027 || major == 2027 && minor >= 1;
   }
 
   @Override

@@ -168,6 +168,12 @@ public interface ServerPluginConfig extends PluginConfig {
 
   boolean fetchAllRefsEnabled();
 
+  /**
+   * @return true if collecting changes up to a state fails with the recoverable error at once when the refs of the revisions of the state missing after the selective fetch
+   * point to other commits in the remote repository, e.g. after a force push, rather than after fetching all refs
+   */
+  boolean failFastOnMovedTips();
+
   long repositoryWriteLockTimeout();
 
   boolean refreshObjectDatabaseAfterFetch();

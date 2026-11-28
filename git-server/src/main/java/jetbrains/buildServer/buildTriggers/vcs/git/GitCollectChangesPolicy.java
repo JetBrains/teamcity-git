@@ -102,17 +102,21 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                @NotNull RepositoryStateData fromState,
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    return collectChangesInternal(root, fromState, toState, false).getModificationDataList();
+    return collectChangesInternal(root, fromState, toState, false, false).getModificationDataList();
   }
 
 
+  /**
+   * TeamCity collects changes up to the current state here and takes a new state after a recoverable error, so a revision missing because its ref has moved
+   * fails at once rather than after fetching all refs, see {@link FetchContext#failingFastOnMovedTips()}
+   */
   @NotNull
   public ChangesCollectionResult collectChangesExtended(@Nullable VcsRoot fromRoot,
                                                         @NotNull RepositoryStateData fromState,
                                                         @NotNull VcsRoot toRoot,
                                                         @NotNull RepositoryStateData toState,
                                                         @NotNull CheckoutRules checkoutRules) throws VcsException {
-    return collectChangesInternal(toRoot, fromState, toState, true).toChangesCollectionResult();
+    return collectChangesInternal(toRoot, fromState, toState, true, true).toChangesCollectionResult();
   }
 
   /**
@@ -159,7 +163,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
    */
   @NotNull
   private FetchContext createPreparationFetchContext(@NotNull OperationContext context, @NotNull RepositoryStateData toState) throws VcsException {
-    return new FetchContext(context, myVcs).withToRevisions(toState.getBranchRevisions());
+    return new FetchContext(context, myVcs).withToRevisions(toState.getBranchRevisions()).failingFastOnMovedTips();
   }
 
   private void fetchForCollectingChanges(@NotNull VcsRoot root, @NotNull RepositoryStateData toState) throws VcsException {
@@ -183,13 +187,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private GitChangesCollectionResult collectChangesInternal(@NotNull VcsRoot root,
                                                 @NotNull RepositoryStateData fromState,
                                                 @NotNull RepositoryStateData toState,
-                                                boolean allowMissingTips) throws VcsException {
+                                                boolean allowMissingTips,
+                                                boolean failFastOnMovedTips) throws VcsException {
     SProject project = retrieveProject(root);
     String operationId = UUID.randomUUID().toString().substring(0, 8); // used for logging
     try (Stoppable stoppable = myCollectChangesMetric.startMsecsTimer()) {
       final GitProxySettings proxyCredentials = myGitProxyChangesCollector.getGitProxyInfo(root, project);
       if (!GitProxyChangesCollector.isGitProxyEnabled(project) || proxyCredentials == null) {
-        GitChangesCollectionResult jgitResult = runCollectChangesWithTimer("jgit", operationId, root, project, false, () -> collectGitChangesJgit(root, fromState, toState));
+        GitChangesCollectionResult jgitResult = runCollectChangesWithTimer("jgit", operationId, root, project, false, () -> collectGitChangesJgit(root, fromState, toState, failFastOnMovedTips));
         if (project != null && GitProxyChangesCollector.isComparisonLoggingEnabled(project) && proxyCredentials != null) {
           try {
             Map<String, List<String>> submodulePrefixesMap = new HashMap<>();
@@ -220,7 +225,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                    shouldRunFallbackChangesCollections ? ", will collect changes with jgit" : "", operationId), t);
           }
           if (shouldRunFallbackChangesCollections) {
-            return runCollectChangesWithTimer("jgitFallback", operationId, root, project, false, () -> collectGitChangesJgit(root, fromState, toState));
+            return runCollectChangesWithTimer("jgitFallback", operationId, root, project, false, () -> collectGitChangesJgit(root, fromState, toState, failFastOnMovedTips));
           } else {
             throw t;
           }
@@ -278,13 +283,15 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   private GitChangesCollectionResult collectGitChangesJgit(@NotNull VcsRoot root,
                                                            @NotNull RepositoryStateData fromState,
-                                                           @NotNull RepositoryStateData toState) throws VcsException {
-    return new GitChangesCollectionResult(collectChangesJgit(root, fromState, toState), null);
+                                                           @NotNull RepositoryStateData toState,
+                                                           boolean failFastOnMovedTips) throws VcsException {
+    return new GitChangesCollectionResult(collectChangesJgit(root, fromState, toState, failFastOnMovedTips), null);
   }
 
   private List<ModificationData> collectChangesJgit(@NotNull VcsRoot root,
                                                     @NotNull RepositoryStateData fromState,
-                                                    @NotNull RepositoryStateData toState) throws VcsException {
+                                                    @NotNull RepositoryStateData toState,
+                                                    boolean failFastOnMovedTips) throws VcsException {
     OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
     GitVcsRoot gitRoot = context.getGitRoot();
     return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
@@ -293,7 +300,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         Repository r = context.getRepository();
         ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
         revWalk.sort(RevSort.TOPO);
-        ensureRepositoryStateLoadedFor(context, fromState, toState);
+        ensureRepositoryStateLoadedFor(context, fromState, toState, failFastOnMovedTips);
         markStart(r, revWalk, toState);
         markUninteresting(r, revWalk, fromState, toState);
         markForLimitedBranches(r, revWalk, fromState, toState);
@@ -587,13 +594,18 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       .fetchIfNoCommitsOrFail();
   }
 
-  public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
-                                             @NotNull final RepositoryStateData fromState,
-                                             @NotNull final RepositoryStateData toState) throws Exception {
-    new FetchContext(context, myVcs)
+  /**
+   * @param failFastOnMovedTips see {@link FetchContext#failingFastOnMovedTips()}, only for a caller which takes a new state after the error
+   */
+  private void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
+                                              @NotNull final RepositoryStateData fromState,
+                                              @NotNull final RepositoryStateData toState,
+                                              boolean failFastOnMovedTips) throws Exception {
+    FetchContext fetchContext = new FetchContext(context, myVcs)
       .withToRevisions(toState.getBranchRevisions())
-      .withFromRevisions(fromState.getBranchRevisions())
-      .fetchIfNoCommitsOrFail();
+      .withFromRevisions(fromState.getBranchRevisions());
+    if (failFastOnMovedTips) fetchContext.failingFastOnMovedTips();
+    fetchContext.fetchIfNoCommitsOrFail();
   }
 
   @NotNull

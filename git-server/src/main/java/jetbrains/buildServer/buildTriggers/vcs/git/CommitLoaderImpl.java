@@ -292,6 +292,25 @@ public class CommitLoaderImpl implements CommitLoader {
     return result;
   }
 
+  /**
+   * @return true if some tips are missing and the ref of each of them points to another commit in the remote repository. A missing tag, a ref gone from
+   * the remote repository or a ref still pointing to the missing commit, e.g. when the selective fetch could not update the local ref, are left to the fetch of all refs.
+   */
+  @VisibleForTesting
+  static boolean areAllMissingTipsMoved(@NotNull Collection<RefCommit> missingRevisions, @NotNull Map<String, Ref> remoteRefs) {
+    boolean tipMissing = false;
+    for (RefCommit r : missingRevisions) {
+      if (!r.isRefTip()) continue;
+      tipMissing = true;
+      String ref = GitUtils.expandRef(r.getRef());
+      if (GitServerUtil.isTag(ref)) return false;
+      Ref remoteRef = remoteRefs.get(ref);
+      ObjectId remoteRevision = remoteRef == null ? null : remoteRef.getObjectId();
+      if (remoteRevision == null || remoteRevision.name().equals(GitUtils.versionRevision(r.getCommit()))) return false;
+    }
+    return tipMissing;
+  }
+
   private static @NotNull Map<String, Ref> loadCurrentRefTips(@NotNull Repository db, @NotNull Collection<RefCommit> revisions) {
     Map<String, Ref> allRefsMap = new HashMap<>();
     try {
@@ -316,8 +335,8 @@ public class CommitLoaderImpl implements CommitLoader {
   public void loadCommits(@NotNull OperationContext context,
                           @NotNull URIish fetchURI,
                           @NotNull Collection<RefCommit> revisions,
-                          @NotNull Supplier<Set<String>> remoteRefsSupplier) throws IOException, VcsException {
-    loadCommits(context, fetchURI, revisions, remoteRefsSupplier, TimeUnit.SECONDS.toMillis(context.getPluginConfig().repositoryWriteLockTimeout()));
+                          @NotNull Supplier<Map<String, Ref>> remoteRefsSupplier) throws IOException, VcsException {
+    loadCommits(context, fetchURI, revisions, remoteRefsSupplier, TimeUnit.SECONDS.toMillis(context.getPluginConfig().repositoryWriteLockTimeout()), false);
   }
 
   public boolean isFetchNeeded(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions) throws VcsException {
@@ -329,8 +348,9 @@ public class CommitLoaderImpl implements CommitLoader {
   public void loadCommits(@NotNull OperationContext context,
                           @NotNull URIish fetchURI,
                           @NotNull Collection<RefCommit> revisions,
-                          @NotNull Supplier<Set<String>> remoteRefsSupplier,
-                          long writeLockTimeoutMillis) throws IOException, VcsException {
+                          @NotNull Supplier<Map<String, Ref>> remoteRefsSupplier,
+                          long writeLockTimeoutMillis,
+                          boolean failFastOnMovedTips) throws IOException, VcsException {
     if (revisions.isEmpty()) return;
 
     final Repository db = context.getRepository();
@@ -357,11 +377,21 @@ public class CommitLoaderImpl implements CommitLoader {
       if (refsToFetch.isEmpty()) return;
 
       final boolean includeTags = context.getGitRoot().isReportTags();
-      FetchSettings settings = myFetchSettingsFactory.getFetchSettings(context, refsToFetch, revisions, remoteRefsSupplier.get(), includeTags);
+      FetchSettings settings = myFetchSettingsFactory.getFetchSettings(context, refsToFetch, revisions, remoteRefsSupplier.get().keySet(), includeTags);
       doFetch(db, fetchURI, settings);
 
       refsToFetch = findRefsToFetch(context, db, refsToFetch, fromRevisions, false, false);
       if (refsToFetch.isEmpty()) return;
+
+      // the selective fetch brought the current tips of the refs: a tip still missing whose ref points to another commit is no longer in its ref, e.g. after a force push,
+      // so the state is out of date, and the caller takes a new one when it repeats the operation after the recoverable error rather than fetching all refs;
+      // when the error is not recoverable, nothing repeats the operation, and fetching all refs can still find the revision through another ref
+      if (failFastOnMovedTips &&
+          context.getPluginConfig().treatMissingBranchTipAsRecoverableError() &&
+          context.getPluginConfig().failFastOnMovedTips() &&
+          areAllMissingTipsMoved(refsToFetch, remoteRefsSupplier.get())) {
+        findRefsToFetch(context, db, refsToFetch, fromRevisions, false, true); // throws the recoverable error for the missing tips
+      }
 
       final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
       if (fetchAllRefsDisabled && refsToFetch.stream().noneMatch(RefCommit::isRefTip)) return;

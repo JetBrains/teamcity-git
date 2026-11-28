@@ -29,6 +29,7 @@ import org.apache.log4j.Level;
 import org.assertj.core.data.MapEntry;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.RefUpdate;
@@ -1124,6 +1125,150 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
     then(changes).extracting(ModificationData::getVersion).containsExactly(commits.get(1).name());
     then(localMasterRevision(vcs, repoDir)).isEqualTo(commits.get(3).name());
+  }
+
+  public void force_pushed_tip_fails_collecting_changes_up_to_the_state_without_fetching_all_refs() throws Exception {
+    myConfig.setFailFastOnMovedTips(true); // its default depends on the version of the TeamCity artifacts on the classpath
+    ForcePushedBranch branch = forcePushedBranch();
+
+    Throwable error = catchThrowable(() -> branch.vcs.getCollectChangesPolicy()
+                                                     .collectChangesExtended(branch.root, masterState(branch.fetched), branch.root, masterState(branch.forcePushedAway), CheckoutRules.DEFAULT));
+
+    then(error).isInstanceOf(VcsException.class).hasMessageContaining("Revisions missing in the local repository");
+    then(((VcsException)error).isRecoverable()).isTrue();
+    then(branch.fetches.getFetchCount()).as("the selective fetch only, TeamCity takes a new state after the error").isEqualTo(1);
+  }
+
+  public void force_pushed_tip_requested_by_revision_is_searched_in_all_refs() throws Exception {
+    myConfig.setFailFastOnMovedTips(true); // its default depends on the version of the TeamCity artifacts on the classpath
+    ForcePushedBranch branch = forcePushedBranch();
+
+    // e.g. the revision based API passes the requested revision as a tip, and no new state can replace it
+    Throwable error = catchThrowable(() -> branch.vcs.getCollectChangesPolicy()
+                                                     .collectChanges(branch.root, masterState(branch.fetched), masterState(branch.forcePushedAway), CheckoutRules.DEFAULT));
+
+    then(error).isInstanceOf(VcsException.class);
+    then(branch.fetches.getFetchCount()).as("the selective fetch and the fetch of all refs").isEqualTo(2);
+  }
+
+  public void force_pushed_tip_is_searched_in_all_refs_when_failing_fast_is_disabled() throws Exception {
+    myConfig.setFailFastOnMovedTips(false);
+    ForcePushedBranch branch = forcePushedBranch();
+
+    Throwable error = catchThrowable(() -> branch.vcs.getCollectChangesPolicy()
+                                                     .collectChangesExtended(branch.root, masterState(branch.fetched), branch.root, masterState(branch.forcePushedAway), CheckoutRules.DEFAULT));
+
+    then(error).isInstanceOf(VcsException.class);
+    then(branch.fetches.getFetchCount()).as("the selective fetch and the fetch of all refs").isEqualTo(2);
+  }
+
+  public void force_pushed_tip_is_searched_in_all_refs_when_missing_tips_are_not_recoverable() throws Exception {
+    myConfig.setFailFastOnMovedTips(true); // its default depends on the version of the TeamCity artifacts on the classpath
+    setInternalProperty("teamcity.git.treatMissingCommitAsRecoverableError", "false");
+    ForcePushedBranch branch = forcePushedBranch();
+
+    // nothing repeats the operation after the error, so there is no new state to wait for
+    Throwable error = catchThrowable(() -> branch.vcs.getCollectChangesPolicy()
+                                                     .collectChangesExtended(branch.root, masterState(branch.fetched), branch.root, masterState(branch.forcePushedAway), CheckoutRules.DEFAULT));
+
+    then(error).isInstanceOf(VcsException.class);
+    then(((VcsException)error).isRecoverable()).isFalse();
+    then(branch.fetches.getFetchCount()).as("the selective fetch and the fetch of all refs").isEqualTo(2);
+  }
+
+  public void tip_of_branch_moved_forward_is_fetched_selectively() throws Exception {
+    myConfig.setFailFastOnMovedTips(true); // its default depends on the version of the TeamCity artifacts on the classpath
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    GitSupportBuilder builder = gitSupport().withPluginConfig(myConfig.setFetchAllRefsEnabled(true));
+    FetchCommandCountDecorator fetches = new FetchCommandCountDecorator(builder.getDefaultFetchCommand());
+    GitVcsSupport vcs = builder.withFetchCommand(fetches).build();
+    mySupports.add(vcs);
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(1)), CheckoutRules.DEFAULT);
+    RevCommit inState = commit(repoDir, "in state");
+    commit(repoDir, "pushed after the state was taken"); // the branch moves forward, the state's tip is still in it
+    fetches.resetFetchCounter();
+
+    ChangesCollectionResult result = vcs.getCollectChangesPolicy().collectChangesExtended(root, masterState(commits.get(1)), root, masterState(inState), CheckoutRules.DEFAULT);
+
+    then(result.getCollectChangesResult()).extracting(ModificationData::getVersion).containsExactly(inState.name());
+    then(fetches.getFetchCount()).isEqualTo(1);
+  }
+
+  public void tip_still_in_its_remote_ref_is_searched_in_all_refs_when_the_selective_fetch_missed_it() throws Exception {
+    myConfig.setFailFastOnMovedTips(true); // its default depends on the version of the TeamCity artifacts on the classpath
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    GitSupportBuilder builder = gitSupport().withPluginConfig(myConfig.setFetchAllRefsEnabled(true));
+    FetchCommand defaultFetchCommand = builder.getDefaultFetchCommand();
+    AtomicBoolean skipNextFetch = new AtomicBoolean();
+    FetchCommandCountDecorator fetches = new FetchCommandCountDecorator((db, fetchURI, settings) -> {
+      if (!skipNextFetch.getAndSet(false)) defaultFetchCommand.fetch(db, fetchURI, settings);
+    });
+    GitVcsSupport vcs = builder.withFetchCommand(fetches).build();
+    mySupports.add(vcs);
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(1)), CheckoutRules.DEFAULT);
+    RevCommit tip = commit(repoDir, "tip");
+    // the selective fetch brings nothing, e.g. it could not update the local ref because of a conflict with another one, while the remote ref still points to the tip
+    skipNextFetch.set(true);
+    fetches.resetFetchCounter();
+
+    ChangesCollectionResult result = vcs.getCollectChangesPolicy().collectChangesExtended(root, masterState(commits.get(1)), root, masterState(tip), CheckoutRules.DEFAULT);
+
+    then(result.getCollectChangesResult()).extracting(ModificationData::getVersion).containsExactly(tip.name());
+    then(fetches.getFetchCount()).as("the selective fetch and the fetch of all refs").isEqualTo(2);
+  }
+
+  /**
+   * The local clone has fetched the master branch up to {@link ForcePushedBranch#fetched}, then {@link ForcePushedBranch#forcePushedAway} was pushed to it
+   * and replaced by another commit with the same parent, as a force push does; the remote repository does not send the commit which is not in any ref
+   */
+  @NotNull
+  private ForcePushedBranch forcePushedBranch() throws Exception {
+    File repoDir = myTempFiles.createTempDir();
+    List<RevCommit> commits = createLinearHistory(repoDir, 2);
+    GitSupportBuilder builder = gitSupport().withPluginConfig(myConfig.setFetchAllRefsEnabled(true));
+    FetchCommandCountDecorator fetches = new FetchCommandCountDecorator(builder.getDefaultFetchCommand());
+    GitVcsSupport vcs = builder.withFetchCommand(fetches).build();
+    mySupports.add(vcs);
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+    vcs.getCollectChangesPolicy().collectChanges(root, masterState(commits.get(0)), masterState(commits.get(1)), CheckoutRules.DEFAULT);
+
+    RevCommit forcePushedAway = commit(repoDir, "force pushed away");
+    try (Git git = Git.open(repoDir)) {
+      git.reset().setMode(ResetCommand.ResetType.HARD).setRef(commits.get(1).name()).call();
+    }
+    commit(repoDir, "replacement");
+    fetches.resetFetchCounter();
+    return new ForcePushedBranch(vcs, root, fetches, commits.get(1), forcePushedAway);
+  }
+
+  @NotNull
+  private static RevCommit commit(@NotNull File repoDir, @NotNull String message) throws Exception {
+    try (Git git = Git.open(repoDir)) {
+      FileUtil.writeFileAndReportErrors(new File(repoDir, "file.txt"), message);
+      git.add().addFilepattern(".").call();
+      return git.commit().setMessage(message).call();
+    }
+  }
+
+  private static final class ForcePushedBranch {
+    private final GitVcsSupport vcs;
+    private final VcsRoot root;
+    private final FetchCommandCountDecorator fetches;
+    private final RevCommit fetched;
+    private final RevCommit forcePushedAway;
+
+    private ForcePushedBranch(@NotNull GitVcsSupport vcs, @NotNull VcsRoot root, @NotNull FetchCommandCountDecorator fetches,
+                              @NotNull RevCommit fetched, @NotNull RevCommit forcePushedAway) {
+      this.vcs = vcs;
+      this.root = root;
+      this.fetches = fetches;
+      this.fetched = fetched;
+      this.forcePushedAway = forcePushedAway;
+    }
   }
 
   public void fetch_command_reports_fetch_of_all_refs_after_revision_not_found_by_selective_fetch() throws Exception {

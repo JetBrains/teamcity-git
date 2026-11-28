@@ -4,7 +4,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -318,7 +318,7 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
     }
 
     try {
-      myCommitLoader.loadCommits(context, gitRoot.getRepositoryFetchURL().get(), toLoad, remoteRefNames(gitRoot));
+      myCommitLoader.loadCommits(context, gitRoot.getRepositoryFetchURL().get(), toLoad, remoteRefs(gitRoot));
     } catch (RevisionNotFoundException e) {
       throw new CherryPickRejectedException("Cannot cherry-pick: " + e.getMessage());
     }
@@ -352,14 +352,14 @@ public class GitCherryPickSupport implements CherryPickSupport, GitServerExtensi
   }
 
   /**
-   * @return names of the remote refs, read only if the loader has to fetch something
+   * @return the remote refs with the commits they point to, read only if the loader has to fetch something
    */
   @NotNull
-  private Supplier<Set<String>> remoteRefNames(@NotNull GitVcsRoot gitRoot) {
+  private Supplier<Map<String, Ref>> remoteRefs(@NotNull GitVcsRoot gitRoot) {
     return () -> {
       try {
-        return myVcs.getRemoteRefs(gitRoot.getOriginalRoot()).keySet().stream()
-                    .filter(r -> r.startsWith("refs/")).collect(Collectors.toSet());
+        return myVcs.getRemoteRefs(gitRoot.getOriginalRoot()).entrySet().stream()
+                    .filter(e -> e.getKey().startsWith("refs/")).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
       } catch (VcsException e) {
         throw new RuntimeException("Failed to read remote refs of " + gitRoot, e);
       }
